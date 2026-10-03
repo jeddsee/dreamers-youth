@@ -99,7 +99,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.50.0/dist/umd/supabase.min.js"></script>
   <script src="shared.js"></script>
   <script>
-    const { db, setIdentity, showError, hideError, setLoading } = DY;
+    const { db } = DY;
 
     const campusSelect = document.getElementById('campus-select');
     const leaderGroup  = document.getElementById('leader-group');
@@ -111,7 +111,6 @@
 
     // Load campuses on page load
     (async () => {
-      console.log('[DY] Starting campus load...');
       campusSelect.disabled = true;
 
       try {
@@ -121,10 +120,7 @@
           .eq('archived', false)
           .order('name');
 
-        console.log('[DY] Campus query result:', { data, error });
-
         if (error) {
-          console.error('[DY] Supabase error:', error);
           showError('Could not load campuses: ' + (error.message || JSON.stringify(error)));
           campusSelect.disabled = false;
           return;
@@ -144,10 +140,7 @@
           opt.dataset.dow  = c.youth_night_dow ?? 5;
           campusSelect.appendChild(opt);
         });
-
-        console.log('[DY] Loaded', data.length, 'campuses.');
       } catch (e) {
-        console.error('[DY] Unexpected error loading campuses:', e);
         showError('Unexpected error: ' + e.message);
       }
 

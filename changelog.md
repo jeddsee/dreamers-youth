@@ -112,20 +112,24 @@ All 6 HTML pages built and connected to Supabase.
 ---
 
 ## v0.3.1 — Campus Select Bug Fix
-**Date:** 3 October 2026
+**Date:** 4 October 2026
 **Status:** Hotfix. Campus dropdown was empty on landing page — login broken.
 
 ### Root cause
-The Supabase client was initialised with the newer `sb_publishable_...` key format. The `supabase-js@2` library loaded via CDN (`@2` tag) was resolving to a version that does not correctly handle this key format when constructing the `Authorization` header, causing all API requests to silently fail (no campuses returned, no error thrown in the browser).
+In browsers, all classic (non-module) `<script>` tags on a page share the same global declarative scope. `shared.js` declares all helper functions with the `function` keyword (`setIdentity`, `showError`, `hideError`, `setLoading`, `requireIdentity`, etc.), which creates global bindings for each name.
 
-Additionally, using `@supabase/supabase-js@2` without a pinned version meant any CDN cache refresh could pull a different library build — unpredictable in production.
+Every page's inline script then did:
+```js
+const { db, setIdentity, showError, hideError, setLoading } = DY;
+```
 
-### Fixes
+The `const` destructuring attempted to re-declare names already bound by the function declarations in shared.js → **SyntaxError: Identifier 'setIdentity' has already been declared** → the entire inline script was killed before a single line of app code ran. The campus query never executed, leaving the dropdown empty.
+
+### Fix
 
 | Fix | File | Detail |
 |---|---|---|
-| Switched to legacy JWT anon key | `shared.js` | JWT format (`eyJ...`) is supported by all v2.x builds of supabase-js |
-| Pinned supabase-js CDN to `v2.50.0` | All HTML pages | Prevents unexpected behaviour from unpinned `@2` CDN tag |
+| Removed function names from DY destructuring | All HTML pages | Changed to `const { db } = DY` — functions from shared.js are already global and need no re-declaration |
 
 ---
 
