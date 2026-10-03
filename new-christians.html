@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Christians — Dreamers Youth</title>
+  <link rel="stylesheet" href="shared.css">
+  <style>
+    .nc-card {
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: var(--r-lg);
+      padding: var(--s-4) var(--s-5);
+      cursor: pointer;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .nc-card:hover { border-color: var(--c-primary); box-shadow: var(--shadow); }
+    .nc-card__header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: var(--s-3);
+      margin-bottom: var(--s-3);
+    }
+    .nc-card__name  { font-weight: 700; }
+    .nc-card__meta  { font-size: var(--text-sm); color: var(--c-text-secondary); margin-top: 2px; }
+    .nc-steps {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--s-2);
+    }
+    .nc-step {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: var(--text-xs);
+      font-weight: 600;
+      padding: 2px var(--s-2);
+      border-radius: var(--r-full);
+    }
+    .nc-step.done    { background: var(--c-success-light); color: var(--c-success-text); }
+    .nc-step.pending { background: var(--c-bg); color: var(--c-text-muted); border: 1px dashed var(--c-border-dark); }
+  </style>
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="app-header__inner">
+      <span class="app-header__logo">Dreamers <span>Youth</span></span>
+      <span class="app-header__user" id="user-display" onclick="logout()"></span>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <a href="dashboard.html" class="tab">Dashboard</a>
+    <a href="new-people.html" class="tab">New People</a>
+    <a href="new-christians.html" class="tab active">New Christians</a>
+  </nav>
+
+  <div style="padding:var(--s-5) var(--s-5) var(--s-3);display:flex;align-items:center;justify-content:space-between">
+    <h2>New Christians</h2>
+    <button class="btn btn--primary btn--sm" onclick="openAddModal()">+ Add</button>
+  </div>
+
+  <div style="padding:0 var(--s-5)">
+    <div id="error-banner" class="error-banner hidden"></div>
+  </div>
+
+  <div id="loading" class="loading-overlay"><div class="spinner"></div> Loading…</div>
+  <div id="empty-state" class="empty-state hidden">
+    <div class="empty-state__icon">✝️</div>
+    <h3>No new Christian records</h3>
+    <p>Add NC records for youth who made decisions outside the new people pipeline.</p>
+  </div>
+  <div id="nc-list" class="stack hidden" style="padding:0 var(--s-5) var(--s-8)"></div>
+
+  <!-- ── Edit Modal ──────────────────────────────────────────────────────── -->
+  <div class="modal-backdrop" id="edit-modal">
+    <div class="modal">
+      <div class="modal__header">
+        <h3 id="edit-title">New Christian</h3>
+        <button class="modal__close" onclick="closeEditModal()">✕</button>
+      </div>
+      <div class="modal__body">
+        <div id="edit-error" class="error-banner hidden" style="margin-bottom:var(--s-4)"></div>
+        <div class="stack">
+          <div class="form-group">
+            <label>Name</label>
+            <input id="e-name" type="text" class="input" disabled style="background:var(--c-bg)">
+            <p class="form-hint">Name is linked to the youth roster record.</p>
+          </div>
+          <div class="form-grid form-grid--2">
+            <div class="form-group">
+              <label>Decision date</label>
+              <input id="e-date" type="date" class="input">
+            </div>
+            <div class="form-group">
+              <label>Decision type</label>
+              <select id="e-type" class="select">
+                <option value="">Select…</option>
+                <option value="first_time">First time</option>
+                <option value="rededication">Rededication</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Assigned leader</label>
+            <select id="e-leader" class="select"></select>
+          </div>
+          <div>
+            <label class="text-sm fw-semibold" style="display:block;margin-bottom:var(--s-3)">Discipleship steps</label>
+            <div class="stack--sm">
+              <label style="display:flex;align-items:center;gap:var(--s-2);cursor:pointer;font-size:var(--text-sm)">
+                <input type="checkbox" id="e-bap" style="accent-color:var(--c-primary);width:18px;height:18px">
+                💧 Water baptised
+              </label>
+              <div class="form-group" style="margin-left:26px">
+                <input id="e-bap-date" type="date" class="input" placeholder="Baptism date" style="max-width:200px">
+              </div>
+              <label style="display:flex;align-items:center;gap:var(--s-2);cursor:pointer;font-size:var(--text-sm)">
+                <input type="checkbox" id="e-bible" style="accent-color:var(--c-primary);width:18px;height:18px">
+                📖 Bible given
+              </label>
+              <label style="display:flex;align-items:center;gap:var(--s-2);cursor:pointer;font-size:var(--text-sm)">
+                <input type="checkbox" id="e-fs" style="accent-color:var(--c-primary);width:18px;height:18px">
+                🌱 Fresh Start started
+              </label>
+              <label style="display:flex;align-items:center;gap:var(--s-2);cursor:pointer;font-size:var(--text-sm)">
+                <input type="checkbox" id="e-fsc" style="accent-color:var(--c-primary);width:18px;height:18px">
+                ✅ Fresh Start completed
+              </label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Notes</label>
+            <textarea id="e-notes" class="textarea" rows="2" placeholder="Any notes…"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal__footer" style="justify-content:space-between">
+        <button class="btn btn--danger btn--sm" onclick="archiveCurrent()">Archive</button>
+        <div style="display:flex;gap:var(--s-3)">
+          <button class="btn btn--ghost" onclick="closeEditModal()">Cancel</button>
+          <button class="btn btn--primary" id="edit-save-btn" onclick="saveCurrent()">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Add Modal ───────────────────────────────────────────────────────── -->
+  <div class="modal-backdrop" id="add-modal">
+    <div class="modal">
+      <div class="modal__header">
+        <h3>Add new Christian</h3>
+        <button class="modal__close" onclick="closeAddModal()">✕</button>
+      </div>
+      <div class="modal__body">
+        <div class="stack">
+          <div class="form-group">
+            <label>Youth roster member <span class="required">*</span></label>
+            <input id="a-search" type="text" class="input" placeholder="Search by name…"
+              oninput="searchRoster(this.value)">
+            <div id="a-results" class="hidden" style="border:1px solid var(--c-border);border-radius:var(--r);margin-top:var(--s-1);max-height:160px;overflow-y:auto;background:var(--c-surface)"></div>
+            <input type="hidden" id="a-youth-id">
+            <div id="a-selected" class="hidden" style="margin-top:var(--s-2);padding:var(--s-2) var(--s-3);background:var(--c-primary-light);border-radius:var(--r);font-size:var(--text-sm);color:var(--c-primary-text)"></div>
+          </div>
+          <div class="form-grid form-grid--2">
+            <div class="form-group">
+              <label>Decision date</label>
+              <input id="a-date" type="date" class="input">
+            </div>
+            <div class="form-group">
+              <label>Decision type</label>
+              <select id="a-type" class="select">
+                <option value="">Select…</option>
+                <option value="first_time">First time</option>
+                <option value="rededication">Rededication</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Assigned leader</label>
+            <select id="a-leader" class="select"><option value="">Unassigned</option></select>
+          </div>
+          <div class="form-group">
+            <label>Notes</label>
+            <textarea id="a-notes" class="textarea" rows="2"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost" onclick="closeAddModal()">Cancel</button>
+        <button class="btn btn--primary" id="add-save-btn" onclick="submitAdd()">Add record</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="shared.js"></script>
+  <script>
+  const { db, requireIdentity, formatDate, formatDateInput, setLoading, showError } = DY;
+
+  let identity, allNC = [], leaders = [], rosterYouth = [], currentNC = null;
+
+  async function init() {
+    identity = requireIdentity('pastor');
+    if (!identity) return;
+    document.getElementById('user-display').textContent = `${identity.leader_name} · ${identity.campus_name}`;
+    await Promise.all([loadLeaders(), loadRoster(), loadNC()]);
+  }
+
+  async function loadLeaders() {
+    const { data } = await db.from('leaders')
+      .select('id, name')
+      .eq('campus_id', identity.campus_id)
+      .eq('active', true)
+      .order('name');
+    leaders = data ?? [];
+    ['a-leader'].forEach(id => {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      leaders.forEach(l => {
+        const o = document.createElement('option');
+        o.value = l.id; o.textContent = l.name;
+        sel.appendChild(o);
+      });
+    });
+  }
+
+  async function loadRoster() {
+    const { data } = await db.from('youth_roster')
+      .select('id, name, leader_id')
+      .eq('campus_id', identity.campus_id)
+      .eq('active', true)
+      .order('name');
+    rosterYouth = data ?? [];
+  }
+
+  async function loadNC() {
+    const { data, error } = await db.from('new_christians')
+      .select('*')
+      .eq('campus_id', identity.campus_id)
+      .eq('archived', false)
+      .order('created_at', { ascending: false });
+    document.getElementById('loading').classList.add('hidden');
+    if (error) { showError('Could not load records.'); return; }
+    allNC = data ?? [];
+    renderList();
+  }
+
+  function renderList() {
+    const list  = document.getElementById('nc-list');
+    const empty = document.getElementById('empty-state');
+    if (!allNC.length) { empty.classList.remove('hidden'); list.classList.add('hidden'); return; }
+    empty.classList.add('hidden');
+    list.classList.remove('hidden');
+    list.innerHTML = '';
+    allNC.forEach(nc => {
+      const leader = leaders.find(l => l.id === nc.leader_id);
+      const card = document.createElement('div');
+      card.className = 'nc-card';
+      card.innerHTML = `
+        <div class="nc-card__header">
+          <div>
+            <div class="nc-card__name">${escHtml(nc.name)}</div>
+            <div class="nc-card__meta">
+              ${nc.decision_date ? formatDate(nc.decision_date) : 'Date unknown'} ·
+              ${nc.decision_type === 'first_time' ? 'First time' : nc.decision_type === 'rededication' ? 'Rededication' : '—'} ·
+              ${escHtml(leader?.name || 'Unassigned')}
+            </div>
+          </div>
+          <span class="badge badge--${nc.baptism_done && nc.bible_given && nc.fresh_start_completed ? 'success' : 'warning'}">
+            ${nc.baptism_done && nc.bible_given && nc.fresh_start_completed ? 'Complete' : 'In progress'}
+          </span>
+        </div>
+        <div class="nc-steps">
+          <span class="nc-step ${nc.baptism_done      ? 'done' : 'pending'}">💧 Baptised</span>
+          <span class="nc-step ${nc.bible_given       ? 'done' : 'pending'}">📖 Bible</span>
+          <span class="nc-step ${nc.fresh_start_started   ? 'done' : 'pending'}">🌱 FS started</span>
+          <span class="nc-step ${nc.fresh_start_completed ? 'done' : 'pending'}">✅ FS complete</span>
+        </div>
+      `;
+      card.addEventListener('click', () => openEditModal(nc));
+      list.appendChild(card);
+    });
+  }
+
+  // ── Edit modal ──────────────────────────────────────────────────────────────
+  function openEditModal(nc) {
+    currentNC = nc;
+    document.getElementById('edit-title').textContent = nc.name;
+    document.getElementById('e-name').value   = nc.name;
+    document.getElementById('e-date').value   = nc.decision_date || '';
+    document.getElementById('e-type').value   = nc.decision_type || '';
+    document.getElementById('e-bap').checked  = nc.baptism_done;
+    document.getElementById('e-bap-date').value = nc.baptism_date || '';
+    document.getElementById('e-bible').checked = nc.bible_given;
+    document.getElementById('e-fs').checked   = nc.fresh_start_started;
+    document.getElementById('e-fsc').checked  = nc.fresh_start_completed;
+    document.getElementById('e-notes').value  = nc.notes || '';
+
+    const sel = document.getElementById('e-leader');
+    sel.innerHTML = '<option value="">Unassigned</option>';
+    leaders.forEach(l => {
+      const o = document.createElement('option');
+      o.value = l.id; o.textContent = l.name;
+      if (l.id === nc.leader_id) o.selected = true;
+      sel.appendChild(o);
+    });
+
+    document.getElementById('edit-error').classList.add('hidden');
+    document.getElementById('edit-modal').classList.add('open');
+  }
+
+  function closeEditModal() {
+    document.getElementById('edit-modal').classList.remove('open');
+    currentNC = null;
+  }
+
+  async function saveCurrent() {
+    if (!currentNC) return;
+    const btn = document.getElementById('edit-save-btn');
+    setLoading(btn, true);
+    const updates = {
+      decision_date:        document.getElementById('e-date').value || null,
+      decision_type:        document.getElementById('e-type').value || null,
+      leader_id:            document.getElementById('e-leader').value || null,
+      baptism_done:         document.getElementById('e-bap').checked,
+      baptism_date:         document.getElementById('e-bap-date').value || null,
+      bible_given:          document.getElementById('e-bible').checked,
+      fresh_start_started:  document.getElementById('e-fs').checked,
+      fresh_start_completed:document.getElementById('e-fsc').checked,
+      notes:                document.getElementById('e-notes').value.trim() || null,
+    };
+    const { error } = await db.from('new_christians').update(updates).eq('id', currentNC.id);
+    setLoading(btn, false);
+    if (error) { showError('Save failed.', 'edit-error'); return; }
+    Object.assign(currentNC, updates);
+    const idx = allNC.findIndex(n => n.id === currentNC.id);
+    if (idx !== -1) allNC[idx] = { ...currentNC };
+    renderList();
+    closeEditModal();
+  }
+
+  async function archiveCurrent() {
+    if (!currentNC) return;
+    if (!confirm(`Archive ${currentNC.name}?`)) return;
+    await db.from('new_christians').update({ archived: true }).eq('id', currentNC.id);
+    allNC = allNC.filter(n => n.id !== currentNC.id);
+    renderList();
+    closeEditModal();
+  }
+
+  // ── Add modal ───────────────────────────────────────────────────────────────
+  let selectedYouth = null;
+
+  function openAddModal() {
+    selectedYouth = null;
+    document.getElementById('a-search').value = '';
+    document.getElementById('a-results').innerHTML = '';
+    document.getElementById('a-results').classList.add('hidden');
+    document.getElementById('a-youth-id').value = '';
+    document.getElementById('a-selected').classList.add('hidden');
+    document.getElementById('a-date').value = formatDateInput();
+    document.getElementById('a-type').value = '';
+    document.getElementById('a-leader').value = '';
+    document.getElementById('a-notes').value = '';
+    document.getElementById('add-modal').classList.add('open');
+  }
+  function closeAddModal() {
+    document.getElementById('add-modal').classList.remove('open');
+  }
+
+  function searchRoster(query) {
+    const results = document.getElementById('a-results');
+    if (!query.trim()) { results.classList.add('hidden'); return; }
+    const matches = rosterYouth.filter(y =>
+      y.name.toLowerCase().includes(query.toLowerCase())
+    ).slice(0, 8);
+    if (!matches.length) { results.classList.add('hidden'); return; }
+    results.innerHTML = '';
+    matches.forEach(y => {
+      const div = document.createElement('div');
+      div.style.cssText = 'padding:var(--s-3) var(--s-4);cursor:pointer;font-size:var(--text-sm);border-bottom:1px solid var(--c-border)';
+      div.textContent = y.name;
+      div.addEventListener('mousedown', () => selectYouth(y));
+      div.addEventListener('mouseover', () => div.style.background = 'var(--c-bg)');
+      div.addEventListener('mouseout',  () => div.style.background = '');
+      results.appendChild(div);
+    });
+    results.classList.remove('hidden');
+  }
+
+  function selectYouth(youth) {
+    selectedYouth = youth;
+    document.getElementById('a-youth-id').value = youth.id;
+    document.getElementById('a-search').value = youth.name;
+    document.getElementById('a-results').classList.add('hidden');
+    const sel = document.getElementById('a-selected');
+    sel.textContent = `Selected: ${youth.name}`;
+    sel.classList.remove('hidden');
+    // Pre-assign leader
+    const leader = leaders.find(l => l.id === youth.leader_id);
+    if (leader) document.getElementById('a-leader').value = leader.id;
+  }
+
+  async function submitAdd() {
+    if (!selectedYouth) { alert('Please select a youth roster member.'); return; }
+    const btn = document.getElementById('add-save-btn');
+    setLoading(btn, true);
+    const { data, error } = await db.from('new_christians').insert({
+      campus_id:      identity.campus_id,
+      leader_id:      document.getElementById('a-leader').value || null,
+      youth_roster_id: selectedYouth.id,
+      name:           selectedYouth.name,
+      decision_date:  document.getElementById('a-date').value || null,
+      decision_type:  document.getElementById('a-type').value || null,
+      notes:          document.getElementById('a-notes').value.trim() || null,
+    }).select().single();
+    setLoading(btn, false);
+    if (error) { alert('Could not add. Try again.'); return; }
+    allNC.unshift(data);
+    renderList();
+    closeAddModal();
+  }
+
+  function escHtml(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function logout() { DY.clearIdentity(); window.location.href = '/'; }
+
+  init();
+  </script>
+</body>
+</html>

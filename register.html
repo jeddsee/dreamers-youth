@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register — Dreamers Youth</title>
+  <link rel="stylesheet" href="shared.css">
+  <style>
+    .reg-wrap {
+      min-height: 100vh;
+      background: linear-gradient(160deg, #4F46E5 0%, #7C3AED 100%);
+      padding: var(--s-6) var(--s-4);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .reg-header {
+      text-align: center;
+      color: #fff;
+      margin-bottom: var(--s-6);
+    }
+    .reg-header__icon { font-size: 2.5rem; margin-bottom: var(--s-2); }
+    .reg-header h1  { font-size: var(--text-2xl); margin-bottom: var(--s-1); }
+    .reg-header p   { font-size: var(--text-sm); opacity: 0.85; }
+
+    .reg-card {
+      background: var(--c-surface);
+      border-radius: var(--r-lg);
+      padding: var(--s-6);
+      width: 100%;
+      max-width: 480px;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .section-label {
+      font-size: var(--text-xs);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--c-text-muted);
+      margin-bottom: var(--s-3);
+      margin-top: var(--s-5);
+    }
+    .section-label:first-child { margin-top: 0; }
+
+    /* Success screen */
+    .success-screen {
+      text-align: center;
+      padding: var(--s-8) var(--s-4);
+    }
+    .success-screen__icon { font-size: 3.5rem; margin-bottom: var(--s-4); }
+    .success-screen h2 { font-size: var(--text-2xl); margin-bottom: var(--s-3); }
+    .success-screen p  { color: var(--c-text-secondary); font-size: var(--text-base); }
+
+    /* Duplicate warning */
+    .dup-warning {
+      background: var(--c-warning-light);
+      border: 1px solid #FDE68A;
+      border-radius: var(--r);
+      padding: var(--s-4);
+      margin-bottom: var(--s-4);
+    }
+    .dup-warning p { font-size: var(--text-sm); color: var(--c-warning-text); }
+    .dup-warning strong { font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="reg-wrap">
+    <div class="reg-header">
+      <div class="reg-header__icon">✨</div>
+      <h1>Welcome to Dreamers!</h1>
+      <p id="campus-subtitle">Fill in your details below</p>
+    </div>
+
+    <div class="reg-card">
+
+      <!-- Duplicate warning (hidden by default) -->
+      <div id="dup-warning" class="dup-warning hidden">
+        <p><strong>Heads up!</strong> It looks like you might already be in our system. Your leader will sort it out — just hit submit anyway.</p>
+      </div>
+
+      <div id="error-banner" class="error-banner hidden" style="margin-bottom:var(--s-4)"></div>
+
+      <!-- Registration form -->
+      <form id="reg-form" class="stack--sm" novalidate>
+
+        <p class="section-label">About you</p>
+
+        <div class="form-grid form-grid--2">
+          <div class="form-group" style="grid-column:1/-1">
+            <label for="name">Full name <span class="required">*</span></label>
+            <input id="name" type="text" class="input" placeholder="e.g. Jordan Smith" required autocomplete="name">
+          </div>
+
+          <div class="form-group">
+            <label for="phone">Mobile number <span class="required">*</span></label>
+            <input id="phone" type="tel" class="input" placeholder="04xx xxx xxx" required autocomplete="tel">
+          </div>
+
+          <div class="form-group">
+            <label for="school">School</label>
+            <input id="school" type="text" class="input" placeholder="e.g. Uni SA">
+          </div>
+
+          <div class="form-group">
+            <label for="year-level">Year level</label>
+            <select id="year-level" class="select">
+              <option value="">Select…</option>
+              <option>Year 7</option>
+              <option>Year 8</option>
+              <option>Year 9</option>
+              <option>Year 10</option>
+              <option>Year 11</option>
+              <option>Year 12</option>
+              <option>Other / Left school</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="gender">Gender</label>
+            <select id="gender" class="select">
+              <option value="">Select…</option>
+              <option>Male</option>
+              <option>Female</option>
+              <option>Prefer not to say</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="friend">Who brought you?</label>
+            <input id="friend" type="text" class="input" placeholder="Friend's name">
+          </div>
+        </div>
+
+        <p class="section-label" style="margin-top:var(--s-5)">Parent / guardian</p>
+
+        <div class="form-grid form-grid--2">
+          <div class="form-group">
+            <label for="parent-name">Parent name</label>
+            <input id="parent-name" type="text" class="input" placeholder="e.g. Sam Smith" autocomplete="off">
+          </div>
+
+          <div class="form-group">
+            <label for="parent-phone">Parent mobile</label>
+            <input id="parent-phone" type="tel" class="input" placeholder="04xx xxx xxx" autocomplete="off">
+          </div>
+        </div>
+
+        <div style="margin-top:var(--s-6)">
+          <button id="submit-btn" type="submit" class="btn btn--primary btn--full btn--lg">
+            Submit
+          </button>
+        </div>
+
+      </form>
+
+      <!-- Success screen (hidden until submit) -->
+      <div id="success-screen" class="success-screen hidden">
+        <div class="success-screen__icon">🙌</div>
+        <h2>You're in!</h2>
+        <p>Thanks for coming — we're so glad you're here.<br>See you next week!</p>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="shared.js"></script>
+  <script>
+    const { db, checkDuplicateNP, formatDateInput, showError, hideError, setLoading } = DY;
+
+    // Read campus slug from URL param
+    const params     = new URLSearchParams(window.location.search);
+    const campusSlug = params.get('campus');
+    let campusId     = null;
+    let campusName   = '';
+    let dupFound     = false;
+
+    // Resolve campus from slug
+    (async () => {
+      if (!campusSlug) return;
+      const { data } = await db
+        .from('campuses')
+        .select('id, name')
+        .eq('slug', campusSlug)
+        .single();
+      if (data) {
+        campusId   = data.id;
+        campusName = data.name;
+        document.getElementById('campus-subtitle').textContent =
+          `${campusName} campus — fill in your details below`;
+      }
+    })();
+
+    // Blur-time duplicate check (name + phone both filled)
+    async function runDupCheck() {
+      const name  = document.getElementById('name').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      if (!name || !phone) return;
+      const dup = await checkDuplicateNP(name, phone);
+      dupFound = !!dup;
+      document.getElementById('dup-warning').classList.toggle('hidden', !dupFound);
+    }
+
+    document.getElementById('name').addEventListener('blur', runDupCheck);
+    document.getElementById('phone').addEventListener('blur', runDupCheck);
+
+    // Submit
+    document.getElementById('reg-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideError();
+
+      const name       = document.getElementById('name').value.trim();
+      const phone      = document.getElementById('phone').value.trim();
+      const school     = document.getElementById('school').value.trim();
+      const yearLevel  = document.getElementById('year-level').value;
+      const gender     = document.getElementById('gender').value;
+      const friend     = document.getElementById('friend').value.trim();
+      const parentName = document.getElementById('parent-name').value.trim();
+      const parentPhone= document.getElementById('parent-phone').value.trim();
+
+      if (!name)  { showError('Please enter your name.'); return; }
+      if (!phone) { showError('Please enter your mobile number.'); return; }
+
+      const btn = document.getElementById('submit-btn');
+      setLoading(btn, true);
+
+      const payload = {
+        campus_id:    campusId,
+        name,
+        phone,
+        school:       school  || null,
+        year_level:   yearLevel || null,
+        gender:       gender   || null,
+        friend:       friend   || null,
+        parent_name:  parentName  || null,
+        parent_phone: parentPhone || null,
+        visit_1_date: formatDateInput(),
+        status:       'visit_1',
+      };
+
+      const { error } = await db.from('new_people').insert(payload);
+
+      setLoading(btn, false);
+
+      if (error) {
+        showError('Something went wrong. Please try again or see your leader.');
+        return;
+      }
+
+      document.getElementById('reg-form').classList.add('hidden');
+      document.getElementById('dup-warning').classList.add('hidden');
+      document.getElementById('success-screen').classList.remove('hidden');
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dreamers Youth</title>
+  <link rel="stylesheet" href="shared.css">
+  <style>
+    .login-wrap {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: var(--s-6) var(--s-4);
+      background: linear-gradient(160deg, #4F46E5 0%, #7C3AED 100%);
+    }
+
+    .login-card {
+      background: var(--c-surface);
+      border-radius: var(--r-lg);
+      padding: var(--s-8) var(--s-6);
+      width: 100%;
+      max-width: 400px;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .login-logo {
+      text-align: center;
+      margin-bottom: var(--s-8);
+    }
+    .login-logo__icon {
+      font-size: 2.5rem;
+      margin-bottom: var(--s-3);
+    }
+    .login-logo h1 {
+      font-size: var(--text-2xl);
+      color: var(--c-text);
+      margin-bottom: var(--s-1);
+    }
+    .login-logo p {
+      font-size: var(--text-sm);
+      color: var(--c-text-muted);
+    }
+
+    .visitor-link {
+      text-align: center;
+      margin-top: var(--s-6);
+      padding-top: var(--s-6);
+      border-top: 1px solid var(--c-border);
+    }
+    .visitor-link p {
+      font-size: var(--text-sm);
+      color: var(--c-text-muted);
+      margin-bottom: var(--s-3);
+    }
+  </style>
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="login-logo__icon">✨</div>
+        <h1>Dreamers Youth</h1>
+        <p>Ministry management</p>
+      </div>
+
+      <div id="error-banner" class="error-banner hidden" style="margin-bottom:var(--s-4)"></div>
+
+      <form id="login-form" class="stack">
+        <div class="form-group">
+          <label for="campus-select">Campus</label>
+          <select id="campus-select" class="select" required>
+            <option value="">Select campus…</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="leader-group" style="display:none">
+          <label for="leader-select">Your name</label>
+          <select id="leader-select" class="select" required>
+            <option value="">Select name…</option>
+          </select>
+        </div>
+
+        <button id="go-btn" type="submit" class="btn btn--primary btn--full" disabled>
+          Continue
+        </button>
+      </form>
+
+      <div class="visitor-link">
+        <p>New here?</p>
+        <a id="register-link" href="register.html" class="btn btn--ghost btn--full btn--sm">
+          Register as a new visitor
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="shared.js"></script>
+  <script>
+    const { db, setIdentity, showError, hideError, setLoading } = DY;
+
+    const campusSelect = document.getElementById('campus-select');
+    const leaderGroup  = document.getElementById('leader-group');
+    const leaderSelect = document.getElementById('leader-select');
+    const goBtn        = document.getElementById('go-btn');
+    const registerLink = document.getElementById('register-link');
+
+    let leaders = [];
+
+    // Load campuses on page load
+    (async () => {
+      const { data, error } = await db
+        .from('campuses')
+        .select('id, name, slug, youth_night_dow')
+        .eq('archived', false)
+        .order('name');
+
+      if (error) { showError('Could not load campuses. Check your connection and try again.'); return; }
+
+      data.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.name;
+        opt.dataset.slug = c.slug;
+        opt.dataset.dow  = c.youth_night_dow ?? 5;
+        campusSelect.appendChild(opt);
+      });
+    })();
+
+    // On campus change: load leaders for that campus
+    campusSelect.addEventListener('change', async () => {
+      const campusId = campusSelect.value;
+      hideError();
+      leaderSelect.innerHTML = '<option value="">Select name…</option>';
+      leaderGroup.style.display = 'none';
+      goBtn.disabled = true;
+
+      if (!campusId) return;
+
+      const slug = campusSelect.selectedOptions[0].dataset.slug;
+      registerLink.href = `register.html?campus=${slug}`;
+
+      campusSelect.disabled = true;
+      const { data, error } = await db
+        .from('leaders')
+        .select('id, name, role')
+        .eq('campus_id', campusId)
+        .eq('active', true)
+        .order('name');
+      campusSelect.disabled = false;
+
+      if (error) { showError('Could not load leaders for this campus.'); return; }
+
+      leaders = data;
+      data.forEach(l => {
+        const opt = document.createElement('option');
+        opt.value = l.id;
+        opt.textContent = l.name;
+        opt.dataset.role = l.role;
+        leaderSelect.appendChild(opt);
+      });
+
+      leaderGroup.style.display = '';
+    });
+
+    // Enable go button when name is selected
+    leaderSelect.addEventListener('change', () => {
+      goBtn.disabled = !leaderSelect.value;
+    });
+
+    // On submit: store identity and route
+    document.getElementById('login-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const campusId   = campusSelect.value;
+      const campusName = campusSelect.selectedOptions[0]?.textContent;
+      const leaderId   = leaderSelect.value;
+      const leaderOpt  = leaderSelect.selectedOptions[0];
+      const leaderName = leaderOpt?.textContent;
+      const role       = leaderOpt?.dataset.role;
+
+      if (!campusId || !leaderId) return;
+
+      const youth_night_dow = parseInt(campusSelect.selectedOptions[0]?.dataset.dow ?? '5', 10);
+      setIdentity({ campus_id: campusId, campus_name: campusName, leader_id: leaderId, leader_name: leaderName, role, youth_night_dow });
+
+      window.location.href = role === 'pastor' ? 'dashboard.html' : 'leader.html';
+    });
+  </script>
+</body>
+</html>

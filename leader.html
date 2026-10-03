@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leader Portal — Dreamers Youth</title>
+  <link rel="stylesheet" href="shared.css">
+  <style>
+    /* ── Youth roster rows ── */
+    .youth-row {
+      border-bottom: 1px solid var(--c-border);
+    }
+    .youth-row:last-child { border-bottom: none; }
+
+    .youth-row__header {
+      display: flex;
+      align-items: center;
+      gap: var(--s-3);
+      padding: var(--s-4) var(--s-5);
+      cursor: pointer;
+      user-select: none;
+    }
+    .youth-row__header:hover { background: var(--c-bg); }
+
+    .youth-row__name {
+      flex: 1;
+      font-weight: 600;
+      font-size: var(--text-base);
+    }
+    .youth-row__meta {
+      display: flex;
+      align-items: center;
+      gap: var(--s-2);
+      flex-wrap: wrap;
+    }
+    .youth-row__chevron {
+      color: var(--c-text-muted);
+      font-size: var(--text-sm);
+      transition: transform var(--transition);
+      flex-shrink: 0;
+    }
+    .youth-row.expanded .youth-row__chevron { transform: rotate(180deg); }
+
+    /* Care sheet detail panel */
+    .youth-detail {
+      padding: var(--s-4) var(--s-5) var(--s-5);
+      background: var(--c-bg);
+      border-top: 1px solid var(--c-border);
+    }
+    .care-field {
+      display: flex;
+      align-items: center;
+      gap: var(--s-3);
+      padding: var(--s-3) 0;
+      border-bottom: 1px solid var(--c-border);
+    }
+    .care-field:last-child { border-bottom: none; }
+    .care-field__icon { font-size: 1.25rem; flex-shrink: 0; width: 28px; text-align: center; }
+    .care-field__label { flex: 1; font-size: var(--text-sm); font-weight: 500; }
+    .care-field__controls { display: flex; align-items: center; gap: var(--s-2); }
+
+    .toggle-switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .toggle-switch__track {
+      position: absolute;
+      inset: 0;
+      background: var(--c-border-dark);
+      border-radius: var(--r-full);
+      cursor: pointer;
+      transition: background var(--transition);
+    }
+    .toggle-switch__track::after {
+      content: '';
+      position: absolute;
+      width: 18px; height: 18px;
+      background: #fff;
+      border-radius: 50%;
+      top: 3px; left: 3px;
+      transition: transform var(--transition);
+      box-shadow: var(--shadow-sm);
+    }
+    .toggle-switch input:checked + .toggle-switch__track { background: var(--c-success); }
+    .toggle-switch input:checked + .toggle-switch__track::after { transform: translateX(20px); }
+
+    .date-input-sm {
+      font-size: var(--text-xs);
+      padding: var(--s-1) var(--s-2);
+      border: 1px solid var(--c-border-dark);
+      border-radius: var(--r-sm);
+      background: var(--c-surface);
+      color: var(--c-text);
+      max-width: 130px;
+    }
+
+    /* ── Weekly entry rows ── */
+    .entry-row {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--s-3);
+      padding: var(--s-4) var(--s-5);
+      border-bottom: 1px solid var(--c-border);
+      flex-wrap: wrap;
+    }
+    .entry-row:last-child { border-bottom: none; }
+    .entry-row__name {
+      flex: 1;
+      min-width: 120px;
+      font-weight: 500;
+      padding-top: var(--s-2);
+    }
+    .entry-row__right { display: flex; flex-direction: column; gap: var(--s-2); align-items: flex-end; }
+    .reason-input {
+      font-size: var(--text-sm);
+      padding: var(--s-2) var(--s-3);
+      border: 1px solid var(--c-border-dark);
+      border-radius: var(--r-sm);
+      background: var(--c-surface);
+      width: 200px;
+      max-width: 100%;
+    }
+
+    /* ── NP cards ── */
+    .np-card {
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: var(--r-lg);
+      padding: var(--s-4);
+    }
+    .np-card__header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: var(--s-3);
+      margin-bottom: var(--s-3);
+    }
+    .np-card__name { font-weight: 700; font-size: var(--text-base); }
+    .np-card__meta { font-size: var(--text-sm); color: var(--c-text-secondary); margin-top: 2px; }
+    .np-card__visits { display: flex; gap: var(--s-2); flex-wrap: wrap; margin-bottom: var(--s-3); }
+    .visit-dot {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: var(--text-xs);
+      font-weight: 600;
+      padding: 2px var(--s-2);
+      border-radius: var(--r-full);
+      background: var(--c-success-light);
+      color: var(--c-success-text);
+    }
+    .visit-dot.empty {
+      background: var(--c-bg);
+      color: var(--c-text-muted);
+      border: 1px dashed var(--c-border-dark);
+    }
+    .np-card__checks { display: flex; gap: var(--s-4); }
+    .np-check { display: flex; align-items: center; gap: var(--s-1); font-size: var(--text-xs); cursor: pointer; }
+    .np-check input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--c-primary); }
+
+    /* ── Term review ── */
+    .term-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: var(--s-3);
+      margin-bottom: var(--s-6);
+    }
+    .term-youth-row {
+      padding: var(--s-4);
+      border: 1px solid var(--c-border);
+      border-radius: var(--r-lg);
+      margin-bottom: var(--s-3);
+      background: var(--c-surface);
+    }
+    .term-youth-row__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--s-3);
+      margin-bottom: var(--s-3);
+      flex-wrap: wrap;
+    }
+
+    /* ── Add NP modal form ── */
+    .modal-backdrop { display: none; }
+    .modal-backdrop.open { display: flex; }
+
+    /* ── Sticky footer for forms ── */
+    .sticky-footer {
+      position: sticky;
+      bottom: 0;
+      background: var(--c-surface);
+      border-top: 1px solid var(--c-border);
+      padding: var(--s-4) var(--s-5);
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="app-header__inner">
+      <span class="app-header__logo">Dreamers <span>Youth</span></span>
+      <span class="app-header__user" id="user-display" onclick="logout()"></span>
+    </div>
+  </header>
+
+  <!-- Tabs -->
+  <nav class="tabs" id="tabs">
+    <button class="tab active" data-tab="roster">Roster</button>
+    <button class="tab" data-tab="weekly">Weekly</button>
+    <button class="tab" data-tab="new-people">New People <span id="np-badge" class="badge hidden"></span></button>
+    <button class="tab hidden" data-tab="term-review" id="term-tab">Term Review</button>
+  </nav>
+
+  <main>
+
+    <!-- ── ROSTER ─────────────────────────────────────────────────────────── -->
+    <section id="section-roster">
+      <div id="roster-loading" class="loading-overlay"><div class="spinner"></div> Loading roster…</div>
+      <div id="roster-empty" class="empty-state hidden">
+        <div class="empty-state__icon">📋</div>
+        <h3>No youth on your roster yet</h3>
+        <p>Your pastor will add youth to your roster.</p>
+      </div>
+      <div id="roster-list" class="card card--flush hidden"></div>
+    </section>
+
+    <!-- ── WEEKLY ─────────────────────────────────────────────────────────── -->
+    <section id="section-weekly" class="hidden">
+      <div style="padding:var(--s-5)">
+        <div class="row row--between mb-4">
+          <div class="form-group" style="flex:1;max-width:200px">
+            <label for="entry-date" class="text-sm fw-semibold">Youth night date</label>
+            <input type="date" id="entry-date" class="input">
+          </div>
+          <div id="entry-saved-badge" class="badge badge--success hidden" style="align-self:flex-end">Saved</div>
+        </div>
+        <div id="no-youth-night-msg" class="error-banner hidden" style="margin-bottom:var(--s-4)">
+          No youth night this week — entry suppressed.
+        </div>
+        <div id="weekly-error" class="error-banner hidden" style="margin-bottom:var(--s-4)"></div>
+      </div>
+      <div id="weekly-loading" class="loading-overlay"><div class="spinner"></div> Loading…</div>
+      <div id="weekly-empty" class="empty-state hidden">
+        <div class="empty-state__icon">📋</div>
+        <p>No youth on your roster yet.</p>
+      </div>
+      <div id="weekly-list" class="card card--flush hidden"></div>
+      <div id="weekly-footer" class="sticky-footer hidden">
+        <button id="weekly-submit" class="btn btn--primary btn--full">Save attendance</button>
+      </div>
+    </section>
+
+    <!-- ── NEW PEOPLE ─────────────────────────────────────────────────────── -->
+    <section id="section-new-people" class="hidden">
+      <div style="padding:var(--s-5)">
+        <div class="row row--between mb-4">
+          <h2 style="font-size:var(--text-lg)">My New People</h2>
+          <button class="btn btn--secondary btn--sm" onclick="openAddNPModal()">+ Add</button>
+        </div>
+        <div id="np-error" class="error-banner hidden" style="margin-bottom:var(--s-4)"></div>
+      </div>
+      <div id="np-loading" class="loading-overlay"><div class="spinner"></div> Loading…</div>
+      <div id="np-empty" class="empty-state hidden">
+        <div class="empty-state__icon">🤝</div>
+        <h3>No new people assigned yet</h3>
+        <p>New people you're following up will appear here.</p>
+      </div>
+      <div id="np-list" class="stack hidden" style="padding:0 var(--s-5) var(--s-5)"></div>
+    </section>
+
+    <!-- ── TERM REVIEW ────────────────────────────────────────────────────── -->
+    <section id="section-term-review" class="hidden">
+      <div style="padding:var(--s-5)">
+        <div id="term-submitted-banner" class="success-banner hidden" style="margin-bottom:var(--s-4)">
+          Term review submitted. Your pastor can see your responses.
+        </div>
+        <div id="term-stats" class="term-stats-grid"></div>
+        <h3 style="margin-bottom:var(--s-4)">Your Youth</h3>
+        <div id="term-youth-list"></div>
+        <div id="term-np-section" class="hidden">
+          <h3 style="margin:var(--s-6) 0 var(--s-4)">New People</h3>
+          <div id="term-np-list"></div>
+        </div>
+        <div id="term-nc-section" class="hidden">
+          <h3 style="margin:var(--s-6) 0 var(--s-4)">New Christians</h3>
+          <div id="term-nc-list"></div>
+        </div>
+        <div class="sticky-footer" id="term-footer">
+          <button id="term-submit" class="btn btn--primary btn--full">Submit term review</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ── Add NP Modal ────────────────────────────────────────────────────── -->
+  <div class="modal-backdrop" id="add-np-modal">
+    <div class="modal">
+      <div class="modal__header">
+        <h3>Add new person</h3>
+        <button class="modal__close" onclick="closeAddNPModal()">✕</button>
+      </div>
+      <div class="modal__body">
+        <div id="add-np-dup" class="dup-warning hidden" style="margin-bottom:var(--s-4)">
+          <p><strong>Possible duplicate</strong> — someone with this name and phone may already exist. Check before adding.</p>
+        </div>
+        <div class="stack">
+          <div class="form-group">
+            <label>Full name <span class="required">*</span></label>
+            <input id="np-name" type="text" class="input" placeholder="e.g. Jordan Smith">
+          </div>
+          <div class="form-grid form-grid--2">
+            <div class="form-group">
+              <label>Mobile</label>
+              <input id="np-phone" type="tel" class="input" placeholder="04xx xxx xxx">
+            </div>
+            <div class="form-group">
+              <label>School</label>
+              <input id="np-school" type="text" class="input">
+            </div>
+            <div class="form-group">
+              <label>Year level</label>
+              <select id="np-year" class="select">
+                <option value="">Select…</option>
+                <option>Year 7</option><option>Year 8</option><option>Year 9</option>
+                <option>Year 10</option><option>Year 11</option><option>Year 12</option>
+                <option>Other / Left school</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Gender</label>
+              <select id="np-gender" class="select">
+                <option value="">Select…</option>
+                <option>Male</option><option>Female</option><option>Prefer not to say</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Visit 1 date</label>
+            <input id="np-visit1" type="date" class="input">
+          </div>
+          <div class="form-group">
+            <label>Who brought them?</label>
+            <input id="np-friend" type="text" class="input" placeholder="Friend's name">
+          </div>
+        </div>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost" onclick="closeAddNPModal()">Cancel</button>
+        <button class="btn btn--primary" id="add-np-submit" onclick="submitAddNP()">Add person</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="shared.js"></script>
+  <script>
+  const {
+    db, getIdentity, requireIdentity,
+    formatDate, formatDateInput, termFromDate, mostRecentYouthNight, getCampusDow,
+    showError, hideError, setLoading,
+    checkDuplicateNP, hasAbsenceFlag,
+  } = DY;
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  let identity, roster = [], recentEntries = [], newPeople = [], termReview = null;
+  // currentEntryDate is set after identity loads so it uses the campus's DOW
+  let currentEntryDate = '';
+  let termNewPeople = [], termNCs = [];
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+  async function init() {
+    identity = requireIdentity();
+    if (!identity) return;
+
+    document.getElementById('user-display').textContent =
+      `${identity.leader_name} · ${identity.campus_name}`;
+
+    currentEntryDate = mostRecentYouthNight(new Date(), identity.youth_night_dow);
+    document.getElementById('entry-date').value = currentEntryDate;
+
+    setupTabs();
+    await Promise.all([
+      loadRoster(),
+      checkTermReview(),
+    ]);
+    loadWeeklyEntry(currentEntryDate);
+    loadNewPeople();
+  }
+
+  // ── Tabs ───────────────────────────────────────────────────────────────────
+  function setupTabs() {
+    document.querySelectorAll('.tab').forEach(btn => {
+      btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+    const hash = window.location.hash.replace('#', '') || 'roster';
+    switchTab(hash);
+  }
+
+  function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
+    const el = document.getElementById(`section-${tab}`);
+    if (el) el.classList.remove('hidden');
+    window.location.hash = tab;
+
+    if (tab === 'new-people') markNPViewed();
+  }
+
+  // ── Roster ─────────────────────────────────────────────────────────────────
+  async function loadRoster() {
+    const [rosterRes, entriesRes] = await Promise.all([
+      db.from('youth_roster')
+        .select('*')
+        .eq('leader_id', identity.leader_id)
+        .eq('active', true)
+        .order('name'),
+      db.from('leader_entries')
+        .select('entry_date, attendance_listing')
+        .eq('leader_id', identity.leader_id)
+        .order('entry_date', { ascending: false })
+        .limit(5),
+    ]);
+
+    document.getElementById('roster-loading').classList.add('hidden');
+
+    roster = rosterRes.data ?? [];
+    recentEntries = entriesRes.data ?? [];
+
+    if (!roster.length) {
+      document.getElementById('roster-empty').classList.remove('hidden');
+      return;
+    }
+
+    renderRoster();
+  }
+
+  function renderRoster() {
+    const list = document.getElementById('roster-list');
+    list.innerHTML = '';
+    list.classList.remove('hidden');
+
+    roster.forEach(youth => {
+      const absent = hasAbsenceFlag(youth.id, recentEntries);
+      const row = document.createElement('div');
+      row.className = 'youth-row';
+      row.id = `row-${youth.id}`;
+      row.innerHTML = `
+        <div class="youth-row__header" onclick="toggleYouth('${youth.id}')">
+          <span class="youth-row__name">${escHtml(youth.name)}</span>
+          <div class="youth-row__meta">
+            ${absent ? '<span class="absence-flag">⚠️ 3+ weeks absent</span>' : ''}
+            <span class="badge badge--${youth.category}">${capitalize(youth.category)}</span>
+            <div class="care-icons">
+              <span class="care-icon ${youth.water_baptised ? 'active' : ''}" title="Water baptism">💧</span>
+              <span class="care-icon ${youth.hs_baptised   ? 'active' : ''}" title="HS baptism">🔥</span>
+              <span class="care-icon ${youth.serving       ? 'active' : ''}" title="Serving">🙌</span>
+            </div>
+          </div>
+          <span class="youth-row__chevron">▾</span>
+        </div>
+        <div class="youth-detail hidden" id="detail-${youth.id}">
+          ${renderCareSheet(youth)}
+        </div>
+      `;
+      list.appendChild(row);
+    });
+  }
+
+  function renderCareSheet(youth) {
+    return `
+      <div class="care-field">
+        <span class="care-field__icon">💧</span>
+        <span class="care-field__label">Water baptism</span>
+        <div class="care-field__controls">
+          <label class="toggle-switch">
+            <input type="checkbox" ${youth.water_baptised ? 'checked' : ''}
+              onchange="saveCare('${youth.id}', 'water_baptised', this.checked, '${youth.id}-wdate')">
+            <span class="toggle-switch__track"></span>
+          </label>
+          <input type="date" class="date-input-sm" id="${youth.id}-wdate"
+            value="${youth.water_baptism_date || ''}"
+            placeholder="Date"
+            onchange="saveCare('${youth.id}', 'water_baptism_date', this.value)">
+        </div>
+      </div>
+      <div class="care-field">
+        <span class="care-field__icon">🔥</span>
+        <span class="care-field__label">HS baptism</span>
+        <div class="care-field__controls">
+          <label class="toggle-switch">
+            <input type="checkbox" ${youth.hs_baptised ? 'checked' : ''}
+              onchange="saveCare('${youth.id}', 'hs_baptised', this.checked, '${youth.id}-hsdate')">
+            <span class="toggle-switch__track"></span>
+          </label>
+          <input type="date" class="date-input-sm" id="${youth.id}-hsdate"
+            value="${youth.hs_baptism_date || ''}"
+            placeholder="Date"
+            onchange="saveCare('${youth.id}', 'hs_baptism_date', this.value)">
+        </div>
+      </div>
+      <div class="care-field">
+        <span class="care-field__icon">🙌</span>
+        <span class="care-field__label">Serving</span>
+        <div class="care-field__controls">
+          <label class="toggle-switch">
+            <input type="checkbox" ${youth.serving ? 'checked' : ''}
+              onchange="saveCare('${youth.id}', 'serving', this.checked)">
+            <span class="toggle-switch__track"></span>
+          </label>
+          <input type="text" class="date-input-sm" id="${youth.id}-role"
+            value="${escHtml(youth.serving_role || '')}"
+            placeholder="Role"
+            onblur="saveCare('${youth.id}', 'serving_role', this.value)">
+        </div>
+      </div>
+      <div class="care-field">
+        <span class="care-field__icon">🏷️</span>
+        <span class="care-field__label">Category</span>
+        <div class="care-field__controls">
+          <select class="select" id="${youth.id}-cat" style="max-width:150px"
+            onchange="saveCare('${youth.id}', 'category', this.value)">
+            <option value="contributor" ${youth.category==='contributor'?'selected':''}>Contributor</option>
+            <option value="connected"   ${youth.category==='connected'  ?'selected':''}>Connected</option>
+            <option value="community"   ${youth.category==='community'  ?'selected':''}>Community</option>
+            <option value="archived"    ${youth.category==='archived'   ?'selected':''}>Archived</option>
+          </select>
+        </div>
+      </div>
+      <div class="care-field" style="align-items:flex-start">
+        <span class="care-field__icon" style="margin-top:4px">📝</span>
+        <span class="care-field__label">Pastoral notes</span>
+      </div>
+      <textarea class="textarea" style="margin-top:var(--s-2)" rows="2"
+        placeholder="Any notes…"
+        onblur="saveCare('${youth.id}', 'pastoral_notes', this.value)"
+      >${escHtml(youth.pastoral_notes || '')}</textarea>
+      <div style="margin-top:var(--s-3);text-align:right">
+        <span id="save-indicator-${youth.id}" class="text-xs text-muted hidden">Saved ✓</span>
+      </div>
+    `;
+  }
+
+  function toggleYouth(id) {
+    const row    = document.getElementById(`row-${id}`);
+    const detail = document.getElementById(`detail-${id}`);
+    const open   = !detail.classList.contains('hidden');
+    detail.classList.toggle('hidden', open);
+    row.classList.toggle('expanded', !open);
+  }
+
+  async function saveCare(youthId, field, value, linkedDateId) {
+    // Serving on → auto-set Contributor
+    const updates = { [field]: value };
+    if (field === 'serving' && value) {
+      updates.category = 'contributor';
+      const catSel = document.getElementById(`${youthId}-cat`);
+      if (catSel) catSel.value = 'contributor';
+      // Update local roster
+      const y = roster.find(r => r.id === youthId);
+      if (y) y.category = 'contributor';
+    }
+    if (field === 'water_baptised' && value && linkedDateId) {
+      const dateEl = document.getElementById(linkedDateId);
+      if (dateEl && !dateEl.value) dateEl.value = formatDateInput();
+      updates.water_baptism_date = updates.water_baptism_date || (document.getElementById(linkedDateId)?.value || null);
+    }
+    if (field === 'hs_baptised' && value && linkedDateId) {
+      const dateEl = document.getElementById(linkedDateId);
+      if (dateEl && !dateEl.value) dateEl.value = formatDateInput();
+      updates.hs_baptism_date = updates.hs_baptism_date || (document.getElementById(linkedDateId)?.value || null);
+    }
+
+    // Update local state
+    const y = roster.find(r => r.id === youthId);
+    if (y) Object.assign(y, updates);
+
+    const { error } = await db.from('youth_roster').update(updates).eq('id', youthId);
+    const indicator = document.getElementById(`save-indicator-${youthId}`);
+    if (indicator) {
+      indicator.textContent = error ? '⚠️ Save failed' : 'Saved ✓';
+      indicator.classList.remove('hidden');
+      setTimeout(() => indicator.classList.add('hidden'), 2000);
+    }
+  }
+
+  // ── Weekly entry ────────────────────────────────────────────────────────────
+  document.getElementById('entry-date').addEventListener('change', e => {
+    currentEntryDate = e.target.value;
+    loadWeeklyEntry(currentEntryDate);
+  });
+
+  async function loadWeeklyEntry(date) {
+    document.getElementById('weekly-loading').classList.remove('hidden');
+    document.getElementById('weekly-list').classList.add('hidden');
+    document.getElementById('weekly-footer').classList.add('hidden');
+    document.getElementById('no-youth-night-msg').classList.add('hidden');
+    document.getElementById('entry-saved-badge').classList.add('hidden');
+
+    const [statsRes, entryRes] = await Promise.all([
+      db.from('weekly_stats')
+        .select('no_youth_night')
+        .eq('campus_id', identity.campus_id)
+        .eq('entry_date', date)
+        .maybeSingle(),
+      db.from('leader_entries')
+        .select('attendance_listing')
+        .eq('leader_id', identity.leader_id)
+        .eq('entry_date', date)
+        .maybeSingle(),
+    ]);
+
+    document.getElementById('weekly-loading').classList.add('hidden');
+
+    if (statsRes.data?.no_youth_night) {
+      document.getElementById('no-youth-night-msg').classList.remove('hidden');
+      return;
+    }
+
+    if (!roster.length) {
+      document.getElementById('weekly-empty').classList.remove('hidden');
+      return;
+    }
+
+    const existing = entryRes.data?.attendance_listing ?? [];
+    if (existing.length) document.getElementById('entry-saved-badge').classList.remove('hidden');
+
+    renderWeeklyList(existing);
+  }
+
+  function renderWeeklyList(existing) {
+    const list = document.getElementById('weekly-list');
+    list.innerHTML = '';
+    list.classList.remove('hidden');
+
+    roster.forEach(youth => {
+      const saved = existing.find(r => r.youth_id === youth.id) ?? { status: '' };
+      const row = document.createElement('div');
+      row.className = 'entry-row';
+      row.id = `entry-${youth.id}`;
+      row.innerHTML = `
+        <span class="entry-row__name">${escHtml(youth.name)}</span>
+        <div class="entry-row__right">
+          <div class="toggle-group">
+            <button type="button" class="toggle-btn ${saved.status==='yes'?'active-yes':''}"
+              data-status="yes" onclick="setStatus('${youth.id}', 'yes', this)">Yes</button>
+            <button type="button" class="toggle-btn ${saved.status==='maybe'?'active-maybe':''}"
+              data-status="maybe" onclick="setStatus('${youth.id}', 'maybe', this)">Maybe</button>
+            <button type="button" class="toggle-btn ${saved.status==='no'?'active-no':''}"
+              data-status="no" onclick="setStatus('${youth.id}', 'no', this)">No</button>
+          </div>
+          <input type="text" class="reason-input ${saved.status==='yes'?'hidden':''}"
+            id="reason-${youth.id}"
+            placeholder="Reason (optional)"
+            value="${escHtml(saved.reason || '')}">
+        </div>
+      `;
+      list.appendChild(row);
+    });
+
+    document.getElementById('weekly-footer').classList.remove('hidden');
+  }
+
+  function setStatus(youthId, status, btn) {
+    const row = document.getElementById(`entry-${youthId}`);
+    row.querySelectorAll('.toggle-btn').forEach(b => {
+      b.className = 'toggle-btn';
+      if (b.dataset.status === status) b.classList.add(`active-${status}`);
+    });
+    const reason = document.getElementById(`reason-${youthId}`);
+    if (reason) reason.classList.toggle('hidden', status === 'yes');
+  }
+
+  document.getElementById('weekly-submit').addEventListener('click', async () => {
+    const btn = document.getElementById('weekly-submit');
+    setLoading(btn, true);
+
+    const listing = roster.map(youth => {
+      const row    = document.getElementById(`entry-${youth.id}`);
+      const active = row?.querySelector('.toggle-btn.active-yes, .toggle-btn.active-maybe, .toggle-btn.active-no');
+      const status = active?.dataset.status ?? '';
+      const reason = document.getElementById(`reason-${youth.id}`)?.value.trim() ?? '';
+      return { youth_id: youth.id, status, reason: reason || undefined };
+    });
+
+    const term = termFromDate(currentEntryDate);
+    const { error } = await db.from('leader_entries').upsert({
+      leader_id:          identity.leader_id,
+      campus_id:          identity.campus_id,
+      entry_date:         currentEntryDate,
+      term,
+      attendance_listing: listing,
+    }, { onConflict: 'leader_id,entry_date' });
+
+    setLoading(btn, false);
+
+    if (error) {
+      showError('Could not save. Try again.', 'weekly-error');
+    } else {
+      document.getElementById('entry-saved-badge').classList.remove('hidden');
+      // Refresh recent entries for absence flag
+      const { data } = await db.from('leader_entries')
+        .select('entry_date, attendance_listing')
+        .eq('leader_id', identity.leader_id)
+        .order('entry_date', { ascending: false })
+        .limit(5);
+      recentEntries = data ?? [];
+    }
+  });
+
+  // ── New People ─────────────────────────────────────────────────────────────
+  async function loadNewPeople() {
+    const { data } = await db.from('new_people')
+      .select('*')
+      .eq('leader_id', identity.leader_id)
+      .not('status', 'in', '("activated","archived")')
+      .order('created_at', { ascending: false });
+
+    document.getElementById('np-loading').classList.add('hidden');
+    newPeople = data ?? [];
+
+    // Badge count for newly assigned
+    const lastChecked = getLastNPCheck();
+    const newCount = newPeople.filter(np =>
+      np.created_at && new Date(np.created_at) > new Date(lastChecked)
+    ).length;
+    const badge = document.getElementById('np-badge');
+    if (newCount > 0) {
+      badge.textContent = newCount;
+      badge.classList.remove('hidden');
+    }
+
+    if (!newPeople.length) {
+      document.getElementById('np-empty').classList.remove('hidden');
+      return;
+    }
+    renderNPList();
+  }
+
+  function renderNPList() {
+    const list = document.getElementById('np-list');
+    list.innerHTML = '';
+    list.classList.remove('hidden');
+
+    newPeople.forEach(np => {
+      const card = document.createElement('div');
+      card.className = 'np-card';
+      card.innerHTML = `
+        <div class="np-card__header">
+          <div>
+            <div class="np-card__name">${escHtml(np.name)}</div>
+            <div class="np-card__meta">${[np.school, np.year_level].filter(Boolean).join(' · ')}</div>
+          </div>
+          <span class="badge badge--${statusBadge(np.status)}">${statusLabel(np.status)}</span>
+        </div>
+        <div class="np-card__visits">
+          <span class="visit-dot ${np.visit_1_date ? '' : 'empty'}">Visit 1 ${np.visit_1_date ? formatDate(np.visit_1_date) : '—'}</span>
+          <span class="visit-dot ${np.visit_2_date ? '' : 'empty'}">Visit 2 ${np.visit_2_date ? formatDate(np.visit_2_date) : '—'}</span>
+          <span class="visit-dot ${np.visit_3_date ? '' : 'empty'}">Visit 3 ${np.visit_3_date ? formatDate(np.visit_3_date) : '—'}</span>
+        </div>
+        <div class="np-card__checks">
+          <label class="np-check">
+            <input type="checkbox" ${np.initial_contact_done ? 'checked' : ''}
+              onchange="saveNP('${np.id}', 'initial_contact_done', this.checked)">
+            Initial contact
+          </label>
+          <label class="np-check">
+            <input type="checkbox" ${np.catchup_done ? 'checked' : ''}
+              onchange="saveNP('${np.id}', 'catchup_done', this.checked)">
+            Catch-up done
+          </label>
+        </div>
+      `;
+      list.appendChild(card);
+    });
+  }
+
+  async function saveNP(id, field, value) {
+    await db.from('new_people').update({ [field]: value }).eq('id', id);
+    const np = newPeople.find(n => n.id === id);
+    if (np) np[field] = value;
+  }
+
+  function getLastNPCheck() {
+    return localStorage.getItem(`dy_np_check_${identity.leader_id}`) || '2000-01-01';
+  }
+  function markNPViewed() {
+    localStorage.setItem(`dy_np_check_${identity.leader_id}`, new Date().toISOString());
+    document.getElementById('np-badge').classList.add('hidden');
+  }
+
+  // Add NP modal
+  function openAddNPModal() {
+    document.getElementById('np-visit1').value = formatDateInput();
+    document.getElementById('add-np-modal').classList.add('open');
+  }
+  function closeAddNPModal() {
+    document.getElementById('add-np-modal').classList.remove('open');
+    document.getElementById('add-np-dup').classList.add('hidden');
+    ['np-name','np-phone','np-school','np-friend'].forEach(id => document.getElementById(id).value = '');
+    ['np-year','np-gender'].forEach(id => document.getElementById(id).value = '');
+  }
+
+  document.getElementById('np-name').addEventListener('blur', async () => {
+    const name  = document.getElementById('np-name').value.trim();
+    const phone = document.getElementById('np-phone').value.trim();
+    if (name && phone) {
+      const dup = await checkDuplicateNP(name, phone);
+      document.getElementById('add-np-dup').classList.toggle('hidden', !dup);
+    }
+  });
+  document.getElementById('np-phone').addEventListener('blur', async () => {
+    const name  = document.getElementById('np-name').value.trim();
+    const phone = document.getElementById('np-phone').value.trim();
+    if (name && phone) {
+      const dup = await checkDuplicateNP(name, phone);
+      document.getElementById('add-np-dup').classList.toggle('hidden', !dup);
+    }
+  });
+
+  async function submitAddNP() {
+    const name = document.getElementById('np-name').value.trim();
+    if (!name) { alert('Please enter a name.'); return; }
+    const btn = document.getElementById('add-np-submit');
+    setLoading(btn, true);
+    const { error } = await db.from('new_people').insert({
+      campus_id:    identity.campus_id,
+      leader_id:    identity.leader_id,
+      name,
+      phone:        document.getElementById('np-phone').value.trim()  || null,
+      school:       document.getElementById('np-school').value.trim() || null,
+      year_level:   document.getElementById('np-year').value  || null,
+      gender:       document.getElementById('np-gender').value || null,
+      friend:       document.getElementById('np-friend').value.trim() || null,
+      visit_1_date: document.getElementById('np-visit1').value || null,
+      status:       'visit_1',
+    });
+    setLoading(btn, false);
+    if (error) { alert('Could not save. Try again.'); return; }
+    closeAddNPModal();
+    await loadNewPeople();
+    switchTab('new-people');
+  }
+
+  // ── Term Review ─────────────────────────────────────────────────────────────
+  async function checkTermReview() {
+    const { data } = await db.from('term_reviews')
+      .select('*')
+      .eq('campus_id', identity.campus_id)
+      .not('opened_at', 'is', null)
+      .is('closed_at', null)
+      .maybeSingle();
+
+    if (!data) return;
+    termReview = data;
+    document.getElementById('term-tab').classList.remove('hidden');
+    loadTermReview(data);
+  }
+
+  async function loadTermReview(review) {
+    const term = `${review.term} ${review.year}`;
+
+    // Check if already submitted (localStorage flag)
+    const submitted = localStorage.getItem(`dy_term_submitted_${identity.leader_id}_${term}`);
+    if (submitted) {
+      document.getElementById('term-submitted-banner').classList.remove('hidden');
+      document.getElementById('term-footer').classList.add('hidden');
+    }
+
+    // Compute term stats from entries
+    const { data: entries } = await db.from('leader_entries')
+      .select('entry_date, attendance_listing')
+      .eq('leader_id', identity.leader_id)
+      .eq('term', term);
+
+    const stats = DY.computeAttendanceStats(entries ?? []);
+    const firstEntry = [...(entries ?? [])].sort((a,b) => a.entry_date.localeCompare(b.entry_date))[0];
+    const lastEntry  = [...(entries ?? [])].sort((a,b) => b.entry_date.localeCompare(a.entry_date))[0];
+    const firstCount = firstEntry?.attendance_listing?.length ?? 0;
+    const lastCount  = lastEntry?.attendance_listing?.length  ?? 0;
+
+    // NP added this term
+    const { data: termNP } = await db.from('new_people')
+      .select('*')
+      .eq('leader_id', identity.leader_id)
+      .gte('visit_1_date', `${review.year}-01-01`);
+    termNewPeople = (termNP ?? []).filter(np => {
+      const t = termFromDate(np.visit_1_date);
+      return t === term;
+    });
+
+    // NCs
+    const { data: ncs } = await db.from('new_christians')
+      .select('*')
+      .eq('leader_id', identity.leader_id)
+      .eq('archived', false);
+    termNCs = ncs ?? [];
+
+    // Render stats
+    const statsEl = document.getElementById('term-stats');
+    statsEl.innerHTML = [
+      { value: termNewPeople.length, label: 'NP added' },
+      { value: `${stats.avg}/wk`,    label: 'Attendance avg' },
+      { value: `${stats.expectedAvg}/wk`, label: 'Expected avg' },
+      { value: `${stats.rate}%`,     label: 'Attendance rate' },
+      { value: `${lastCount - firstCount >= 0 ? '+' : ''}${lastCount - firstCount}`, label: 'Roster change' },
+    ].map(s => `
+      <div class="stat-tile">
+        <div class="stat-tile__value">${s.value}</div>
+        <div class="stat-tile__label">${s.label}</div>
+      </div>
+    `).join('');
+
+    renderTermYouth(submitted);
+    if (termNewPeople.length) renderTermNP(submitted);
+    if (termNCs.length) renderTermNC(submitted);
+  }
+
+  function renderTermYouth(submitted) {
+    const el = document.getElementById('term-youth-list');
+    el.innerHTML = '';
+    const disabled = submitted ? 'disabled' : '';
+    roster.forEach(youth => {
+      const div = document.createElement('div');
+      div.className = 'term-youth-row';
+      div.innerHTML = `
+        <div class="term-youth-row__header">
+          <strong>${escHtml(youth.name)}</strong>
+          <select class="select" id="tcat-${youth.id}" style="max-width:150px" ${disabled}>
+            <option value="contributor" ${youth.category==='contributor'?'selected':''}>Contributor</option>
+            <option value="connected"   ${youth.category==='connected'  ?'selected':''}>Connected</option>
+            <option value="community"   ${youth.category==='community'  ?'selected':''}>Community</option>
+            <option value="archived"    ${youth.category==='archived'   ?'selected':''}>Archived</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="text-sm">Pastoral comment</label>
+          <textarea class="textarea" id="tcomment-${youth.id}" rows="2"
+            placeholder="How are they going this term?" ${disabled}>${escHtml(youth.pastoral_notes || '')}</textarea>
+        </div>
+      `;
+      el.appendChild(div);
+    });
+  }
+
+  function renderTermNP(submitted) {
+    document.getElementById('term-np-section').classList.remove('hidden');
+    const el = document.getElementById('term-np-list');
+    el.innerHTML = '';
+    const disabled = submitted ? 'disabled' : '';
+    const connectionOptions = ['','Not yet connected','In contact','Connected','Not returning']
+      .map(v => `<option value="${v}" >${v || 'Select…'}</option>`).join('');
+
+    termNewPeople.forEach(np => {
+      const div = document.createElement('div');
+      div.className = 'term-youth-row';
+      div.innerHTML = `
+        <div class="term-youth-row__header">
+          <strong>${escHtml(np.name)}</strong>
+          <span class="badge badge--${statusBadge(np.status)}">${statusLabel(np.status)}</span>
+        </div>
+        <div class="form-group">
+          <label class="text-sm">Connection status</label>
+          <select class="select" id="tnpcon-${np.id}" ${disabled}>
+            ${connectionOptions.replace(`value="${np.connection_status || ''}"`, `value="${np.connection_status || ''}" selected`)}
+          </select>
+        </div>
+        <div class="form-group" style="margin-top:var(--s-2)">
+          <textarea class="textarea" id="tnpnotes-${np.id}" rows="2"
+            placeholder="Notes…" ${disabled}>${escHtml(np.notes || '')}</textarea>
+        </div>
+      `;
+      el.appendChild(div);
+    });
+  }
+
+  function renderTermNC(submitted) {
+    document.getElementById('term-nc-section').classList.remove('hidden');
+    const el = document.getElementById('term-nc-list');
+    el.innerHTML = '';
+    const disabled = submitted ? 'disabled' : '';
+
+    termNCs.forEach(nc => {
+      const div = document.createElement('div');
+      div.className = 'term-youth-row';
+      div.innerHTML = `
+        <div class="term-youth-row__header"><strong>${escHtml(nc.name)}</strong></div>
+        <div class="row row--wrap gap-4">
+          <label class="np-check">
+            <input type="checkbox" id="nc-bap-${nc.id}" ${nc.baptism_done?'checked':''} ${disabled}>
+            💧 Water baptised
+          </label>
+          <label class="np-check">
+            <input type="checkbox" id="nc-bible-${nc.id}" ${nc.bible_given?'checked':''} ${disabled}>
+            📖 Bible given
+          </label>
+          <label class="np-check">
+            <input type="checkbox" id="nc-fs-${nc.id}" ${nc.fresh_start_started?'checked':''} ${disabled}>
+            🌱 Fresh Start started
+          </label>
+          <label class="np-check">
+            <input type="checkbox" id="nc-fsc-${nc.id}" ${nc.fresh_start_completed?'checked':''} ${disabled}>
+            ✅ Fresh Start complete
+          </label>
+        </div>
+      `;
+      el.appendChild(div);
+    });
+  }
+
+  document.getElementById('term-submit').addEventListener('click', async () => {
+    const btn = document.getElementById('term-submit');
+    setLoading(btn, true);
+    const term = `${termReview.term} ${termReview.year}`;
+    const updates = [];
+
+    // Save youth categories + comments
+    for (const youth of roster) {
+      const category = document.getElementById(`tcat-${youth.id}`)?.value;
+      const notes    = document.getElementById(`tcomment-${youth.id}`)?.value.trim();
+      updates.push(
+        db.from('youth_roster').update({
+          category,
+          pastoral_notes:     notes,
+          last_reviewed_term: term,
+        }).eq('id', youth.id)
+      );
+    }
+
+    // Save NP connection status + notes
+    for (const np of termNewPeople) {
+      const connection_status = document.getElementById(`tnpcon-${np.id}`)?.value || null;
+      const notes             = document.getElementById(`tnpnotes-${np.id}`)?.value.trim() || null;
+      updates.push(db.from('new_people').update({ connection_status, notes }).eq('id', np.id));
+    }
+
+    // Save NC steps
+    for (const nc of termNCs) {
+      updates.push(db.from('new_christians').update({
+        baptism_done:          !!document.getElementById(`nc-bap-${nc.id}`)?.checked,
+        bible_given:           !!document.getElementById(`nc-bible-${nc.id}`)?.checked,
+        fresh_start_started:   !!document.getElementById(`nc-fs-${nc.id}`)?.checked,
+        fresh_start_completed: !!document.getElementById(`nc-fsc-${nc.id}`)?.checked,
+      }).eq('id', nc.id));
+    }
+
+    await Promise.all(updates);
+    localStorage.setItem(`dy_term_submitted_${identity.leader_id}_${term}`, '1');
+
+    setLoading(btn, false);
+    document.getElementById('term-submitted-banner').classList.remove('hidden');
+    document.getElementById('term-footer').classList.add('hidden');
+    // Disable all inputs
+    document.querySelectorAll('#section-term-review input, #section-term-review select, #section-term-review textarea')
+      .forEach(el => el.disabled = true);
+  });
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function escHtml(str) {
+    return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function capitalize(s) { return s ? s[0].toUpperCase() + s.slice(1) : ''; }
+  function statusLabel(s) {
+    return { visit_1:'Visit 1', visit_2:'Visit 2', visit_3:'Visit 3', ready_to_activate:'Ready to activate' }[s] ?? s;
+  }
+  function statusBadge(s) {
+    return { visit_1:'neutral', visit_2:'warning', visit_3:'warning', ready_to_activate:'success' }[s] ?? 'neutral';
+  }
+  function logout() {
+    DY.clearIdentity();
+    window.location.href = '/';
+  }
+
+  init();
+  </script>
+</body>
+</html>

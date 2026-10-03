@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New People — Dreamers Youth</title>
+  <link rel="stylesheet" href="shared.css">
+  <style>
+    .filter-bar {
+      display: flex;
+      overflow-x: auto;
+      gap: var(--s-2);
+      padding: var(--s-4) var(--s-5);
+      background: var(--c-surface);
+      border-bottom: 1px solid var(--c-border);
+      scrollbar-width: none;
+    }
+    .filter-bar::-webkit-scrollbar { display: none; }
+    .filter-btn {
+      padding: var(--s-2) var(--s-3);
+      border-radius: var(--r-full);
+      border: 1px solid var(--c-border-dark);
+      background: var(--c-surface);
+      font-size: var(--text-xs);
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      color: var(--c-text-secondary);
+      transition: all var(--transition);
+    }
+    .filter-btn.active {
+      background: var(--c-primary);
+      color: #fff;
+      border-color: var(--c-primary);
+    }
+
+    /* NP table */
+    .np-table-wrap { overflow-x: auto; }
+    .np-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: var(--text-sm);
+      min-width: 640px;
+    }
+    .np-table th {
+      text-align: left;
+      font-size: var(--text-xs);
+      font-weight: 600;
+      color: var(--c-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: var(--s-3) var(--s-4);
+      border-bottom: 2px solid var(--c-border);
+      white-space: nowrap;
+      background: var(--c-bg);
+    }
+    .np-table td {
+      padding: var(--s-3) var(--s-4);
+      border-bottom: 1px solid var(--c-border);
+      vertical-align: middle;
+    }
+    .np-table tr:last-child td { border-bottom: none; }
+    .np-table tbody tr { cursor: pointer; transition: background var(--transition); }
+    .np-table tbody tr:hover { background: var(--c-primary-light); }
+
+    /* Detail modal fields */
+    .detail-section { margin-bottom: var(--s-5); }
+    .detail-section h4 {
+      font-size: var(--text-xs);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--c-text-muted);
+      margin-bottom: var(--s-3);
+    }
+
+    /* Merge UI */
+    .merge-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--s-4);
+    }
+    .merge-card {
+      border: 2px solid var(--c-border);
+      border-radius: var(--r-lg);
+      padding: var(--s-4);
+      cursor: pointer;
+      transition: border-color var(--transition);
+    }
+    .merge-card.selected { border-color: var(--c-primary); background: var(--c-primary-light); }
+    .merge-card h4 { font-weight: 700; margin-bottom: var(--s-1); }
+    .merge-card p  { font-size: var(--text-xs); color: var(--c-text-secondary); }
+
+    /* NC fields section */
+    .nc-section {
+      background: var(--c-success-light);
+      border: 1px solid #A7F3D0;
+      border-radius: var(--r-lg);
+      padding: var(--s-4);
+      margin-top: var(--s-4);
+    }
+    .nc-section h4 { color: var(--c-success-text); }
+  </style>
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="app-header__inner">
+      <span class="app-header__logo">Dreamers <span>Youth</span></span>
+      <span class="app-header__user" id="user-display" onclick="logout()"></span>
+    </div>
+  </header>
+
+  <!-- Page nav -->
+  <nav class="tabs">
+    <a href="dashboard.html" class="tab">Dashboard</a>
+    <a href="new-people.html" class="tab active">New People</a>
+    <a href="new-christians.html" class="tab">New Christians</a>
+  </nav>
+
+  <!-- Filter bar + action -->
+  <div class="filter-bar" id="filter-bar">
+    <button class="filter-btn active" data-status="all">All</button>
+    <button class="filter-btn" data-status="visit_1">Visit 1</button>
+    <button class="filter-btn" data-status="visit_2">Visit 2</button>
+    <button class="filter-btn" data-status="visit_3">Visit 3</button>
+    <button class="filter-btn" data-status="ready_to_activate">Ready</button>
+    <button class="filter-btn" data-status="activated">Activated</button>
+    <button class="filter-btn" data-status="archived">Archived</button>
+    <button class="btn btn--primary btn--sm" style="margin-left:auto;flex-shrink:0" onclick="openAddModal()">+ Add</button>
+  </div>
+
+  <div style="padding:var(--s-4) var(--s-5) 0">
+    <div id="error-banner" class="error-banner hidden"></div>
+  </div>
+
+  <div id="loading" class="loading-overlay"><div class="spinner"></div> Loading…</div>
+  <div id="empty-state" class="empty-state hidden">
+    <div class="empty-state__icon">🤝</div>
+    <h3>No new people yet</h3>
+    <p>New visitors who self-register or are added manually will appear here.</p>
+  </div>
+
+  <div id="table-wrap" class="np-table-wrap hidden" style="padding:0 var(--s-2) var(--s-8)">
+    <table class="np-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Status</th>
+          <th>Leader</th>
+          <th>V1</th><th>V2</th><th>V3</th>
+          <th>Contact</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="np-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- ── Detail / Edit Modal ──────────────────────────────────────────────── -->
+  <div class="modal-backdrop" id="detail-modal">
+    <div class="modal" style="max-width:600px">
+      <div class="modal__header">
+        <h3 id="detail-title">New Person</h3>
+        <button class="modal__close" onclick="closeDetailModal()">✕</button>
+      </div>
+      <div class="modal__body" id="detail-body">
+        <div id="detail-error" class="error-banner hidden" style="margin-bottom:var(--s-4)"></div>
+
+        <!-- Activate banner -->
+        <div id="activate-banner" class="hidden" style="background:var(--c-success-light);border:1px solid #A7F3D0;border-radius:var(--r-lg);padding:var(--s-4);margin-bottom:var(--s-4);display:flex;align-items:center;justify-content:space-between;gap:var(--s-3)">
+          <div>
+            <div class="fw-semibold" style="color:var(--c-success-text)">Ready to activate!</div>
+            <div class="text-sm" style="color:var(--c-success-text)">3 visits logged. Activate to add to roster.</div>
+          </div>
+          <button class="btn btn--primary btn--sm" id="activate-btn" onclick="activateCurrentNP()">Activate</button>
+        </div>
+
+        <div class="detail-section">
+          <h4>Person details</h4>
+          <div class="form-grid form-grid--2">
+            <div class="form-group" style="grid-column:1/-1">
+              <label>Full name</label>
+              <input id="d-name" type="text" class="input">
+            </div>
+            <div class="form-group">
+              <label>Mobile</label>
+              <input id="d-phone" type="tel" class="input">
+            </div>
+            <div class="form-group">
+              <label>School</label>
+              <input id="d-school" type="text" class="input">
+            </div>
+            <div class="form-group">
+              <label>Year level</label>
+              <select id="d-year" class="select">
+                <option value="">Select…</option>
+                <option>Year 7</option><option>Year 8</option><option>Year 9</option>
+                <option>Year 10</option><option>Year 11</option><option>Year 12</option>
+                <option>Other / Left school</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Gender</label>
+              <select id="d-gender" class="select">
+                <option value="">Select…</option>
+                <option>Male</option><option>Female</option><option>Prefer not to say</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Who brought them?</label>
+              <input id="d-friend" type="text" class="input">
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h4>Parent / guardian</h4>
+          <div class="form-grid form-grid--2">
+            <div class="form-group">
+              <label>Parent name</label>
+              <input id="d-parent-name" type="text" class="input">
+            </div>
+            <div class="form-group">
+              <label>Parent mobile</label>
+              <input id="d-parent-phone" type="tel" class="input">
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h4>Visit history</h4>
+          <div class="form-grid form-grid--2" style="grid-template-columns:repeat(3,1fr)">
+            <div class="form-group">
+              <label>Visit 1</label>
+              <input id="d-v1" type="date" class="input">
+            </div>
+            <div class="form-group">
+              <label>Visit 2</label>
+              <input id="d-v2" type="date" class="input">
+            </div>
+            <div class="form-group">
+              <label>Visit 3</label>
+              <input id="d-v3" type="date" class="input">
+            </div>
+          </div>
+          <div class="row gap-4 mt-2">
+            <label style="display:flex;align-items:center;gap:var(--s-2);font-size:var(--text-sm);cursor:pointer">
+              <input type="checkbox" id="d-contact" style="accent-color:var(--c-primary);width:16px;height:16px">
+              Initial contact made
+            </label>
+            <label style="display:flex;align-items:center;gap:var(--s-2);font-size:var(--text-sm);cursor:pointer">
+              <input type="checkbox" id="d-catchup" style="accent-color:var(--c-primary);width:16px;height:16px">
+              Catch-up done
+            </label>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h4>Assignment</h4>
+          <div class="form-grid form-grid--2">
+            <div class="form-group">
+              <label>Assigned leader</label>
+              <select id="d-leader" class="select"></select>
+            </div>
+            <div class="form-group">
+              <label>Status</label>
+              <select id="d-status" class="select" onchange="document.getElementById('archive-reason-group').style.display=this.value==='archived'?'':'none'">
+                <option value="visit_1">Visit 1</option>
+                <option value="visit_2">Visit 2</option>
+                <option value="visit_3">Visit 3</option>
+                <option value="ready_to_activate">Ready to activate</option>
+                <option value="activated">Activated</option>
+                <option value="archived">Archived</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group mt-2" id="archive-reason-group" style="display:none">
+            <label>Archive reason</label>
+            <input id="d-archive-reason" type="text" class="input" placeholder="e.g. Moved away">
+          </div>
+          <div class="form-group mt-2">
+            <label>Notes</label>
+            <textarea id="d-notes" class="textarea" rows="2" placeholder="Any notes…"></textarea>
+          </div>
+        </div>
+
+        <!-- NC section — shown when is_new_christian checked -->
+        <div class="detail-section">
+          <label style="display:flex;align-items:center;gap:var(--s-2);cursor:pointer;font-weight:600">
+            <input type="checkbox" id="d-is-nc" style="accent-color:var(--c-success);width:18px;height:18px"
+              onchange="toggleNCFields()">
+            New Christian
+          </label>
+        </div>
+
+        <div id="nc-fields" class="nc-section hidden">
+          <h4>New Christian details</h4>
+          <div class="form-grid form-grid--2" style="margin-top:var(--s-3)">
+            <div class="form-group">
+              <label>Decision date</label>
+              <input id="d-nc-date" type="date" class="input">
+            </div>
+            <div class="form-group">
+              <label>Decision type</label>
+              <select id="d-nc-type" class="select">
+                <option value="">Select…</option>
+                <option value="first_time">First time</option>
+                <option value="rededication">Rededication</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>NC leader</label>
+              <select id="d-nc-leader" class="select"></select>
+            </div>
+          </div>
+          <div class="row row--wrap gap-4" style="margin-top:var(--s-3)">
+            <label style="display:flex;align-items:center;gap:var(--s-2);font-size:var(--text-sm);cursor:pointer">
+              <input type="checkbox" id="d-nc-bap" style="accent-color:var(--c-primary);width:16px;height:16px">
+              💧 Water baptised
+            </label>
+            <label style="display:flex;align-items:center;gap:var(--s-2);font-size:var(--text-sm);cursor:pointer">
+              <input type="checkbox" id="d-nc-bible" style="accent-color:var(--c-primary);width:16px;height:16px">
+              📖 Bible given
+            </label>
+            <label style="display:flex;align-items:center;gap:var(--s-2);font-size:var(--text-sm);cursor:pointer">
+              <input type="checkbox" id="d-nc-fs" style="accent-color:var(--c-primary);width:16px;height:16px">
+              🌱 Fresh Start started
+            </label>
+            <label style="display:flex;align-items:center;gap:var(--s-2);font-size:var(--text-sm);cursor:pointer">
+              <input type="checkbox" id="d-nc-fsc" style="accent-color:var(--c-primary);width:16px;height:16px">
+              ✅ Fresh Start complete
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal__footer" style="justify-content:space-between">
+        <button class="btn btn--danger btn--sm" id="archive-btn" onclick="archiveCurrentNP()">Archive</button>
+        <div style="display:flex;gap:var(--s-3)">
+          <button class="btn btn--ghost" onclick="closeDetailModal()">Cancel</button>
+          <button class="btn btn--primary" id="save-btn" onclick="saveCurrentNP()">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Add NP Modal ────────────────────────────────────────────────────── -->
+  <div class="modal-backdrop" id="add-modal">
+    <div class="modal">
+      <div class="modal__header">
+        <h3>Add new person</h3>
+        <button class="modal__close" onclick="closeAddModal()">✕</button>
+      </div>
+      <div class="modal__body">
+        <div id="add-dup-warning" class="hidden" style="margin-bottom:var(--s-4)">
+          <!-- Rendered dynamically for merge flow -->
+        </div>
+        <div class="stack">
+          <div class="form-group">
+            <label>Full name <span class="required">*</span></label>
+            <input id="a-name" type="text" class="input">
+          </div>
+          <div class="form-grid form-grid--2">
+            <div class="form-group">
+              <label>Mobile</label>
+              <input id="a-phone" type="tel" class="input">
+            </div>
+            <div class="form-group">
+              <label>Visit 1 date</label>
+              <input id="a-v1" type="date" class="input">
+            </div>
+            <div class="form-group">
+              <label>School</label>
+              <input id="a-school" type="text" class="input">
+            </div>
+            <div class="form-group">
+              <label>Year level</label>
+              <select id="a-year" class="select">
+                <option value="">Select…</option>
+                <option>Year 7</option><option>Year 8</option><option>Year 9</option>
+                <option>Year 10</option><option>Year 11</option><option>Year 12</option>
+                <option>Other / Left school</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Gender</label>
+              <select id="a-gender" class="select">
+                <option value="">Select…</option>
+                <option>Male</option><option>Female</option><option>Prefer not to say</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Assigned leader</label>
+              <select id="a-leader" class="select"><option value="">Select…</option></select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Who brought them?</label>
+            <input id="a-friend" type="text" class="input">
+          </div>
+        </div>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost" onclick="closeAddModal()">Cancel</button>
+        <button class="btn btn--primary" id="add-submit-btn" onclick="submitAdd()">Add person</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="shared.js"></script>
+  <script>
+  const { db, requireIdentity, formatDate, formatDateInput, setLoading, showError, checkDuplicateNP, activateNewPerson } = DY;
+
+  let identity, allNP = [], leaders = [], currentNP = null, currentFilter = 'all';
+
+  async function init() {
+    identity = requireIdentity('pastor');
+    if (!identity) return;
+    document.getElementById('user-display').textContent = `${identity.leader_name} · ${identity.campus_name}`;
+    await Promise.all([loadLeaders(), loadNP()]);
+    setupFilters();
+  }
+
+  async function loadLeaders() {
+    const { data } = await db.from('leaders')
+      .select('id, name, role')
+      .eq('campus_id', identity.campus_id)
+      .eq('active', true)
+      .order('name');
+    leaders = data ?? [];
+
+    // Populate add modal leader dropdown
+    const sel = document.getElementById('a-leader');
+    leaders.forEach(l => {
+      const o = document.createElement('option');
+      o.value = l.id; o.textContent = l.name;
+      sel.appendChild(o);
+    });
+  }
+
+  async function loadNP() {
+    const { data, error } = await db.from('new_people')
+      .select('*')
+      .eq('campus_id', identity.campus_id)
+      .order('created_at', { ascending: false });
+    document.getElementById('loading').classList.add('hidden');
+    if (error) { showError('Could not load new people.'); return; }
+    allNP = data ?? [];
+    renderTable(currentFilter);
+  }
+
+  function setupFilters() {
+    document.querySelectorAll('.filter-btn[data-status]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn[data-status]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.dataset.status;
+        renderTable(currentFilter);
+      });
+    });
+  }
+
+  function renderTable(filter) {
+    const rows = filter === 'all' ? allNP : allNP.filter(np => np.status === filter);
+    const empty = document.getElementById('empty-state');
+    const wrap  = document.getElementById('table-wrap');
+    const tbody = document.getElementById('np-tbody');
+
+    if (!rows.length) {
+      empty.classList.remove('hidden');
+      wrap.classList.add('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+    wrap.classList.remove('hidden');
+    tbody.innerHTML = '';
+
+    rows.forEach(np => {
+      const leader = leaders.find(l => l.id === np.leader_id);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${escHtml(np.name)}</strong><br><span class="text-xs text-muted">${escHtml(np.school||'')} ${escHtml(np.year_level||'')}</span></td>
+        <td><span class="badge badge--${statusBadge(np.status)}">${statusLabel(np.status)}</span></td>
+        <td class="text-sm">${escHtml(leader?.name || '—')}</td>
+        <td class="text-xs">${np.visit_1_date ? formatDate(np.visit_1_date) : '—'}</td>
+        <td class="text-xs">${np.visit_2_date ? formatDate(np.visit_2_date) : '—'}</td>
+        <td class="text-xs">${np.visit_3_date ? formatDate(np.visit_3_date) : '—'}</td>
+        <td>${contactDots(np)}</td>
+        <td>${np.is_new_christian ? '<span class="badge badge--success">NC</span>' : ''}</td>
+      `;
+      tr.addEventListener('click', () => openDetailModal(np));
+      tbody.appendChild(tr);
+    });
+  }
+
+  function contactDots(np) {
+    const c1 = np.initial_contact_done ? '🟢' : '⚪';
+    const c2 = np.catchup_done         ? '🟢' : '⚪';
+    return `<span title="Contact / Catch-up">${c1}${c2}</span>`;
+  }
+
+  // ── Detail modal ────────────────────────────────────────────────────────────
+  function openDetailModal(np) {
+    currentNP = np;
+    document.getElementById('detail-title').textContent = np.name;
+
+    // Populate leader dropdown
+    const sel = document.getElementById('d-leader');
+    sel.innerHTML = '<option value="">Unassigned</option>';
+    leaders.forEach(l => {
+      const o = document.createElement('option');
+      o.value = l.id; o.textContent = l.name;
+      if (l.id === np.leader_id) o.selected = true;
+      sel.appendChild(o);
+    });
+
+    // Populate NC leader dropdown
+    const ncSel = document.getElementById('d-nc-leader');
+    ncSel.innerHTML = '<option value="">Unassigned</option>';
+    leaders.forEach(l => {
+      const o = document.createElement('option');
+      o.value = l.id; o.textContent = l.name;
+      if (l.id === np.nc_leader_id) o.selected = true;
+      ncSel.appendChild(o);
+    });
+
+    // Fill fields
+    document.getElementById('d-name').value         = np.name || '';
+    document.getElementById('d-phone').value        = np.phone || '';
+    document.getElementById('d-school').value       = np.school || '';
+    document.getElementById('d-year').value         = np.year_level || '';
+    document.getElementById('d-gender').value       = np.gender || '';
+    document.getElementById('d-friend').value       = np.friend || '';
+    document.getElementById('d-parent-name').value  = np.parent_name || '';
+    document.getElementById('d-parent-phone').value = np.parent_phone || '';
+    document.getElementById('d-v1').value           = np.visit_1_date || '';
+    document.getElementById('d-v2').value           = np.visit_2_date || '';
+    document.getElementById('d-v3').value           = np.visit_3_date || '';
+    document.getElementById('d-contact').checked    = np.initial_contact_done;
+    document.getElementById('d-catchup').checked    = np.catchup_done;
+    document.getElementById('d-status').value       = np.status;
+    document.getElementById('d-notes').value        = np.notes || '';
+    document.getElementById('d-archive-reason').value = np.archived_reason || '';
+
+    document.getElementById('archive-reason-group').style.display =
+      np.status === 'archived' ? '' : 'none';
+
+    // NC fields
+    document.getElementById('d-is-nc').checked = np.is_new_christian;
+    document.getElementById('nc-fields').classList.toggle('hidden', !np.is_new_christian);
+    if (np.is_new_christian) {
+      document.getElementById('d-nc-date').value  = np.decision_date || '';
+      document.getElementById('d-nc-type').value  = np.decision_type || '';
+      document.getElementById('d-nc-bap').checked  = np.baptism_done;
+      document.getElementById('d-nc-bible').checked = np.bible_given;
+      document.getElementById('d-nc-fs').checked   = np.fresh_start_started;
+      document.getElementById('d-nc-fsc').checked  = np.fresh_start_completed;
+    }
+
+    // Activate banner
+    const canActivate = np.visit_3_date && np.status !== 'activated' && np.status !== 'archived';
+    document.getElementById('activate-banner').classList.toggle('hidden', !canActivate);
+
+    document.getElementById('detail-error').classList.add('hidden');
+    document.getElementById('detail-modal').classList.add('open');
+  }
+
+  function closeDetailModal() {
+    document.getElementById('detail-modal').classList.remove('open');
+    currentNP = null;
+  }
+
+  function toggleNCFields() {
+    const checked = document.getElementById('d-is-nc').checked;
+    document.getElementById('nc-fields').classList.toggle('hidden', !checked);
+  }
+
+  async function saveCurrentNP() {
+    if (!currentNP) return;
+    const btn = document.getElementById('save-btn');
+    setLoading(btn, true);
+
+    const v3 = document.getElementById('d-v3').value || null;
+    let status = document.getElementById('d-status').value;
+    if (v3 && status === 'visit_2') status = 'visit_3';
+
+    const updates = {
+      name:                 document.getElementById('d-name').value.trim(),
+      phone:                document.getElementById('d-phone').value.trim() || null,
+      school:               document.getElementById('d-school').value.trim() || null,
+      year_level:           document.getElementById('d-year').value || null,
+      gender:               document.getElementById('d-gender').value || null,
+      friend:               document.getElementById('d-friend').value.trim() || null,
+      parent_name:          document.getElementById('d-parent-name').value.trim() || null,
+      parent_phone:         document.getElementById('d-parent-phone').value.trim() || null,
+      visit_1_date:         document.getElementById('d-v1').value || null,
+      visit_2_date:         document.getElementById('d-v2').value || null,
+      visit_3_date:         v3,
+      initial_contact_done: document.getElementById('d-contact').checked,
+      catchup_done:         document.getElementById('d-catchup').checked,
+      leader_id:            document.getElementById('d-leader').value || null,
+      status,
+      archived_reason:      document.getElementById('d-archive-reason').value.trim() || null,
+      notes:                document.getElementById('d-notes').value.trim() || null,
+      is_new_christian:     document.getElementById('d-is-nc').checked,
+    };
+
+    if (updates.is_new_christian) {
+      Object.assign(updates, {
+        decision_date:        document.getElementById('d-nc-date').value || null,
+        decision_type:        document.getElementById('d-nc-type').value || null,
+        nc_leader_id:         document.getElementById('d-nc-leader').value || null,
+        baptism_done:         document.getElementById('d-nc-bap').checked,
+        bible_given:          document.getElementById('d-nc-bible').checked,
+        fresh_start_started:  document.getElementById('d-nc-fs').checked,
+        fresh_start_completed:document.getElementById('d-nc-fsc').checked,
+      });
+    }
+
+    const { error } = await db.from('new_people').update(updates).eq('id', currentNP.id);
+    setLoading(btn, false);
+    if (error) { showError('Save failed.', 'detail-error'); return; }
+
+    Object.assign(currentNP, updates);
+    const idx = allNP.findIndex(n => n.id === currentNP.id);
+    if (idx !== -1) allNP[idx] = { ...currentNP };
+    renderTable(currentFilter);
+    closeDetailModal();
+  }
+
+  async function activateCurrentNP() {
+    if (!currentNP) return;
+    const btn = document.getElementById('activate-btn');
+    setLoading(btn, true);
+    try {
+      await activateNewPerson(currentNP.id);
+      currentNP.status = 'activated';
+      const idx = allNP.findIndex(n => n.id === currentNP.id);
+      if (idx !== -1) allNP[idx].status = 'activated';
+      renderTable(currentFilter);
+      closeDetailModal();
+    } catch (e) {
+      showError('Activation failed: ' + e.message, 'detail-error');
+    }
+    setLoading(btn, false);
+  }
+
+  async function archiveCurrentNP() {
+    if (!currentNP) return;
+    if (!confirm(`Archive ${currentNP.name}? They can be unarchived later.`)) return;
+    const reason = document.getElementById('d-archive-reason').value.trim() || null;
+    await db.from('new_people').update({ status: 'archived', archived_reason: reason }).eq('id', currentNP.id);
+    currentNP.status = 'archived';
+    const idx = allNP.findIndex(n => n.id === currentNP.id);
+    if (idx !== -1) allNP[idx].status = 'archived';
+    renderTable(currentFilter);
+    closeDetailModal();
+  }
+
+  // ── Add modal ────────────────────────────────────────────────────────────────
+  function openAddModal() {
+    document.getElementById('a-name').value  = '';
+    document.getElementById('a-phone').value = '';
+    document.getElementById('a-school').value = '';
+    document.getElementById('a-friend').value = '';
+    document.getElementById('a-year').value  = '';
+    document.getElementById('a-gender').value = '';
+    document.getElementById('a-leader').value = '';
+    document.getElementById('a-v1').value    = formatDateInput();
+    document.getElementById('add-dup-warning').innerHTML = '';
+    document.getElementById('add-dup-warning').classList.add('hidden');
+    document.getElementById('add-modal').classList.add('open');
+  }
+  function closeAddModal() {
+    document.getElementById('add-modal').classList.remove('open');
+  }
+
+  let dupNP = null;
+  async function checkDup() {
+    const name  = document.getElementById('a-name').value.trim();
+    const phone = document.getElementById('a-phone').value.trim();
+    if (!name || !phone) return;
+    dupNP = await checkDuplicateNP(name, phone);
+    const warn = document.getElementById('add-dup-warning');
+    if (dupNP) {
+      warn.innerHTML = `
+        <div class="dup-warning">
+          <p><strong>Possible duplicate found:</strong> ${escHtml(dupNP.name)} (${escHtml(dupNP.phone || '—')}), status: ${statusLabel(dupNP.status)}.</p>
+          <p style="margin-top:var(--s-2)">Check before adding — you may want to edit the existing record instead.</p>
+          <button class="btn btn--sm btn--ghost" style="margin-top:var(--s-2)" onclick="closeAddModal();openDetailModal(allNP.find(n=>n.id==='${dupNP.id}'))">
+            Open existing record →
+          </button>
+        </div>
+      `;
+      warn.classList.remove('hidden');
+    } else {
+      warn.innerHTML = '';
+      warn.classList.add('hidden');
+    }
+  }
+  document.getElementById('a-name').addEventListener('blur', checkDup);
+  document.getElementById('a-phone').addEventListener('blur', checkDup);
+
+  async function submitAdd() {
+    const name = document.getElementById('a-name').value.trim();
+    if (!name) { alert('Name is required.'); return; }
+    const btn = document.getElementById('add-submit-btn');
+    setLoading(btn, true);
+    const { data, error } = await db.from('new_people').insert({
+      campus_id:    identity.campus_id,
+      leader_id:    document.getElementById('a-leader').value || null,
+      name,
+      phone:        document.getElementById('a-phone').value.trim() || null,
+      school:       document.getElementById('a-school').value.trim() || null,
+      year_level:   document.getElementById('a-year').value || null,
+      gender:       document.getElementById('a-gender').value || null,
+      friend:       document.getElementById('a-friend').value.trim() || null,
+      visit_1_date: document.getElementById('a-v1').value || null,
+      status:       'visit_1',
+    }).select().single();
+    setLoading(btn, false);
+    if (error) { alert('Could not add. Try again.'); return; }
+    allNP.unshift(data);
+    renderTable(currentFilter);
+    closeAddModal();
+  }
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+  function escHtml(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function statusLabel(s) {
+    return { visit_1:'Visit 1', visit_2:'Visit 2', visit_3:'Visit 3',
+             ready_to_activate:'Ready', activated:'Activated', archived:'Archived' }[s] ?? s;
+  }
+  function statusBadge(s) {
+    return { visit_1:'neutral', visit_2:'neutral', visit_3:'warning',
+             ready_to_activate:'success', activated:'connected', archived:'archived' }[s] ?? 'neutral';
+  }
+  function logout() { DY.clearIdentity(); window.location.href = '/'; }
+
+  init();
+  </script>
+</body>
+</html>

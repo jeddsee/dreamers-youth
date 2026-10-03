@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Dreamers Youth</title>
+  <link rel="stylesheet" href="shared.css">
+  <style>
+    /* ── Snapshot ── */
+    .leader-status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--s-3) var(--s-5);
+      border-bottom: 1px solid var(--c-border);
+    }
+    .leader-status-row:last-child { border-bottom: none; }
+
+    .health-table-wrap { overflow-x: auto; }
+    .health-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: var(--text-sm);
+      min-width: 700px;
+    }
+    .health-table th {
+      text-align: left;
+      font-size: var(--text-xs);
+      font-weight: 600;
+      color: var(--c-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: var(--s-3) var(--s-4);
+      border-bottom: 2px solid var(--c-border);
+      white-space: nowrap;
+      background: var(--c-bg);
+    }
+    .health-table td {
+      padding: var(--s-3) var(--s-4);
+      border-bottom: 1px solid var(--c-border);
+      white-space: nowrap;
+    }
+
+    .dist-bar {
+      display: flex;
+      height: 8px;
+      border-radius: var(--r-full);
+      overflow: hidden;
+      background: var(--c-border);
+      margin-top: var(--s-2);
+    }
+    .dist-bar__seg { height: 100%; transition: width var(--transition); }
+
+    /* ── Setup ── */
+    .leader-setup-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--s-3) var(--s-5);
+      border-bottom: 1px solid var(--c-border);
+      gap: var(--s-3);
+    }
+    .leader-setup-row:last-child { border-bottom: none; }
+
+    .roster-setup-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--s-2) var(--s-4);
+      border-bottom: 1px solid var(--c-border);
+      gap: var(--s-3);
+      font-size: var(--text-sm);
+    }
+    .roster-setup-row:last-child { border-bottom: none; }
+
+    .qr-box {
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: var(--r-lg);
+      padding: var(--s-5);
+      text-align: center;
+    }
+    .qr-box canvas { margin: 0 auto var(--s-4); display: block; }
+    .qr-url {
+      font-size: var(--text-xs);
+      color: var(--c-text-muted);
+      word-break: break-all;
+      margin-bottom: var(--s-3);
+    }
+
+    /* ── Term ── */
+    .term-leader-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--s-3) var(--s-5);
+      border-bottom: 1px solid var(--c-border);
+    }
+    .term-leader-row:last-child { border-bottom: none; }
+
+    .modal-backdrop { display: none; }
+    .modal-backdrop.open { display: flex; }
+  </style>
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="app-header__inner">
+      <span class="app-header__logo">Dreamers <span>Youth</span></span>
+      <span class="app-header__user" id="user-display" onclick="logout()"></span>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <a href="dashboard.html" class="tab active">Dashboard</a>
+    <a href="new-people.html" class="tab">New People</a>
+    <a href="new-christians.html" class="tab">New Christians</a>
+  </nav>
+
+  <nav class="tabs" id="dash-tabs" style="border-top:1px solid var(--c-border)">
+    <button class="tab active" data-tab="entry">Weekly Entry</button>
+    <button class="tab" data-tab="snapshot">Snapshot</button>
+    <button class="tab" data-tab="term">Term</button>
+    <button class="tab" data-tab="setup">Setup</button>
+  </nav>
+
+  <main>
+
+    <!-- ══ WEEKLY ENTRY ════════════════════════════════════════════════════ -->
+    <section id="section-entry">
+      <div style="padding:var(--s-5)">
+        <div class="row row--between mb-4">
+          <div class="form-group" style="flex:1;max-width:200px">
+            <label class="text-sm fw-semibold">Youth night date</label>
+            <input type="date" id="ws-date" class="input">
+          </div>
+          <div id="ws-saved" class="badge badge--success hidden" style="align-self:flex-end">Saved</div>
+        </div>
+
+        <div id="ws-no-night-banner" class="hidden" style="background:var(--c-warning-light);border:1px solid #FDE68A;border-radius:var(--r-lg);padding:var(--s-4);margin-bottom:var(--s-4)">
+          <div class="fw-semibold" style="color:var(--c-warning-text)">No youth night this week</div>
+          <div class="text-sm" style="color:var(--c-warning-text)">Leader entries suppressed for this date.</div>
+        </div>
+
+        <div id="ws-error" class="error-banner hidden" style="margin-bottom:var(--s-4)"></div>
+
+        <div class="card">
+          <label class="row" style="gap:var(--s-3);cursor:pointer;padding:var(--s-4)">
+            <input type="checkbox" id="ws-no-night" style="accent-color:var(--c-warning);width:20px;height:20px"
+              onchange="toggleNoNight()">
+            <span class="fw-semibold">No youth night this week</span>
+          </label>
+        </div>
+
+        <div id="ws-form" class="mt-4">
+          <div class="card">
+            <div class="card__header"><h3>Life metrics</h3></div>
+            <div class="card__body">
+              <div class="form-grid form-grid--2">
+                <div class="form-group">
+                  <label>Attendance <span class="text-muted text-xs">(from Planning Centre)</span></label>
+                  <input id="ws-attendance" type="number" min="0" class="input" placeholder="0">
+                </div>
+                <div class="form-group">
+                  <label>1st timers</label>
+                  <input id="ws-first" type="number" min="0" class="input" placeholder="0">
+                </div>
+                <div class="form-group">
+                  <label>2nd timers</label>
+                  <input id="ws-second" type="number" min="0" class="input" placeholder="0">
+                </div>
+                <div class="form-group">
+                  <label>3rd timers</label>
+                  <input id="ws-third" type="number" min="0" class="input" placeholder="0">
+                </div>
+                <div class="form-group">
+                  <label>Salvations (first time)</label>
+                  <input id="ws-sal-first" type="number" min="0" class="input" placeholder="0">
+                </div>
+                <div class="form-group">
+                  <label>Salvations (rededication)</label>
+                  <input id="ws-sal-reded" type="number" min="0" class="input" placeholder="0">
+                </div>
+                <div class="form-group">
+                  <label>Bibles given</label>
+                  <input id="ws-bibles" type="number" min="0" class="input" placeholder="0">
+                </div>
+                <div class="form-group">
+                  <label>Fresh Start / NC course</label>
+                  <input id="ws-fresh" type="number" min="0" class="input" placeholder="0">
+                </div>
+                <div class="form-group">
+                  <label>Water baptisms</label>
+                  <input id="ws-water-bap" type="number" min="0" class="input" placeholder="0">
+                </div>
+                <div class="form-group">
+                  <label>HS baptisms</label>
+                  <input id="ws-hs-bap" type="number" min="0" class="input" placeholder="0">
+                </div>
+                <div class="form-group">
+                  <label>Schools visited</label>
+                  <input id="ws-schools" type="number" min="0" class="input" placeholder="0">
+                </div>
+                <div class="form-group">
+                  <label>Youth Connect attendance</label>
+                  <input id="ws-connect" type="number" min="0" class="input" placeholder="0">
+                </div>
+                <div class="form-group">
+                  <label>Sunday attendance</label>
+                  <input id="ws-sunday" type="number" min="0" class="input" placeholder="0">
+                </div>
+                <div class="form-group">
+                  <label>Saints attendance</label>
+                  <input id="ws-saints" type="number" min="0" class="input" placeholder="0">
+                </div>
+              </div>
+              <div class="form-group mt-4">
+                <label>Notes</label>
+                <textarea id="ws-notes" class="textarea" rows="2" placeholder="Any notes for this week…"></textarea>
+              </div>
+              <button class="btn btn--primary mt-4" id="ws-save-btn" onclick="saveWeeklyStats()">Save</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ SNAPSHOT ════════════════════════════════════════════════════════ -->
+    <section id="section-snapshot" class="hidden">
+      <div id="snap-loading" class="loading-overlay"><div class="spinner"></div> Loading…</div>
+      <div id="snap-content" class="hidden" style="padding:var(--s-5)">
+
+        <h3 class="mb-4">Leader submissions this week</h3>
+        <div class="card card--flush mb-4" id="leader-status-list"></div>
+
+        <h3 class="mb-4 mt-6">Category distribution</h3>
+        <div class="card card--flush mb-4" id="category-dist"></div>
+
+        <h3 class="mb-4 mt-6">Discipleship milestones</h3>
+        <div class="stat-grid mb-4" id="milestone-stats"></div>
+
+        <h3 class="mb-4 mt-6">Roster breakdown</h3>
+        <div class="stat-grid mb-4" id="roster-breakdown"></div>
+
+        <h3 class="mb-4 mt-6">Weekly stats (last 8 weeks)</h3>
+        <div class="health-table-wrap card card--flush">
+          <table class="health-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Attend.</th>
+                <th>1st</th><th>2nd</th><th>3rd</th>
+                <th>Salv.</th>
+                <th>💧 Bap</th>
+                <th>NC</th>
+                <th>Connect</th>
+              </tr>
+            </thead>
+            <tbody id="health-tbody"></tbody>
+          </table>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ══ TERM MANAGEMENT ═════════════════════════════════════════════════ -->
+    <section id="section-term" class="hidden">
+      <div id="term-loading" class="loading-overlay"><div class="spinner"></div> Loading…</div>
+      <div id="term-content" class="hidden" style="padding:var(--s-5)">
+
+        <div class="card mb-4" id="term-control-card">
+          <div class="row row--between">
+            <div>
+              <div class="fw-semibold" id="term-label">Current term</div>
+              <div class="text-sm text-muted" id="term-sublabel"></div>
+            </div>
+            <button class="btn btn--primary" id="term-toggle-btn" onclick="toggleTermReview()"></button>
+          </div>
+        </div>
+
+        <div id="term-open-section" class="hidden">
+          <h3 class="mb-4">Leader submission status</h3>
+          <div class="card card--flush mb-4" id="term-leader-list"></div>
+
+          <h3 class="mb-4 mt-6">Collated results</h3>
+          <div id="term-collated"></div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ══ SETUP ═══════════════════════════════════════════════════════════ -->
+    <section id="section-setup" class="hidden">
+      <div style="padding:var(--s-5)">
+
+        <!-- Campus settings -->
+        <div class="card mb-6">
+          <div class="card__header"><h3>Campus settings</h3></div>
+          <div class="card__body">
+            <div class="form-group" style="max-width:260px">
+              <label class="fw-semibold">Youth night</label>
+              <select id="campus-dow-select" class="select" onchange="saveCampusDow(this.value)">
+                <option value="0">Sunday</option>
+                <option value="1">Monday</option>
+                <option value="2">Tuesday</option>
+                <option value="3">Wednesday</option>
+                <option value="4">Thursday</option>
+                <option value="5">Friday</option>
+                <option value="6">Saturday</option>
+              </select>
+              <p class="form-hint">Sets the default date on weekly entry forms for all leaders on this campus. Takes effect on next login.</p>
+            </div>
+            <div id="dow-saved" class="badge badge--success hidden" style="margin-top:var(--s-3)">Saved</div>
+          </div>
+        </div>
+
+        <!-- QR Codes -->
+        <div class="row row--between mb-4">
+          <h3>Campus QR code</h3>
+        </div>
+        <div class="qr-box mb-4" id="qr-box">
+          <canvas id="qr-canvas"></canvas>
+          <div class="qr-url" id="qr-url"></div>
+          <p class="text-xs text-muted">Generate QR codes from your live Netlify URL for permanent links.</p>
+          <button class="btn btn--secondary btn--sm" onclick="downloadQR()">Download QR</button>
+        </div>
+
+        <!-- Leaders -->
+        <div class="row row--between mb-4 mt-6">
+          <h3>Leaders</h3>
+          <button class="btn btn--primary btn--sm" onclick="openAddLeaderModal()">+ Add leader</button>
+        </div>
+        <div class="card card--flush mb-4" id="leaders-list"></div>
+
+        <!-- Rosters (per leader) -->
+        <div class="mt-6" id="roster-section">
+          <h3 class="mb-4">Youth rosters</h3>
+          <div id="roster-accordion"></div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ── Add Leader Modal ──────────────────────────────────────────────── -->
+  <div class="modal-backdrop" id="add-leader-modal">
+    <div class="modal">
+      <div class="modal__header">
+        <h3>Add leader</h3>
+        <button class="modal__close" onclick="closeAddLeaderModal()">✕</button>
+      </div>
+      <div class="modal__body">
+        <div class="stack">
+          <div class="form-group">
+            <label>Name <span class="required">*</span></label>
+            <input id="al-name" type="text" class="input" placeholder="Full name">
+          </div>
+          <div class="form-group">
+            <label>Role</label>
+            <select id="al-role" class="select">
+              <option value="leader">Leader</option>
+              <option value="pastor">Pastor</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost" onclick="closeAddLeaderModal()">Cancel</button>
+        <button class="btn btn--primary" id="al-save-btn" onclick="submitAddLeader()">Add</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Add Youth Modal ───────────────────────────────────────────────── -->
+  <div class="modal-backdrop" id="add-youth-modal">
+    <div class="modal">
+      <div class="modal__header">
+        <h3 id="ay-title">Add youth</h3>
+        <button class="modal__close" onclick="closeAddYouthModal()">✕</button>
+      </div>
+      <div class="modal__body">
+        <div class="stack">
+          <div class="form-group">
+            <label>Name <span class="required">*</span></label>
+            <input id="ay-name" type="text" class="input">
+          </div>
+          <div class="form-grid form-grid--2">
+            <div class="form-group">
+              <label>Year level</label>
+              <select id="ay-year" class="select">
+                <option value="">Select…</option>
+                <option>Year 7</option><option>Year 8</option><option>Year 9</option>
+                <option>Year 10</option><option>Year 11</option><option>Year 12</option>
+                <option>Other / Left school</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Gender</label>
+              <select id="ay-gender" class="select">
+                <option value="">Select…</option>
+                <option>Male</option><option>Female</option><option>Prefer not to say</option>
+              </select>
+            </div>
+            <div class="form-group" style="grid-column:1/-1">
+              <label>Leader</label>
+              <select id="ay-leader" class="select"></select>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost" onclick="closeAddYouthModal()">Cancel</button>
+        <button class="btn btn--primary" id="ay-save-btn" onclick="submitAddYouth()">Add</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+  <script src="shared.js"></script>
+  <script>
+  const { db, requireIdentity, formatDate, formatDateInput, termFromDate, mostRecentYouthNight, setLoading, showError } = DY;
+
+  let identity, leaders = [], roster = [], weeklyStats = [], termReview = null;
+  let addYouthLeaderId = null;
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+  async function init() {
+    identity = requireIdentity('pastor');
+    if (!identity) return;
+    document.getElementById('user-display').textContent = `${identity.leader_name} · ${identity.campus_name}`;
+
+    document.getElementById('ws-date').value = mostRecentYouthNight(new Date(), identity.youth_night_dow);
+
+    setupTabs();
+    loadWeeklyEntry(document.getElementById('ws-date').value);
+    generateQR();
+    loadSetup();
+  }
+
+  // ── Tabs ───────────────────────────────────────────────────────────────────
+  function setupTabs() {
+    document.querySelectorAll('#dash-tabs .tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#dash-tabs .tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
+        document.getElementById(`section-${btn.dataset.tab}`).classList.remove('hidden');
+        if (btn.dataset.tab === 'snapshot') loadSnapshot();
+        if (btn.dataset.tab === 'term')     loadTermSection();
+      });
+    });
+  }
+
+  // ── Weekly entry ────────────────────────────────────────────────────────────
+  document.getElementById('ws-date').addEventListener('change', e => loadWeeklyEntry(e.target.value));
+
+  async function loadWeeklyEntry(date) {
+    document.getElementById('ws-saved').classList.add('hidden');
+    document.getElementById('ws-no-night-banner').classList.add('hidden');
+    const { data } = await db.from('weekly_stats')
+      .select('*').eq('campus_id', identity.campus_id).eq('entry_date', date).maybeSingle();
+    if (!data) {
+      clearWSForm();
+      document.getElementById('ws-no-night').checked = false;
+      document.getElementById('ws-form').classList.remove('hidden');
+      return;
+    }
+    fillWSForm(data);
+    if (data.no_youth_night) {
+      document.getElementById('ws-no-night-banner').classList.remove('hidden');
+      document.getElementById('ws-form').classList.add('hidden');
+    }
+    document.getElementById('ws-saved').classList.remove('hidden');
+  }
+
+  function fillWSForm(d) {
+    const set = (id, val) => { const el = document.getElementById(id); if(el) el.value = val ?? ''; };
+    set('ws-attendance', d.attendance);
+    set('ws-first', d.first_timers);
+    set('ws-second', d.second_timers);
+    set('ws-third', d.third_timers);
+    set('ws-sal-first', d.salvations_first);
+    set('ws-sal-reded', d.salvations_rededs);
+    set('ws-bibles', d.bibles_given);
+    set('ws-fresh', d.fresh_start);
+    set('ws-water-bap', d.water_baptisms);
+    set('ws-hs-bap', d.hs_baptisms);
+    set('ws-schools', d.schools_visited);
+    set('ws-connect', d.connect_attendance);
+    set('ws-sunday', d.sunday_attendance);
+    set('ws-saints', d.saints_attendance);
+    set('ws-notes', d.notes);
+    document.getElementById('ws-no-night').checked = d.no_youth_night;
+  }
+
+  function clearWSForm() {
+    ['ws-attendance','ws-first','ws-second','ws-third','ws-sal-first','ws-sal-reded',
+     'ws-bibles','ws-fresh','ws-water-bap','ws-hs-bap','ws-schools','ws-connect',
+     'ws-sunday','ws-saints','ws-notes'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+  }
+
+  function toggleNoNight() {
+    const checked = document.getElementById('ws-no-night').checked;
+    document.getElementById('ws-form').classList.toggle('hidden', checked);
+    document.getElementById('ws-no-night-banner').classList.toggle('hidden', !checked);
+  }
+
+  const int = id => parseInt(document.getElementById(id)?.value) || null;
+  const str = id => document.getElementById(id)?.value.trim() || null;
+
+  async function saveWeeklyStats() {
+    const btn = document.getElementById('ws-save-btn');
+    setLoading(btn, true);
+    const date     = document.getElementById('ws-date').value;
+    const noNight  = document.getElementById('ws-no-night').checked;
+    const payload  = {
+      campus_id:         identity.campus_id,
+      entry_date:        date,
+      term:              termFromDate(date),
+      no_youth_night:    noNight,
+      attendance:        noNight ? null : int('ws-attendance'),
+      first_timers:      noNight ? null : int('ws-first'),
+      second_timers:     noNight ? null : int('ws-second'),
+      third_timers:      noNight ? null : int('ws-third'),
+      salvations_first:  noNight ? null : int('ws-sal-first'),
+      salvations_rededs: noNight ? null : int('ws-sal-reded'),
+      bibles_given:      noNight ? null : int('ws-bibles'),
+      fresh_start:       noNight ? null : int('ws-fresh'),
+      water_baptisms:    noNight ? null : int('ws-water-bap'),
+      hs_baptisms:       noNight ? null : int('ws-hs-bap'),
+      schools_visited:   noNight ? null : int('ws-schools'),
+      connect_attendance:noNight ? null : int('ws-connect'),
+      sunday_attendance: noNight ? null : int('ws-sunday'),
+      saints_attendance: noNight ? null : int('ws-saints'),
+      notes:             str('ws-notes'),
+    };
+    const { error } = await db.from('weekly_stats')
+      .upsert(payload, { onConflict: 'campus_id,entry_date' });
+    setLoading(btn, false);
+    if (error) { showError('Save failed.', 'ws-error'); return; }
+    document.getElementById('ws-saved').classList.remove('hidden');
+  }
+
+  // ── Snapshot ────────────────────────────────────────────────────────────────
+  async function loadSnapshot() {
+    document.getElementById('snap-loading').classList.remove('hidden');
+    document.getElementById('snap-content').classList.add('hidden');
+
+    const term = termFromDate();
+    const mostRecentDate = mostRecentYouthNight();
+
+    const [leadersRes, rosterRes, statsRes, npRes] = await Promise.all([
+      db.from('leaders').select('id, name, role').eq('campus_id', identity.campus_id).eq('active', true).order('name'),
+      db.from('youth_roster').select('*').eq('campus_id', identity.campus_id).eq('active', true),
+      db.from('weekly_stats').select('*').eq('campus_id', identity.campus_id).order('entry_date', {ascending: false}).limit(8),
+      db.from('new_people').select('status, connection_status, leader_id').eq('campus_id', identity.campus_id).not('status', 'in', '("archived")'),
+    ]);
+
+    leaders = leadersRes.data ?? [];
+    roster  = rosterRes.data ?? [];
+    weeklyStats = statsRes.data ?? [];
+
+    // Leader submission status this week
+    const entryRes = await Promise.all(
+      leaders.filter(l => l.role === 'leader').map(l =>
+        db.from('leader_entries')
+          .select('entry_date')
+          .eq('leader_id', l.id)
+          .eq('entry_date', mostRecentDate)
+          .maybeSingle()
+      )
+    );
+
+    const statusList = document.getElementById('leader-status-list');
+    statusList.innerHTML = '';
+    leaders.filter(l => l.role === 'leader').forEach((l, i) => {
+      const submitted = !!entryRes[i]?.data;
+      const row = document.createElement('div');
+      row.className = 'leader-status-row';
+      row.innerHTML = `
+        <span class="fw-medium">${escHtml(l.name)}</span>
+        <span class="badge badge--${submitted ? 'success' : 'danger'}">${submitted ? 'Submitted' : 'Missing'}</span>
+      `;
+      statusList.appendChild(row);
+    });
+
+    // Category distribution
+    const cats = { contributor: 0, connected: 0, community: 0 };
+    roster.forEach(y => { if (cats[y.category] !== undefined) cats[y.category]++; });
+    const total = roster.length || 1;
+    const catEl = document.getElementById('category-dist');
+    catEl.innerHTML = `
+      <div style="padding:var(--s-4) var(--s-5)">
+        <div class="row row--between text-sm mb-2">
+          <span>🥇 Contributor <strong>${cats.contributor}</strong></span>
+          <span>🔵 Connected <strong>${cats.connected}</strong></span>
+          <span>🟢 Community <strong>${cats.community}</strong></span>
+          <span class="text-muted">Total: ${roster.length}</span>
+        </div>
+        <div class="dist-bar">
+          <div class="dist-bar__seg" style="width:${(cats.contributor/total*100).toFixed(1)}%;background:var(--c-contributor)"></div>
+          <div class="dist-bar__seg" style="width:${(cats.connected/total*100).toFixed(1)}%;background:var(--c-connected)"></div>
+          <div class="dist-bar__seg" style="width:${(cats.community/total*100).toFixed(1)}%;background:var(--c-community)"></div>
+        </div>
+      </div>
+      ${leaders.filter(l=>l.role==='leader').map(l => {
+        const ry = roster.filter(y => y.leader_id === l.id);
+        const lc = { contributor: 0, connected: 0, community: 0 };
+        ry.forEach(y => { if (lc[y.category] !== undefined) lc[y.category]++; });
+        const lt = ry.length || 1;
+        return `
+          <div style="padding:var(--s-3) var(--s-5);border-top:1px solid var(--c-border)">
+            <div class="row row--between text-sm mb-2">
+              <span class="fw-medium">${escHtml(l.name)}</span>
+              <span class="text-muted">${ry.length} youth</span>
+            </div>
+            <div class="dist-bar">
+              <div class="dist-bar__seg" style="width:${(lc.contributor/lt*100).toFixed(1)}%;background:var(--c-contributor)"></div>
+              <div class="dist-bar__seg" style="width:${(lc.connected/lt*100).toFixed(1)}%;background:var(--c-connected)"></div>
+              <div class="dist-bar__seg" style="width:${(lc.community/lt*100).toFixed(1)}%;background:var(--c-community)"></div>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    `;
+
+    // Milestones
+    const water   = roster.filter(y => y.water_baptised).length;
+    const hs      = roster.filter(y => y.hs_baptised).length;
+    const serving = roster.filter(y => y.serving).length;
+    const milestoneEl = document.getElementById('milestone-stats');
+    milestoneEl.innerHTML = [
+      { value: `${water} / ${roster.length}`, label: '💧 Water baptised' },
+      { value: `${hs}    / ${roster.length}`, label: '🔥 HS baptised' },
+      { value: `${serving} / ${roster.length}`, label: '🙌 Serving' },
+      { value: `${water && roster.length ? Math.round(water/roster.length*100) : 0}%`, label: 'Baptism rate' },
+    ].map(s => `<div class="stat-tile"><div class="stat-tile__value">${s.value}</div><div class="stat-tile__label">${s.label}</div></div>`).join('');
+
+    // Roster breakdown (year level + gender)
+    const males   = roster.filter(y => y.gender === 'Male').length;
+    const females = roster.filter(y => y.gender === 'Female').length;
+    const yearCounts = {};
+    roster.forEach(y => { if (y.year_level) yearCounts[y.year_level] = (yearCounts[y.year_level]||0)+1; });
+    const breakdownEl = document.getElementById('roster-breakdown');
+    breakdownEl.innerHTML = [
+      { value: males,   label: 'Male' },
+      { value: females, label: 'Female' },
+      ...Object.entries(yearCounts).sort().map(([yr, n]) => ({ value: n, label: yr })),
+    ].map(s => `<div class="stat-tile"><div class="stat-tile__value">${s.value}</div><div class="stat-tile__label">${s.label}</div></div>`).join('');
+
+    // Health stats table
+    const tbody = document.getElementById('health-tbody');
+    tbody.innerHTML = weeklyStats.map(ws => `
+      <tr>
+        <td>${formatDate(ws.entry_date)}</td>
+        <td>${ws.no_youth_night ? '<span class="badge badge--neutral">No night</span>' : (ws.attendance ?? '—')}</td>
+        <td>${ws.first_timers ?? '—'}</td>
+        <td>${ws.second_timers ?? '—'}</td>
+        <td>${ws.third_timers ?? '—'}</td>
+        <td>${(ws.salvations_first || 0) + (ws.salvations_rededs || 0)}</td>
+        <td>${ws.water_baptisms ?? '—'}</td>
+        <td>${ws.fresh_start ?? '—'}</td>
+        <td>${ws.connect_attendance ?? '—'}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--c-text-muted);padding:var(--s-5)">No stats entered yet</td></tr>';
+
+    document.getElementById('snap-loading').classList.add('hidden');
+    document.getElementById('snap-content').classList.remove('hidden');
+  }
+
+  // ── Term management ─────────────────────────────────────────────────────────
+  async function loadTermSection() {
+    document.getElementById('term-loading').classList.remove('hidden');
+    document.getElementById('term-content').classList.add('hidden');
+
+    // Get current open term review for this campus
+    const { data: open } = await db.from('term_reviews')
+      .select('*')
+      .eq('campus_id', identity.campus_id)
+      .not('opened_at', 'is', null)
+      .is('closed_at', null)
+      .maybeSingle();
+
+    termReview = open;
+    const termLabel = `${termFromDate()} term`;
+
+    document.getElementById('term-label').textContent = termLabel;
+    document.getElementById('term-toggle-btn').textContent = open ? 'Close term review' : 'Open term review';
+    document.getElementById('term-toggle-btn').className = `btn btn--${open ? 'danger' : 'primary'}`;
+    document.getElementById('term-sublabel').textContent = open
+      ? `Opened ${formatDate(open.opened_at)} — leaders can now submit.`
+      : 'Open to allow leaders to submit their term reviews.';
+
+    document.getElementById('term-open-section').classList.toggle('hidden', !open);
+
+    if (open) await renderTermCollation(open);
+
+    document.getElementById('term-loading').classList.add('hidden');
+    document.getElementById('term-content').classList.remove('hidden');
+  }
+
+  async function toggleTermReview() {
+    if (termReview) {
+      if (!confirm('Close term review? Leaders will no longer be able to submit.')) return;
+      await db.from('term_reviews').update({ closed_at: new Date().toISOString() }).eq('id', termReview.id);
+    } else {
+      const now  = new Date();
+      const term = termFromDate();
+      const [termStr, yearStr] = term.split(' ');
+      await db.from('term_reviews').insert({
+        campus_id: identity.campus_id,
+        term: termStr,
+        year: parseInt(yearStr),
+        opened_at: now.toISOString(),
+      });
+    }
+    loadTermSection();
+  }
+
+  async function renderTermCollation(review) {
+    if (!leaders.length) {
+      const { data } = await db.from('leaders').select('id, name, role')
+        .eq('campus_id', identity.campus_id).eq('active', true).order('name');
+      leaders = data ?? [];
+    }
+    if (!roster.length) {
+      const { data } = await db.from('youth_roster').select('*')
+        .eq('campus_id', identity.campus_id).eq('active', true);
+      roster = data ?? [];
+    }
+
+    const term = `${review.term} ${review.year}`;
+    const submitted = leaders.filter(l => l.role === 'leader').map(l => {
+      const ry = roster.filter(y => y.leader_id === l.id && y.last_reviewed_term === term);
+      return { leader: l, submitted: ry.length > 0, count: ry.length };
+    });
+
+    const listEl = document.getElementById('term-leader-list');
+    listEl.innerHTML = submitted.map(s => `
+      <div class="term-leader-row">
+        <span class="fw-medium">${escHtml(s.leader.name)}</span>
+        <span class="badge badge--${s.submitted ? 'success' : 'warning'}">${s.submitted ? `Submitted (${s.count} youth)` : 'Pending'}</span>
+      </div>
+    `).join('') || '<div class="term-leader-row text-muted">No leaders yet</div>';
+
+    // Collated category summary
+    const contrib = roster.filter(y => y.category === 'contributor').length;
+    const conn    = roster.filter(y => y.category === 'connected').length;
+    const comm    = roster.filter(y => y.category === 'community').length;
+    document.getElementById('term-collated').innerHTML = `
+      <div class="stat-grid">
+        <div class="stat-tile"><div class="stat-tile__value">${contrib}</div><div class="stat-tile__label">Contributor</div></div>
+        <div class="stat-tile"><div class="stat-tile__value">${conn}</div><div class="stat-tile__label">Connected</div></div>
+        <div class="stat-tile"><div class="stat-tile__value">${comm}</div><div class="stat-tile__label">Community</div></div>
+        <div class="stat-tile"><div class="stat-tile__value">${submitted.filter(s=>s.submitted).length}/${submitted.length}</div><div class="stat-tile__label">Leaders submitted</div></div>
+      </div>
+    `;
+  }
+
+  // ── Setup ────────────────────────────────────────────────────────────────────
+  async function saveCampusDow(value) {
+    const dow = parseInt(value, 10);
+    const { error } = await db.from('campuses').update({ youth_night_dow: dow }).eq('id', identity.campus_id);
+    const badge = document.getElementById('dow-saved');
+    badge.classList.remove('hidden');
+    if (error) { badge.textContent = '⚠️ Save failed'; badge.className = 'badge badge--danger'; }
+    else { badge.textContent = 'Saved'; badge.className = 'badge badge--success'; }
+    setTimeout(() => badge.classList.add('hidden'), 2500);
+  }
+
+  async function loadSetup() {
+    // Pre-populate the youth night dropdown from the campus record
+    const { data: campus } = await db.from('campuses')
+      .select('youth_night_dow').eq('id', identity.campus_id).single();
+    if (campus) document.getElementById('campus-dow-select').value = campus.youth_night_dow ?? 5;
+
+    const [lRes, rRes] = await Promise.all([
+      db.from('leaders').select('id, name, role, active').eq('campus_id', identity.campus_id).order('name'),
+      db.from('youth_roster').select('id, name, leader_id, year_level, gender, category, active').eq('campus_id', identity.campus_id).order('name'),
+    ]);
+    leaders = lRes.data ?? [];
+    roster  = rRes.data ?? [];
+
+    renderLeadersList();
+    renderRosterAccordion();
+    populateAddYouthLeaderDropdown();
+  }
+
+  function renderLeadersList() {
+    const el = document.getElementById('leaders-list');
+    const active = leaders.filter(l => l.active);
+    el.innerHTML = active.map(l => `
+      <div class="leader-setup-row">
+        <div>
+          <span class="fw-medium">${escHtml(l.name)}</span>
+          <span class="badge badge--neutral" style="margin-left:var(--s-2)">${l.role}</span>
+        </div>
+        <button class="btn btn--ghost btn--sm" onclick="deactivateLeader('${l.id}','${escHtml(l.name)}')">Deactivate</button>
+      </div>
+    `).join('') || '<div class="leader-setup-row text-muted">No leaders yet</div>';
+  }
+
+  function renderRosterAccordion() {
+    const el = document.getElementById('roster-accordion');
+    el.innerHTML = '';
+    const activeLeaders = leaders.filter(l => l.role === 'leader' && l.active);
+    activeLeaders.forEach(l => {
+      const youth = roster.filter(y => y.leader_id === l.id && y.active);
+      const block = document.createElement('div');
+      block.className = 'card card--flush mb-4';
+      block.innerHTML = `
+        <div style="padding:var(--s-4) var(--s-5);display:flex;align-items:center;justify-content:space-between;gap:var(--s-3)">
+          <div class="fw-semibold">${escHtml(l.name)} <span class="text-muted text-sm">(${youth.length} youth)</span></div>
+          <button class="btn btn--secondary btn--sm" onclick="openAddYouthModal('${l.id}','${escHtml(l.name)}')">+ Add youth</button>
+        </div>
+        ${youth.length ? youth.map(y => `
+          <div class="roster-setup-row">
+            <span>${escHtml(y.name)}</span>
+            <div style="display:flex;align-items:center;gap:var(--s-3)">
+              <span class="badge badge--${y.category}">${capitalize(y.category)}</span>
+              <span class="text-xs text-muted">${escHtml(y.year_level||'')} ${escHtml(y.gender||'')}</span>
+              <button class="btn btn--ghost btn--sm" onclick="removeYouth('${y.id}','${escHtml(y.name)}')">Remove</button>
+            </div>
+          </div>
+        `).join('') : '<div class="roster-setup-row text-muted">No youth on this roster</div>'}
+      `;
+      el.appendChild(block);
+    });
+    if (!activeLeaders.length) {
+      el.innerHTML = '<div class="empty-state"><div class="empty-state__icon">👥</div><p>Add leaders first to build rosters.</p></div>';
+    }
+  }
+
+  function populateAddYouthLeaderDropdown() {
+    const sel = document.getElementById('ay-leader');
+    sel.innerHTML = '';
+    leaders.filter(l => l.role === 'leader' && l.active).forEach(l => {
+      const o = document.createElement('option');
+      o.value = l.id; o.textContent = l.name;
+      sel.appendChild(o);
+    });
+  }
+
+  // Add leader
+  function openAddLeaderModal() { document.getElementById('add-leader-modal').classList.add('open'); }
+  function closeAddLeaderModal() { document.getElementById('add-leader-modal').classList.remove('open'); }
+
+  async function submitAddLeader() {
+    const name = document.getElementById('al-name').value.trim();
+    if (!name) { alert('Name required.'); return; }
+    const btn = document.getElementById('al-save-btn');
+    setLoading(btn, true);
+    const { data, error } = await db.from('leaders').insert({
+      campus_id: identity.campus_id,
+      name,
+      role: document.getElementById('al-role').value,
+    }).select().single();
+    setLoading(btn, false);
+    if (error) { alert('Could not add.'); return; }
+    leaders.push(data);
+    closeAddLeaderModal();
+    document.getElementById('al-name').value = '';
+    renderLeadersList();
+    renderRosterAccordion();
+    populateAddYouthLeaderDropdown();
+  }
+
+  async function deactivateLeader(id, name) {
+    if (!confirm(`Deactivate ${name}? They will no longer appear in the name select.`)) return;
+    await db.from('leaders').update({ active: false }).eq('id', id);
+    const l = leaders.find(x => x.id === id);
+    if (l) l.active = false;
+    renderLeadersList();
+    renderRosterAccordion();
+    populateAddYouthLeaderDropdown();
+  }
+
+  // Add youth
+  function openAddYouthModal(leaderId, leaderName) {
+    addYouthLeaderId = leaderId;
+    document.getElementById('ay-title').textContent = `Add youth to ${leaderName}'s roster`;
+    document.getElementById('ay-name').value   = '';
+    document.getElementById('ay-year').value   = '';
+    document.getElementById('ay-gender').value = '';
+    document.getElementById('ay-leader').value = leaderId;
+    document.getElementById('add-youth-modal').classList.add('open');
+  }
+  function closeAddYouthModal() { document.getElementById('add-youth-modal').classList.remove('open'); }
+
+  async function submitAddYouth() {
+    const name = document.getElementById('ay-name').value.trim();
+    if (!name) { alert('Name required.'); return; }
+    const btn = document.getElementById('ay-save-btn');
+    const leaderId = document.getElementById('ay-leader').value || addYouthLeaderId;
+    setLoading(btn, true);
+    const { data, error } = await db.from('youth_roster').insert({
+      campus_id:  identity.campus_id,
+      leader_id:  leaderId,
+      name,
+      year_level: document.getElementById('ay-year').value || null,
+      gender:     document.getElementById('ay-gender').value || null,
+      category:   'community',
+    }).select().single();
+    setLoading(btn, false);
+    if (error) { alert('Could not add.'); return; }
+    roster.push(data);
+    closeAddYouthModal();
+    renderRosterAccordion();
+  }
+
+  async function removeYouth(id, name) {
+    if (!confirm(`Remove ${name} from the roster? Their record is kept but marked inactive.`)) return;
+    await db.from('youth_roster').update({ active: false }).eq('id', id);
+    const y = roster.find(x => x.id === id);
+    if (y) y.active = false;
+    renderRosterAccordion();
+  }
+
+  // ── QR Code ────────────────────────────────────────────────────────────────
+  function generateQR() {
+    const campusSlug = identity.campus_name.toLowerCase().replace(/\s+/g, '');
+    const url = `${window.location.origin}/register.html?campus=${campusSlug}`;
+    document.getElementById('qr-url').textContent = url;
+    new QRious({
+      element: document.getElementById('qr-canvas'),
+      value:   url,
+      size:    180,
+      foreground: '#4F46E5',
+    });
+  }
+
+  function downloadQR() {
+    const canvas = document.getElementById('qr-canvas');
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = `dreamers-${identity.campus_name.toLowerCase().replace(/\s+/g,'-')}-qr.png`;
+    a.click();
+  }
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+  function escHtml(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function capitalize(s) { return s ? s[0].toUpperCase() + s.slice(1) : ''; }
+  function logout() { DY.clearIdentity(); window.location.href = '/'; }
+
+  init();
+  </script>
+</body>
+</html>
