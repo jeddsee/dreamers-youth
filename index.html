@@ -111,22 +111,47 @@
 
     // Load campuses on page load
     (async () => {
-      const { data, error } = await db
-        .from('campuses')
-        .select('id, name, slug, youth_night_dow')
-        .eq('archived', false)
-        .order('name');
+      console.log('[DY] Starting campus load...');
+      campusSelect.disabled = true;
 
-      if (error) { showError('Could not load campuses. Check your connection and try again.'); return; }
+      try {
+        const { data, error } = await db
+          .from('campuses')
+          .select('id, name, slug, youth_night_dow')
+          .eq('archived', false)
+          .order('name');
 
-      data.forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c.id;
-        opt.textContent = c.name;
-        opt.dataset.slug = c.slug;
-        opt.dataset.dow  = c.youth_night_dow ?? 5;
-        campusSelect.appendChild(opt);
-      });
+        console.log('[DY] Campus query result:', { data, error });
+
+        if (error) {
+          console.error('[DY] Supabase error:', error);
+          showError('Could not load campuses: ' + (error.message || JSON.stringify(error)));
+          campusSelect.disabled = false;
+          return;
+        }
+
+        if (!data || data.length === 0) {
+          showError('No campuses found in the database.');
+          campusSelect.disabled = false;
+          return;
+        }
+
+        data.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.id;
+          opt.textContent = c.name;
+          opt.dataset.slug = c.slug;
+          opt.dataset.dow  = c.youth_night_dow ?? 5;
+          campusSelect.appendChild(opt);
+        });
+
+        console.log('[DY] Loaded', data.length, 'campuses.');
+      } catch (e) {
+        console.error('[DY] Unexpected error loading campuses:', e);
+        showError('Unexpected error: ' + e.message);
+      }
+
+      campusSelect.disabled = false;
     })();
 
     // On campus change: load leaders for that campus
