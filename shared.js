@@ -21,7 +21,7 @@ const YOUTH_NIGHT_DOW_FALLBACK = 5;
 
 // ── Supabase client ───────────────────────────────────────────────────────────
 const { createClient } = supabase;
-const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+var db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ── Identity ──────────────────────────────────────────────────────────────────
 // Shape: { campus_id, campus_name, leader_id, leader_name, role }
