@@ -21,7 +21,7 @@ const YOUTH_NIGHT_DOW_FALLBACK = 5;
 
 // ── Supabase client ───────────────────────────────────────────────────────────
 const { createClient } = supabase;
-var db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supaDb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ── Identity ──────────────────────────────────────────────────────────────────
 // Shape: { campus_id, campus_name, leader_id, leader_name, role }
@@ -203,7 +203,7 @@ const planningCentre = {
 
 // ── Global export ─────────────────────────────────────────────────────────────
 window.DY = {
-  db,
+  db: supaDb,
   getIdentity, setIdentity, clearIdentity, requireIdentity,
   formatDate, formatDateInput, termFromDate, mostRecentYouthNight, getCampusDow,
   showError, hideError, setLoading,

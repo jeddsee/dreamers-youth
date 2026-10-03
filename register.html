@@ -167,7 +167,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.50.0/dist/umd/supabase.min.js"></script>
   <script src="shared.js"></script>
   <script>
-    const { checkDuplicateNP, formatDateInput, showError, hideError, setLoading } = DY;
+    const { db, checkDuplicateNP, formatDateInput, showError, hideError, setLoading } = DY;
 
     // Read campus slug from URL param
     const params     = new URLSearchParams(window.location.search);
