@@ -121,7 +121,7 @@ function setLoading(el, loading) {
 // Check for duplicate new_people by name + phone
 async function checkDuplicateNP(name, phone, excludeId = null) {
   if (!phone) return null;
-  let query = db.from('new_people')
+  let query = supaDb.from('new_people')
     .select('id, name, phone, status, campus_id')
     .ilike('name', name.trim())
     .eq('phone', phone.trim());
@@ -132,14 +132,14 @@ async function checkDuplicateNP(name, phone, excludeId = null) {
 
 // Activate a new person → creates youth_roster record, updates NP status
 async function activateNewPerson(npId) {
-  const { data: np, error: fetchErr } = await db
+  const { data: np, error: fetchErr } = await supaDb
     .from('new_people')
     .select('*')
     .eq('id', npId)
     .single();
   if (fetchErr) throw fetchErr;
 
-  const { data: youth, error: rosterErr } = await db
+  const { data: youth, error: rosterErr } = await supaDb
     .from('youth_roster')
     .insert({
       leader_id:  np.leader_id,
@@ -153,7 +153,7 @@ async function activateNewPerson(npId) {
     .single();
   if (rosterErr) throw rosterErr;
 
-  const { error: updateErr } = await db
+  const { error: updateErr } = await supaDb
     .from('new_people')
     .update({ status: 'activated', activated_date: formatDateInput() })
     .eq('id', npId);
