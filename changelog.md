@@ -111,6 +111,24 @@ All 6 HTML pages built and connected to Supabase.
 
 ---
 
+## v0.3.1 — Campus Select Bug Fix
+**Date:** 3 October 2026
+**Status:** Hotfix. Campus dropdown was empty on landing page — login broken.
+
+### Root cause
+The Supabase client was initialised with the newer `sb_publishable_...` key format. The `supabase-js@2` library loaded via CDN (`@2` tag) was resolving to a version that does not correctly handle this key format when constructing the `Authorization` header, causing all API requests to silently fail (no campuses returned, no error thrown in the browser).
+
+Additionally, using `@supabase/supabase-js@2` without a pinned version meant any CDN cache refresh could pull a different library build — unpredictable in production.
+
+### Fixes
+
+| Fix | File | Detail |
+|---|---|---|
+| Switched to legacy JWT anon key | `shared.js` | JWT format (`eyJ...`) is supported by all v2.x builds of supabase-js |
+| Pinned supabase-js CDN to `v2.50.0` | All HTML pages | Prevents unexpected behaviour from unpinned `@2` CDN tag |
+
+---
+
 ## v1.0.0 — Pilot
 - Deploy to Netlify
 - One campus pilot (2–4 weeks)

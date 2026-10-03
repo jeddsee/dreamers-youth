@@ -5,7 +5,7 @@
 // ── Config ────────────────────────────────────────────────────────────────────
 // Replace these with real values from Supabase → Project Settings → API
 const SUPABASE_URL      = 'https://dfozyykukmwcskacqyhq.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_bd6OLJf2boKZmYug0sEAHQ_86HZYI2Y';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRmb3p5eWt1a213Y3NrYWNxeWhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEwMDk4OTYsImV4cCI6MjEwNjU4NTg5Nn0.R60fgoA1WVJ77a5xjJXIMB1FkcIhaJFp7D8Zfr0q5h0';
 
 // Australian school term months (inclusive). Update start/end each year if terms shift.
 const TERM_RANGES = [
