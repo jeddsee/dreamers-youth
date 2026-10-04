@@ -741,10 +741,41 @@
       }
     }
 
-    // Stat helpers
+    renderSnapshotStats();
+
+    document.getElementById('snap-loading').classList.add('hidden');
+    document.getElementById('snap-content').classList.remove('hidden');
+  }
+
+  function getFilteredStats() {
+    const active = weeklyStats.filter(w => !w.no_youth_night);
+    if (snapPeriod === 'all') return active;
+    if (snapPeriod === 'term') {
+      const t = termFromDate(new Date());
+      return active.filter(w => termFromDate(new Date(w.entry_date)) === t);
+    }
+    return active.slice(0, parseInt(snapPeriod, 10));
+  }
+
+  function setSnapPeriod(period, btn) {
+    snapPeriod = period;
+    document.querySelectorAll('.snap-period-pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderSnapshotStats();
+  }
+
+  function renderSnapshotStats() {
+    const isAll = snapCampusId === 'all';
+    const filteredStats = getFilteredStats();
+    const year = new Date().getFullYear();
+
+    document.getElementById('snap-weeks-subtitle').textContent =
+      `${year} — ${filteredStats.length} week${filteredStats.length !== 1 ? 's' : ''} of data` +
+      (isAll && allCampuses.length > 1 ? ` across ${allCampuses.length} campuses` : '');
+
     const avg = arr => arr.length ? Math.round(arr.reduce((a,b) => a+b, 0) / arr.length) : 0;
     const sum = arr => arr.reduce((a,b) => a+b, 0);
-    const col = key => activeStats.map(w => w[key] ?? 0);
+    const col = key => filteredStats.map(w => w[key] ?? 0);
 
     // Attendance
     document.getElementById('snap-avg-att').textContent    = avg(col('attendance'));
@@ -762,14 +793,18 @@
 
     // Life Metrics
     const nc = roster.filter(y => y.is_new_christian).length;
+    const baptisedPct = roster.length
+      ? Math.round(roster.filter(y => y.water_baptised).length / roster.length * 100)
+      : null;
     document.getElementById('snap-life-cards').innerHTML = [
-      { label: 'New Christians (Total)', value: nc,                       cls: 'stat-card--fill-lime' },
-      { label: 'First-Time Decisions',   value: sum(col('salvations_first')),  cls: 'stat-card--lime' },
-      { label: 'Rededications',          value: sum(col('salvations_rededs')), cls: 'stat-card--lime' },
-      { label: 'Bibles Given',           value: sum(col('bibles_given')),      cls: 'stat-card--lime' },
-      { label: 'New Christian Course',   value: sum(col('fresh_start')),       cls: 'stat-card--lime' },
-      { label: 'Water Baptisms',         value: sum(col('water_baptisms')),    cls: 'stat-card--lime' },
-      { label: 'HS Baptisms',            value: sum(col('hs_baptisms')),       cls: 'stat-card--lime' },
+      { label: 'New Christians (Total)', value: nc,                                               cls: 'stat-card--fill-lime' },
+      { label: 'First-Time Decisions',   value: sum(col('salvations_first')),                     cls: 'stat-card--lime' },
+      { label: 'Rededications',          value: sum(col('salvations_rededs')),                    cls: 'stat-card--lime' },
+      { label: 'Bibles Given',           value: sum(col('bibles_given')),                         cls: 'stat-card--lime' },
+      { label: 'Fresh Start',            value: sum(col('fresh_start')),                          cls: 'stat-card--lime' },
+      { label: 'Water Baptisms',         value: sum(col('water_baptisms')),                       cls: 'stat-card--lime' },
+      { label: '% Youth Baptised',       value: baptisedPct !== null ? `${baptisedPct}%` : '—',  cls: 'stat-card--lime' },
+      { label: 'HS Baptisms',            value: sum(col('hs_baptisms')),                          cls: 'stat-card--lime' },
     ].map(c => `<div class="stat-card ${c.cls}"><div class="stat-card__label">${c.label}</div><div class="stat-card__value">${c.value}</div></div>`).join('');
 
     // Connect & Sunday
@@ -780,11 +815,7 @@
       { label: 'Schools Visited',  value: sum(col('schools_visited')) },
     ].map(c => `<div class="stat-card"><div class="stat-card__label">${c.label}</div><div class="stat-card__value">${c.value}</div></div>`).join('');
 
-    // Chart — aggregate by date so multi-campus weeks merge cleanly
-    renderLifeMetricsChart(activeStats);
-
-    document.getElementById('snap-loading').classList.add('hidden');
-    document.getElementById('snap-content').classList.remove('hidden');
+    renderLifeMetricsChart(filteredStats);
   }
 
   function renderLifeMetricsChart(stats) {
