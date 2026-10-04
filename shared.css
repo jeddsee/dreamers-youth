@@ -554,15 +554,16 @@ h4 { font-size: var(--text-base); font-weight: 600; }
 
 /* ── Modal ───────────────────────────────────────────────────────────────────*/
 .modal-backdrop {
+  display: none;
   position: fixed;
   inset: 0;
   background: rgb(0 0 0 / .5);
   z-index: 200;
-  display: flex;
   align-items: flex-end;
   justify-content: center;
   padding: 0;
 }
+.modal-backdrop.open { display: flex; }
 @media (min-width: 480px) {
   .modal-backdrop { align-items: center; padding: var(--s-4); }
 }
