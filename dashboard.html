@@ -269,9 +269,33 @@
       <div id="snap-loading" class="loading-overlay"><div class="spinner"></div> Loading…</div>
       <div id="snap-content" class="hidden main-content__body">
 
-        <!-- Attendance hero -->
+        <!-- Page header -->
+        <div class="snap-header">
+          <div>
+            <h1 class="snap-title" id="snap-campus-title"></h1>
+            <div class="snap-subtitle" id="snap-weeks-subtitle"></div>
+          </div>
+          <div class="snap-header-actions">
+            <select id="snap-campus-select" class="select" onchange="switchSnapshotCampus(this.value)"></select>
+            <button class="btn btn--outline btn--sm" onclick="exportSnapshotPDF()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline-block;vertical-align:middle;margin-right:4px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Export PDF
+            </button>
+          </div>
+        </div>
+
+        <!-- Submission status -->
+        <div class="snap-submission-card">
+          <div class="snap-submission-head">
+            <span class="fw-semibold">Submission status — this week</span>
+            <span id="snap-sub-summary" class="text-sm text-muted">—</span>
+          </div>
+          <div class="snap-submission-body" id="snap-submission-leaders"></div>
+        </div>
+
+        <!-- Attendance -->
         <span class="section-badge section-badge--dark">Attendance</span>
-        <div class="stat-hero mb-6" id="snap-attendance-hero">
+        <div class="stat-hero mb-5">
           <div>
             <div class="stat-card__label">Avg Attendance</div>
             <div class="stat-card__value" id="snap-avg-att">—</div>
@@ -285,41 +309,21 @@
 
         <!-- New People -->
         <span class="section-badge section-badge--red">New People</span>
-        <div class="stat-card-grid stat-card-grid--4 mb-6" id="snap-np-cards"></div>
+        <div class="stat-card-grid stat-card-grid--4 mb-5" id="snap-np-cards"></div>
 
         <!-- Life Metrics -->
         <span class="section-badge section-badge--lime">Life Metrics</span>
-        <div class="stat-card-grid mb-6" id="snap-life-cards"></div>
+        <div class="stat-card-grid mb-5" id="snap-life-cards"></div>
 
         <!-- Connect & Sunday -->
         <span class="section-badge section-badge--dark">Connect &amp; Sunday</span>
-        <div class="stat-card-grid stat-card-grid--4 mb-6" id="snap-connect-cards"></div>
+        <div class="stat-card-grid stat-card-grid--4 mb-5" id="snap-connect-cards"></div>
 
-        <!-- Leader submissions -->
-        <h3 class="mb-4">Leader submissions this week</h3>
-        <div class="card card--flush mb-6" id="leader-status-list"></div>
-
-        <h3 class="mb-4">Category distribution</h3>
-        <div class="card card--flush mb-6" id="category-dist"></div>
-
-        <h3 class="mb-4">Discipleship milestones</h3>
-        <div class="stat-grid mb-6" id="milestone-stats"></div>
-
-        <h3 class="mb-4">Roster breakdown</h3>
-        <div class="stat-grid mb-6" id="roster-breakdown"></div>
-
-        <h3 class="mb-4">Weekly stats (last 8 weeks)</h3>
-        <div class="health-table-wrap card card--flush">
-          <table class="health-table">
-            <thead>
-              <tr>
-                <th>Date</th><th>Attend.</th>
-                <th>1st</th><th>2nd</th><th>3rd</th>
-                <th>Salv.</th><th>Bap</th><th>NC</th><th>Connect</th>
-              </tr>
-            </thead>
-            <tbody id="health-tbody"></tbody>
-          </table>
+        <!-- Life metrics by week chart -->
+        <div class="snap-chart-card">
+          <h3>Life metrics by week</h3>
+          <p id="snap-chart-empty" class="text-sm text-muted hidden">No weekly data to display yet.</p>
+          <canvas id="life-metrics-chart"></canvas>
         </div>
 
       </div>
@@ -482,6 +486,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.50.0/dist/umd/supabase.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script src="shared.js"></script>
   <script>
   const { db } = DY;
