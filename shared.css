@@ -956,6 +956,7 @@ h4 { font-size: var(--text-base); font-weight: 600; }
   cursor: pointer;
 }
 .snap-date-input:focus { outline: none; border-color: #111; }
+.ycomp-date-input { border-color: #111; border-width: 1.5px; }
 
 .snap-header {
   display: flex;

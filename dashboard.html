@@ -466,16 +466,12 @@
             <select id="ycomp-campus" class="ycomp-select"></select>
           </div>
           <div class="ycomp-filter-group">
-            <label class="ycomp-filter-label">From week</label>
-            <select id="ycomp-from-week" class="ycomp-select">
-              <option value="">All weeks</option>
-            </select>
+            <label class="ycomp-filter-label">From date</label>
+            <input type="date" id="ycomp-from-date" class="snap-date-input ycomp-date-input">
           </div>
           <div class="ycomp-filter-group">
-            <label class="ycomp-filter-label">To week</label>
-            <select id="ycomp-to-week" class="ycomp-select">
-              <option value="">All weeks</option>
-            </select>
+            <label class="ycomp-filter-label">To date</label>
+            <input type="date" id="ycomp-to-date" class="snap-date-input ycomp-date-input">
           </div>
           <button class="btn btn--primary" onclick="runYearComparison()" style="height:44px;padding:0 var(--s-6);align-self:flex-end">Compare</button>
         </div>
@@ -716,11 +712,8 @@
     selC.innerHTML = `<option value="">All campuses</option>` +
       allCampuses.map(c => `<option value="${c.id}">${escHtml(c.name)}</option>`).join('');
 
-    const weekOpts = Array.from({ length: 20 }, (_, i) =>
-      `<option value="${i + 1}">Week ${i + 1}</option>`).join('');
-    document.getElementById('ycomp-from-week').innerHTML = `<option value="">All weeks</option>${weekOpts}`;
-    document.getElementById('ycomp-to-week').innerHTML   = `<option value="">All weeks</option>${weekOpts}`;
-
+    document.getElementById('ycomp-from-date').value = '';
+    document.getElementById('ycomp-to-date').value   = '';
     document.getElementById('ycomp-results').classList.add('hidden');
   }
 
@@ -729,8 +722,8 @@
     const yearB    = document.getElementById('ycomp-year-b').value;
     const term     = document.getElementById('ycomp-term').value;
     const campusId = document.getElementById('ycomp-campus').value;
-    const fromWk   = parseInt(document.getElementById('ycomp-from-week').value) || null;
-    const toWk     = parseInt(document.getElementById('ycomp-to-week').value) || null;
+    const fromDate = document.getElementById('ycomp-from-date').value || null;
+    const toDate   = document.getElementById('ycomp-to-date').value   || null;
 
     document.getElementById('ycomp-loading').classList.remove('hidden');
 
@@ -750,8 +743,11 @@
         if (term && t !== term) return false;
         return true;
       });
-      if (fromWk || toWk) {
-        filtered = filtered.slice((fromWk || 1) - 1, toWk ?? filtered.length);
+      if (fromDate || toDate) {
+        filtered = filtered.filter(w =>
+          (!fromDate || w.entry_date >= fromDate) &&
+          (!toDate   || w.entry_date <= toDate)
+        );
       }
       return filtered;
     };
