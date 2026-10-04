@@ -191,7 +191,7 @@
       </button>
     </div>
 
-    <div class="sidebar-section">
+    <div class="sidebar-section" id="sidebar-entry-section">
       <span class="sidebar-section__label">Data Entry</span>
       <button class="sidebar-nav-item" data-nav="entry">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="5" x2="8" y2="11"/><line x1="5" y1="8" x2="11" y2="8"/></svg>
@@ -199,7 +199,7 @@
       </button>
     </div>
 
-    <div class="sidebar-section">
+    <div class="sidebar-section" id="sidebar-people-section">
       <span class="sidebar-section__label">People</span>
       <a class="sidebar-nav-item" href="new-people.html">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="3"/><path d="M1 13c0-2.8 2.2-5 5-5h0c2.8 0 5 2.2 5 5"/><line x1="12" y1="5" x2="15" y2="5"/><line x1="13.5" y1="3.5" x2="13.5" y2="6.5"/></svg>
@@ -724,6 +724,20 @@
     const df = document.getElementById('snap-date-from');
     const dt = document.getElementById('snap-date-to');
     if (df) { df.value = ''; dt.value = ''; }
+
+    const isAll = id === 'all';
+    document.getElementById('sidebar-entry-section').style.display  = isAll ? 'none' : '';
+    document.getElementById('sidebar-people-section').style.display = isAll ? 'none' : '';
+
+    // If currently on a campus-only section, switch to snapshot
+    const activeNav = document.querySelector('.sidebar-nav-item[data-nav].active');
+    if (isAll && activeNav && ['entry', 'setup'].includes(activeNav.dataset.nav)) {
+      document.querySelectorAll('.sidebar-nav-item[data-nav]').forEach(b => b.classList.remove('active'));
+      document.querySelector('[data-nav="snapshot"]').classList.add('active');
+      document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
+      document.getElementById('section-snapshot').classList.remove('hidden');
+    }
+
     renderCampusSwitcher();
     if (!document.getElementById('section-snapshot').classList.contains('hidden')) {
       loadSnapshot();
