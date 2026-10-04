@@ -63,16 +63,6 @@
     }
     .leader-setup-row:last-child { border-bottom: none; }
 
-    .roster-setup-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: var(--s-2) var(--s-4);
-      border-bottom: 1px solid var(--c-border);
-      gap: var(--s-3);
-      font-size: var(--text-sm);
-    }
-    .roster-setup-row:last-child { border-bottom: none; }
 
     .qr-box {
       background: var(--c-surface);
@@ -531,11 +521,6 @@
         </div>
         <div class="card card--flush mb-4" id="leaders-list"></div>
 
-        <!-- Rosters (per leader) -->
-        <div class="mt-6" id="roster-section">
-          <h3 class="mb-4">Youth rosters</h3>
-          <div id="roster-accordion"></div>
-        </div>
 
       </div>
     </section>
@@ -616,48 +601,6 @@
   </div>
 
   <!-- ── Add Youth Modal ───────────────────────────────────────────────── -->
-  <div class="modal-backdrop" id="add-youth-modal">
-    <div class="modal">
-      <div class="modal__header">
-        <h3 id="ay-title">Add youth</h3>
-        <button class="modal__close" onclick="closeAddYouthModal()">✕</button>
-      </div>
-      <div class="modal__body">
-        <div class="stack">
-          <div class="form-group">
-            <label>Name <span class="required">*</span></label>
-            <input id="ay-name" type="text" class="input">
-          </div>
-          <div class="form-grid form-grid--2">
-            <div class="form-group">
-              <label>Year level</label>
-              <select id="ay-year" class="select">
-                <option value="">Select…</option>
-                <option>Year 7</option><option>Year 8</option><option>Year 9</option>
-                <option>Year 10</option><option>Year 11</option><option>Year 12</option>
-                <option>Other / Left school</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Gender</label>
-              <select id="ay-gender" class="select">
-                <option value="">Select…</option>
-                <option>Male</option><option>Female</option><option>Prefer not to say</option>
-              </select>
-            </div>
-            <div class="form-group" style="grid-column:1/-1">
-              <label>Leader</label>
-              <select id="ay-leader" class="select"></select>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="modal__footer">
-        <button class="btn btn--ghost" onclick="closeAddYouthModal()">Cancel</button>
-        <button class="btn btn--primary" id="ay-save-btn" onclick="submitAddYouth()">Add</button>
-      </div>
-    </div>
-  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.50.0/dist/umd/supabase.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
@@ -668,7 +611,7 @@
 
   let identity, leaders = [], roster = [], weeklyStats = [], termReview = null;
   let archivedCount = 0, snapNP = [];
-  let addYouthLeaderId = null;
+
   let allCampuses = [];
   let snapCampusId = null;
   let snapPeriod   = 'year';
@@ -1449,16 +1392,10 @@
       .select('youth_night_dow').eq('id', identity.campus_id).single();
     if (campus) document.getElementById('campus-dow-select').value = campus.youth_night_dow ?? 5;
 
-    const [lRes, rRes] = await Promise.all([
-      db.from('leaders').select('id, name, role, year_level, gender, active').eq('campus_id', identity.campus_id).order('name'),
-      db.from('youth_roster').select('id, name, leader_id, year_level, gender, category, active').eq('campus_id', identity.campus_id).order('name'),
-    ]);
+    const lRes = await db.from('leaders').select('id, name, role, year_level, gender, active').eq('campus_id', identity.campus_id).order('name');
     leaders = lRes.data ?? [];
-    roster  = rRes.data ?? [];
 
     renderLeadersList();
-    renderRosterAccordion();
-    populateAddYouthLeaderDropdown();
   }
 
   function renderLeadersList() {
@@ -1483,46 +1420,6 @@
     }).join('') || '<div class="leader-setup-row text-muted">No leaders yet</div>';
   }
 
-  function renderRosterAccordion() {
-    const el = document.getElementById('roster-accordion');
-    el.innerHTML = '';
-    const activeLeaders = leaders.filter(l => l.role === 'leader' && l.active);
-    activeLeaders.forEach(l => {
-      const youth = roster.filter(y => y.leader_id === l.id && y.active);
-      const block = document.createElement('div');
-      block.className = 'card card--flush mb-4';
-      block.innerHTML = `
-        <div style="padding:var(--s-4) var(--s-5);display:flex;align-items:center;justify-content:space-between;gap:var(--s-3)">
-          <div class="fw-semibold">${escHtml(l.name)} <span class="text-muted text-sm">(${youth.length} youth)</span></div>
-          <button class="btn btn--secondary btn--sm" onclick="openAddYouthModal('${l.id}','${escHtml(l.name)}')">+ Add youth</button>
-        </div>
-        ${youth.length ? youth.map(y => `
-          <div class="roster-setup-row">
-            <span>${escHtml(y.name)}</span>
-            <div style="display:flex;align-items:center;gap:var(--s-3)">
-              <span class="badge badge--${y.category}">${capitalize(y.category)}</span>
-              <span class="text-xs text-muted">${escHtml(y.year_level||'')} ${escHtml(y.gender||'')}</span>
-              <button class="btn btn--ghost btn--sm" onclick="removeYouth('${y.id}','${escHtml(y.name)}')">Remove</button>
-            </div>
-          </div>
-        `).join('') : '<div class="roster-setup-row text-muted">No youth on this roster</div>'}
-      `;
-      el.appendChild(block);
-    });
-    if (!activeLeaders.length) {
-      el.innerHTML = '<div class="empty-state"><div class="empty-state__icon">👥</div><p>Add leaders first to build rosters.</p></div>';
-    }
-  }
-
-  function populateAddYouthLeaderDropdown() {
-    const sel = document.getElementById('ay-leader');
-    sel.innerHTML = '';
-    leaders.filter(l => l.role === 'leader' && l.active).forEach(l => {
-      const o = document.createElement('option');
-      o.value = l.id; o.textContent = l.name;
-      sel.appendChild(o);
-    });
-  }
 
   // Add leader
   function openAddLeaderModal() { document.getElementById('add-leader-modal').classList.add('open'); }
@@ -1573,8 +1470,6 @@
     closeAddLeaderModal();
     document.getElementById('al-name').value = '';
     renderLeadersList();
-    renderRosterAccordion();
-    populateAddYouthLeaderDropdown();
   }
 
   async function deactivateLeader(id, name) {
@@ -1583,50 +1478,8 @@
     const l = leaders.find(x => x.id === id);
     if (l) l.active = false;
     renderLeadersList();
-    renderRosterAccordion();
-    populateAddYouthLeaderDropdown();
   }
 
-  // Add youth
-  function openAddYouthModal(leaderId, leaderName) {
-    addYouthLeaderId = leaderId;
-    document.getElementById('ay-title').textContent = `Add youth to ${leaderName}'s roster`;
-    document.getElementById('ay-name').value   = '';
-    document.getElementById('ay-year').value   = '';
-    document.getElementById('ay-gender').value = '';
-    document.getElementById('ay-leader').value = leaderId;
-    document.getElementById('add-youth-modal').classList.add('open');
-  }
-  function closeAddYouthModal() { document.getElementById('add-youth-modal').classList.remove('open'); }
-
-  async function submitAddYouth() {
-    const name = document.getElementById('ay-name').value.trim();
-    if (!name) { alert('Name required.'); return; }
-    const btn = document.getElementById('ay-save-btn');
-    const leaderId = document.getElementById('ay-leader').value || addYouthLeaderId;
-    setLoading(btn, true);
-    const { data, error } = await db.from('youth_roster').insert({
-      campus_id:  identity.campus_id,
-      leader_id:  leaderId,
-      name,
-      year_level: document.getElementById('ay-year').value || null,
-      gender:     document.getElementById('ay-gender').value || null,
-      category:   'community',
-    }).select().single();
-    setLoading(btn, false);
-    if (error) { alert('Could not add.'); return; }
-    roster.push(data);
-    closeAddYouthModal();
-    renderRosterAccordion();
-  }
-
-  async function removeYouth(id, name) {
-    if (!confirm(`Remove ${name} from the roster? Their record is kept but marked inactive.`)) return;
-    await db.from('youth_roster').update({ active: false }).eq('id', id);
-    const y = roster.find(x => x.id === id);
-    if (y) y.active = false;
-    renderRosterAccordion();
-  }
 
   // ── QR Code ────────────────────────────────────────────────────────────────
   function generateQR() {

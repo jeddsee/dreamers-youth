@@ -196,7 +196,41 @@
 
       <hr class="section-rule">
 
-      <!-- ══ SECTION 2: REVIEW ════════════════════════════════════════════════ -->
+      <!-- ══ SECTION 2: YOUTH ROSTER ═══════════════════════════════════════════ -->
+      <h2 style="font-size:var(--text-2xl);font-weight:800;letter-spacing:-0.02em;margin-bottom:var(--s-5)">Youth Roster</h2>
+
+      <div style="display:flex;flex-wrap:wrap;gap:var(--s-5);align-items:flex-start;margin-bottom:var(--s-5)">
+        <div class="form-group" style="flex:1;min-width:200px;max-width:300px;margin:0">
+          <label style="font-size:var(--text-xs);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--c-text-muted);display:block;margin-bottom:var(--s-2)">Search leader</label>
+          <input type="text" id="roster-search" class="input" placeholder="Leader name…" oninput="renderRoster()">
+        </div>
+        <div>
+          <div class="pill-row" id="roster-year-pills">
+            <span class="pill-row-label">Year Level</span>
+            <button class="pill active" onclick="setRosterFilter('year','all',this)">All</button>
+            <button class="pill" onclick="setRosterFilter('year','Year 7',this)">7</button>
+            <button class="pill" onclick="setRosterFilter('year','Year 8',this)">8</button>
+            <button class="pill" onclick="setRosterFilter('year','Year 9',this)">9</button>
+            <button class="pill" onclick="setRosterFilter('year','Year 10',this)">10</button>
+            <button class="pill" onclick="setRosterFilter('year','Year 11',this)">11</button>
+            <button class="pill" onclick="setRosterFilter('year','Year 12',this)">12</button>
+          </div>
+          <div class="pill-row" id="roster-gender-pills">
+            <span class="pill-row-label">Gender</span>
+            <button class="pill active" onclick="setRosterFilter('gender','all',this)">All</button>
+            <button class="pill" onclick="setRosterFilter('gender','Male',this)">Male</button>
+            <button class="pill" onclick="setRosterFilter('gender','Female',this)">Female</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="roster-results">
+        <div style="padding:var(--s-6);text-align:center;color:var(--c-text-muted);font-size:var(--text-sm)">Search for a leader or choose a year level / gender to view youth.</div>
+      </div>
+
+      <hr class="section-rule">
+
+      <!-- ══ SECTION 3: REVIEW ════════════════════════════════════════════════ -->
       <h2 style="font-size:var(--text-2xl);font-weight:800;letter-spacing:-0.02em;margin-bottom:var(--s-5)">Leader Review</h2>
 
       <div class="card mb-5">
@@ -287,6 +321,7 @@ const { db } = DY;
 
 let identity, allLeaders = [], allYouth = [];
 let genderFilter = 'all', yearFilter = 'all';
+let rosterYearFilter = 'all', rosterGenderFilter = 'all';
 
 function escHtml(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -408,6 +443,74 @@ function renderTeamTable() {
       <td style="font-size:var(--text-xs);color:var(--c-text-muted);white-space:normal;line-height:1.6">${yearSummary}</td>
     </tr>`;
   }).join('');
+}
+
+// ── Youth Roster ──────────────────────────────────────────────────────────────
+function setRosterFilter(type, value, btn) {
+  if (type === 'year') {
+    rosterYearFilter = value;
+    document.querySelectorAll('#roster-year-pills .pill').forEach(b => b.classList.remove('active'));
+  } else {
+    rosterGenderFilter = value;
+    document.querySelectorAll('#roster-gender-pills .pill').forEach(b => b.classList.remove('active'));
+  }
+  btn.classList.add('active');
+  renderRoster();
+}
+
+function renderRoster() {
+  const search = (document.getElementById('roster-search')?.value ?? '').trim().toLowerCase();
+  const el     = document.getElementById('roster-results');
+  const hasFilter = search || rosterYearFilter !== 'all' || rosterGenderFilter !== 'all';
+
+  if (!hasFilter) {
+    el.innerHTML = '<div style="padding:var(--s-6);text-align:center;color:var(--c-text-muted);font-size:var(--text-sm)">Search for a leader or choose a year level / gender to view youth.</div>';
+    return;
+  }
+
+  const allRoleLeaders = allLeaders.filter(l => l.role === 'leader');
+  const matchedLeaders = search
+    ? allRoleLeaders.filter(l => l.name.toLowerCase().includes(search))
+    : allRoleLeaders;
+  const matchedIds = new Set(matchedLeaders.map(l => l.id));
+
+  let youth = allYouth.filter(y => y.active && matchedIds.has(y.leader_id));
+  if (rosterYearFilter   !== 'all') youth = youth.filter(y => y.year_level === rosterYearFilter);
+  if (rosterGenderFilter !== 'all') youth = youth.filter(y => y.gender === rosterGenderFilter);
+
+  if (!youth.length) {
+    el.innerHTML = '<div style="padding:var(--s-6);text-align:center;color:var(--c-text-muted);font-size:var(--text-sm)">No youth match these filters.</div>';
+    return;
+  }
+
+  const leaderName = id => allLeaders.find(l => l.id === id)?.name ?? 'Unassigned';
+  const catBadge   = { contributor: 'badge--contributor', connected: 'badge--connected', community: 'badge--community' };
+
+  const groups = {};
+  youth.forEach(y => {
+    const ln = leaderName(y.leader_id);
+    if (!groups[ln]) groups[ln] = [];
+    groups[ln].push(y);
+  });
+
+  el.innerHTML = Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0])).map(([ln, ys]) => `
+    <div class="card card--flush mb-4">
+      <div style="padding:var(--s-3) var(--s-5);border-bottom:1px solid var(--c-border);font-weight:600;font-size:var(--text-sm)">
+        ${escHtml(ln)} <span class="text-muted" style="font-weight:400">(${ys.length})</span>
+      </div>
+      <table class="leaders-table" style="min-width:0">
+        <thead><tr><th>Name</th><th>Year</th><th>Gender</th><th>Category</th></tr></thead>
+        <tbody>${ys.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')).map(y => `
+          <tr>
+            <td class="fw-medium">${escHtml(y.name ?? '—')}</td>
+            <td>${escHtml(y.year_level || '—')}</td>
+            <td>${escHtml(y.gender || '—')}</td>
+            <td>${y.category ? `<span class="badge ${catBadge[y.category] ?? 'badge--neutral'}">${y.category}</span>` : '—'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  `).join('');
 }
 
 // ── Review ─────────────────────────────────────────────────────────────────────
