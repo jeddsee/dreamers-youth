@@ -1196,7 +1196,6 @@
     // New People — counts from actual new_people records
     const npCount = s => snapNP.filter(n => n.status === s).length;
     const v1 = npCount('visit_1'), v2 = npCount('visit_2'), v3 = npCount('visit_3');
-    const ready = npCount('ready_to_activate');
     const retention = v1 > 0 ? Math.round((v2 + v3) / (v1 * 2) * 100) : 0;
 
     // Total new people added in the selected period
@@ -1218,7 +1217,6 @@
       { label: 'Visit 1',        value: v1,              cls: 'stat-card--red' },
       { label: 'Visit 2',        value: v2,              cls: 'stat-card--red' },
       { label: 'Visit 3',        value: v3,              cls: 'stat-card--red' },
-      { label: 'Ready',          value: ready,           cls: 'stat-card--red' },
       { label: 'Total This Period', value: npInPeriod,   cls: 'stat-card--fill-red' },
       { label: 'Retention Rate', value: `${retention}%`, cls: 'stat-card--fill-red' },
     ].map(c => `<div class="stat-card ${c.cls}"><div class="stat-card__label">${c.label}</div><div class="stat-card__value">${c.value}</div></div>`).join('');

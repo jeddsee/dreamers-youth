@@ -288,6 +288,18 @@ const { db } = DY;
 let identity, allLeaders = [], allYouth = [];
 let genderFilter = 'all', yearFilter = 'all';
 
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function showError(msg, id) {
+  const el = document.getElementById(id);
+  if (el) { el.textContent = msg; el.classList.remove('hidden'); }
+}
+function hideError(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.add('hidden');
+}
+
 // Australian school term approximate dates (month is 0-indexed)
 const TERM_DATES = {
   1: { from: [0, 27], to: [3, 11] },
@@ -348,15 +360,26 @@ function renderTeamTable() {
     return;
   }
 
-  tbody.innerHTML = leaders.map(l => {
+  const filtersActive = genderFilter !== 'all' || yearFilter !== 'all';
+
+  const rows = leaders.map(l => {
     const youth = allYouth.filter(y => y.leader_id === l.id && y.active);
 
-    // Apply filters to get the display subset
     const filtered = youth.filter(y => {
       if (genderFilter !== 'all' && y.gender !== genderFilter) return false;
       if (yearFilter   !== 'all' && y.year_level !== yearFilter) return false;
       return true;
     });
+
+    return { l, youth, filtered };
+  }).filter(({ filtered }) => !filtersActive || filtered.length > 0);
+
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--c-text-muted);padding:var(--s-6)">No leaders match this filter.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(({ l, youth, filtered }) => {
 
     const males   = filtered.filter(y => y.gender === 'Male').length;
     const females = filtered.filter(y => y.gender === 'Female').length;
