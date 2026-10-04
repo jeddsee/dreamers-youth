@@ -935,6 +935,23 @@ h4 { font-size: var(--text-base); font-weight: 600; }
 }
 .snap-period-pill:hover:not(.active) { background: var(--c-bg); color: var(--c-text); }
 .snap-period-pill.active { background: #111; color: #fff; border-color: #111; }
+.snap-period-divider {
+  font-size: var(--text-xs);
+  color: var(--c-text-muted);
+  margin: 0 var(--s-1);
+  flex-shrink: 0;
+}
+.snap-date-input {
+  font-family: inherit;
+  font-size: var(--text-xs);
+  padding: 3px var(--s-2);
+  border: 1px solid var(--c-border-dark);
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+  color: var(--c-text);
+  cursor: pointer;
+}
+.snap-date-input:focus { outline: none; border-color: #111; }
 
 .snap-header {
   display: flex;

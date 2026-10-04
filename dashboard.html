@@ -287,11 +287,14 @@
         <!-- Period filter -->
         <div class="snap-period-bar">
           <span class="snap-period-label">Period</span>
-          <button class="snap-period-pill active" onclick="setSnapPeriod('all',this)">All</button>
-          <button class="snap-period-pill" onclick="setSnapPeriod('term',this)">This Term</button>
-          <button class="snap-period-pill" onclick="setSnapPeriod('12',this)">12 weeks</button>
-          <button class="snap-period-pill" onclick="setSnapPeriod('8',this)">8 weeks</button>
-          <button class="snap-period-pill" onclick="setSnapPeriod('4',this)">4 weeks</button>
+          <button class="snap-period-pill" data-period="t1" onclick="setSnapPeriod('t1',this)">Term 1</button>
+          <button class="snap-period-pill" data-period="t2" onclick="setSnapPeriod('t2',this)">Term 2</button>
+          <button class="snap-period-pill" data-period="t3" onclick="setSnapPeriod('t3',this)">Term 3</button>
+          <button class="snap-period-pill" data-period="t4" onclick="setSnapPeriod('t4',this)">Term 4</button>
+          <span class="snap-period-divider">or</span>
+          <input type="date" id="snap-date-from" class="snap-date-input" onchange="applyCustomDates()">
+          <span class="snap-period-label">to</span>
+          <input type="date" id="snap-date-to" class="snap-date-input" onchange="applyCustomDates()">
         </div>
 
         <!-- Submission status -->
@@ -481,7 +484,9 @@
   let addYouthLeaderId = null;
   let allCampuses = [];
   let snapCampusId = null;
-  let snapPeriod = 'all';
+  let snapPeriod   = termFromDate(new Date()).split(' ')[0].toLowerCase(); // 't1'–'t4'
+  let snapDateFrom = null;
+  let snapDateTo   = null;
   let lifeChart = null;
 
   // ── Init ───────────────────────────────────────────────────────────────────
@@ -521,8 +526,12 @@
 
   function selectCampus(id) {
     snapCampusId = id;
-    snapPeriod = 'all';
-    document.querySelectorAll('.snap-period-pill').forEach((b, i) => b.classList.toggle('active', i === 0));
+    snapPeriod   = termFromDate(new Date()).split(' ')[0].toLowerCase();
+    snapDateFrom = null;
+    snapDateTo   = null;
+    const df = document.getElementById('snap-date-from');
+    const dt = document.getElementById('snap-date-to');
+    if (df) { df.value = ''; dt.value = ''; }
     renderCampusSwitcher();
     if (!document.getElementById('section-snapshot').classList.contains('hidden')) {
       loadSnapshot();
@@ -749,22 +758,45 @@
 
   function getFilteredStats() {
     const active = weeklyStats.filter(w => !w.no_youth_night);
-    if (snapPeriod === 'all') return active;
-    if (snapPeriod === 'term') {
-      const t = termFromDate(new Date());
-      return active.filter(w => termFromDate(new Date(w.entry_date)) === t);
+    if (snapPeriod === 'custom' && snapDateFrom && snapDateTo) {
+      return active.filter(w => w.entry_date >= snapDateFrom && w.entry_date <= snapDateTo);
     }
-    return active.slice(0, parseInt(snapPeriod, 10));
+    if (['t1','t2','t3','t4'].includes(snapPeriod)) {
+      const label = snapPeriod.toUpperCase(); // 'T1'…'T4'
+      return active.filter(w => w.term && w.term.startsWith(label + ' '));
+    }
+    return active;
   }
 
   function setSnapPeriod(period, btn) {
-    snapPeriod = period;
+    snapPeriod   = period;
+    snapDateFrom = null;
+    snapDateTo   = null;
+    const df = document.getElementById('snap-date-from');
+    const dt = document.getElementById('snap-date-to');
+    if (df) { df.value = ''; dt.value = ''; }
     document.querySelectorAll('.snap-period-pill').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     renderSnapshotStats();
   }
 
+  function applyCustomDates() {
+    const from = document.getElementById('snap-date-from').value;
+    const to   = document.getElementById('snap-date-to').value;
+    if (!from || !to) return;
+    snapPeriod   = 'custom';
+    snapDateFrom = from;
+    snapDateTo   = to;
+    document.querySelectorAll('.snap-period-pill').forEach(b => b.classList.remove('active'));
+    renderSnapshotStats();
+  }
+
   function renderSnapshotStats() {
+    // Sync pill active state (handles initial render without explicit pill click)
+    document.querySelectorAll('.snap-period-pill').forEach(b =>
+      b.classList.toggle('active', b.dataset.period === snapPeriod)
+    );
+
     const isAll = snapCampusId === 'all';
     const filteredStats = getFilteredStats();
     const year = new Date().getFullYear();
