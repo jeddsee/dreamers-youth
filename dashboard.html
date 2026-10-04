@@ -1170,7 +1170,6 @@
     const retention = v1 > 0 ? Math.round((v2 + v3) / (v1 * 2) * 100) : 0;
 
     // Total new people added in the selected period
-    const year = new Date().getFullYear();
     const npInPeriod = snapNP.filter(n => {
       const d = new Date(n.created_at);
       if (snapPeriod === 'custom' && snapDateFrom && snapDateTo) {
