@@ -32,11 +32,18 @@
       margin-bottom: var(--s-8);
     }
     .login-logo img {
-      width: 130px;
+      width: 180px;
       height: auto;
       display: block;
-      margin: 0 auto;
+      margin: 0 auto var(--s-5);
       mix-blend-mode: screen;
+    }
+    .login-logo__title {
+      font-size: var(--text-base);
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.01em;
+      line-height: 1.3;
     }
 
     /* White text inside card */
@@ -120,6 +127,7 @@
     <div class="login-card">
       <div class="login-logo">
         <img src="dy-logo-white.png" alt="Dreamers Youth">
+        <div class="login-logo__title">Dreamers Youth Pastoral Management System</div>
       </div>
 
       <div id="error-banner" class="error-banner hidden" style="margin-bottom:var(--s-4)"></div>
