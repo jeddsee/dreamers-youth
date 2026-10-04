@@ -384,15 +384,6 @@
           <input type="date" id="snap-date-to" class="snap-date-input" onchange="applyCustomDates()">
         </div>
 
-        <!-- Submission status -->
-        <div class="snap-submission-card">
-          <div class="snap-submission-head">
-            <span class="fw-semibold">Submission status — this week</span>
-            <span id="snap-sub-summary" class="text-sm text-muted">—</span>
-          </div>
-          <div class="snap-submission-body" id="snap-submission-leaders"></div>
-        </div>
-
         <!-- Attendance -->
         <span class="section-badge section-badge--dark">Attendance</span>
         <div class="stat-hero mb-5">
@@ -428,6 +419,15 @@
           <h3>Life metrics by week</h3>
           <p id="snap-chart-empty" class="text-sm text-muted hidden">No weekly data to display yet.</p>
           <canvas id="life-metrics-chart"></canvas>
+        </div>
+
+        <!-- Submission status -->
+        <div class="snap-submission-card">
+          <div class="snap-submission-head">
+            <span class="fw-semibold">Submission status — this week</span>
+            <span id="snap-sub-summary" class="text-sm text-muted">—</span>
+          </div>
+          <div class="snap-submission-body" id="snap-submission-leaders"></div>
         </div>
 
       </div>
@@ -1048,10 +1048,20 @@
       : (allCampuses.find(c => c.id === snapCampusId)?.name ?? identity.campus_name);
     document.getElementById('snap-campus-title').textContent = campusLabel;
 
+    // Campuses with no youth night for the most recent date
+    const noNightCampuses = new Set(
+      weeklyStats
+        .filter(w => w.entry_date === mostRecentDate && w.no_youth_night)
+        .map(w => w.campus_id)
+    );
+
     // Submission status
     const leaderOnly = leaders.filter(l => l.role === 'leader');
+
+    // Only check submission for leaders in campuses that had a youth night
+    const activeLeaders = leaderOnly.filter(l => !noNightCampuses.has(l.campus_id));
     const entryRes = await Promise.all(
-      leaderOnly.map(l =>
+      activeLeaders.map(l =>
         db.from('leader_entries').select('entry_date')
           .eq('leader_id', l.id).eq('entry_date', mostRecentDate).maybeSingle()
       )
@@ -1065,9 +1075,14 @@
       const msg = isAll ? 'No leaders set up' : `${campusLabel} / No leaders set up`;
       subBody.innerHTML = `<div class="snap-leader-chip" style="color:var(--c-text-muted)">${escHtml(msg)}</div>`;
       subSummary.textContent = 'No leaders';
+    } else if (!isAll && noNightCampuses.has(snapCampusId)) {
+      subBody.innerHTML = `<div class="snap-leader-chip" style="color:var(--c-text-muted)">No youth night this week — submissions not required</div>`;
+      subSummary.textContent = 'No youth night';
     } else {
       const submittedCount = entryRes.filter(r => !!r?.data).length;
-      subSummary.textContent = `${submittedCount} / ${leaderOnly.length} submitted`;
+      subSummary.textContent = activeLeaders.length
+        ? `${submittedCount} / ${activeLeaders.length} submitted`
+        : 'No youth night';
 
       if (isAll) {
         // Group chips by campus
@@ -1079,19 +1094,27 @@
           group.innerHTML = `<div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:var(--c-text-muted);margin-bottom:var(--s-2)">${escHtml(campus.name)}</div>`;
           const row = document.createElement('div');
           row.style.cssText = 'display:flex;flex-wrap:wrap;gap:var(--s-2);margin-bottom:var(--s-3)';
-          campusLeaders.forEach(l => {
-            const idx = leaderOnly.indexOf(l);
-            const done = !!entryRes[idx]?.data;
+
+          if (noNightCampuses.has(campus.id)) {
             const chip = document.createElement('div');
             chip.className = 'snap-leader-chip';
-            chip.innerHTML = `<span class="fw-medium">${escHtml(l.name)}</span><span class="badge badge--${done ? 'success' : 'danger'}">${done ? 'Submitted' : 'Missing'}</span>`;
+            chip.innerHTML = `<span style="color:var(--c-text-muted);font-size:var(--text-xs)">No youth night this week</span>`;
             row.appendChild(chip);
-          });
+          } else {
+            campusLeaders.forEach(l => {
+              const idx = activeLeaders.indexOf(l);
+              const done = idx !== -1 && !!entryRes[idx]?.data;
+              const chip = document.createElement('div');
+              chip.className = 'snap-leader-chip';
+              chip.innerHTML = `<span class="fw-medium">${escHtml(l.name)}</span><span class="badge badge--${done ? 'success' : 'danger'}">${done ? 'Submitted' : 'Missing'}</span>`;
+              row.appendChild(chip);
+            });
+          }
           group.appendChild(row);
           subBody.appendChild(group);
         });
       } else {
-        leaderOnly.forEach((l, i) => {
+        activeLeaders.forEach((l, i) => {
           const done = !!entryRes[i]?.data;
           const chip = document.createElement('div');
           chip.className = 'snap-leader-chip';
