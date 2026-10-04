@@ -1,0 +1,829 @@
+<title>Weekly Data</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap">
+
+<style>
+/* Layout: 4 stacked term cards, each with a horizontally-scrollable table and sticky label column */
+:root {
+  --blue: #1500E8;
+  --blue-dim: rgba(21, 0, 232, 0.07);
+  --bg: #F2F2F6;
+  --surface: #FFFFFF;
+  --border: #E2E2EA;
+  --border-strong: #C8C8D8;
+  --text: #111118;
+  --text-muted: #65657A;
+  --text-faint: #ABABC0;
+  --alt-row: #F8F8FB;
+  --section-bg: #EDEDF4;
+  --section-text: #8888A0;
+  --total-bg: #F4F4FA;
+  --sticky-shadow: rgba(0,0,20,0.06);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0C0C12;
+    --surface: #141420;
+    --border: #252535;
+    --border-strong: #38384E;
+    --text: #EEEEF8;
+    --text-muted: #8888A8;
+    --text-faint: #55556A;
+    --alt-row: #111120;
+    --section-bg: #1A1A28;
+    --section-text: #6868A0;
+    --total-bg: #161626;
+    --sticky-shadow: rgba(0,0,0,0.3);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0C0C12;
+  --surface: #141420;
+  --border: #252535;
+  --border-strong: #38384E;
+  --text: #EEEEF8;
+  --text-muted: #8888A8;
+  --text-faint: #55556A;
+  --alt-row: #111120;
+  --section-bg: #1A1A28;
+  --section-text: #6868A0;
+  --total-bg: #161626;
+  --sticky-shadow: rgba(0,0,0,0.3);
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.4;
+  min-height: 100%;
+}
+
+.page {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 28px 20px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+.page-title {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--text);
+}
+.year-pill {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.01em;
+}
+
+/* Term blocks */
+.term-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+.term-block:last-child { margin-bottom: 0; }
+
+.term-header {
+  background: #1500E8;
+  color: #fff;
+  height: 46px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  user-select: none;
+}
+.term-name {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  flex: 1;
+}
+.term-meta {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.6;
+  margin-right: 6px;
+}
+.week-controls {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.wk-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.35);
+  background: transparent;
+  color: #fff;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, border-color 0.12s;
+  padding: 0;
+  padding-bottom: 1px;
+}
+.wk-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.18);
+  border-color: rgba(255,255,255,0.7);
+}
+.wk-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+.wk-count {
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0.85;
+  min-width: 54px;
+  text-align: center;
+}
+
+/* Table */
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+table {
+  border-collapse: collapse;
+  width: max-content;
+  min-width: 100%;
+}
+
+/* Sticky label column shadow */
+.td-label, thead th.th-label {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+}
+.td-label::after, thead th.th-label::after {
+  content: '';
+  position: absolute;
+  top: 0; right: -5px; bottom: 0;
+  width: 5px;
+  background: linear-gradient(to right, var(--sticky-shadow), transparent);
+  pointer-events: none;
+}
+
+/* Column widths */
+.col-label { width: 210px; }
+.col-goal  { width: 76px; }
+.col-week  { width: 76px; }
+.col-total { width: 72px; }
+.col-prev  { width: 82px; }
+.col-grow  { width: 92px; }
+
+/* Header row */
+thead tr { border-bottom: 1.5px solid var(--border); }
+
+thead th {
+  padding: 9px 10px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: right;
+  white-space: nowrap;
+  vertical-align: bottom;
+  background: var(--surface);
+  letter-spacing: 0.01em;
+}
+thead th.th-label {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--surface);
+  padding-left: 16px;
+  z-index: 3;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+thead th.th-goal {
+  text-align: center;
+  font-size: 11px;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--text-faint);
+}
+thead th.th-week {
+  cursor: pointer;
+  vertical-align: bottom;
+  padding-bottom: 6px;
+}
+thead th.th-week:hover .wk-num { color: #1500E8; }
+.wk-num {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.01em;
+}
+.wk-sub {
+  display: block;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-top: 2px;
+}
+thead th.th-week.no-night .wk-num { color: var(--text-faint); }
+thead th.th-week.no-night .wk-sub { color: #D97706; }
+
+thead th.th-total { background: var(--total-bg); font-weight: 700; color: var(--text); }
+thead th.th-prev  { background: var(--total-bg); }
+thead th.th-grow  { background: var(--total-bg); }
+
+/* Section header rows */
+tr.section-row td {
+  background: var(--section-bg);
+  padding: 7px 10px 6px 16px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--section-text);
+  text-transform: uppercase;
+  border-top: 1px solid var(--border);
+}
+
+/* Data rows */
+tr.data-row { border-bottom: 1px solid var(--border); }
+tr.data-row:last-child { border-bottom: none; }
+
+tr.data-row td {
+  height: 36px;
+  vertical-align: middle;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Label cell */
+.td-label {
+  background: var(--surface);
+  padding: 0 14px 0 16px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text);
+  white-space: nowrap;
+  position: relative;
+}
+tr.row-alt .td-label { background: var(--alt-row); }
+
+/* Goal cell */
+.td-goal {
+  text-align: center;
+  padding: 0 6px;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text-faint);
+  cursor: pointer;
+  background: var(--surface);
+  position: relative;
+}
+tr.row-alt .td-goal { background: var(--alt-row); }
+.td-goal.has-value { color: var(--text-muted); }
+.td-goal.no-goal { cursor: default; color: var(--text-faint); }
+.td-goal:not(.no-goal):hover { background: var(--blue-dim) !important; }
+
+/* Week cells */
+.td-week {
+  text-align: right;
+  padding: 0;
+  background: var(--surface);
+  position: relative;
+}
+tr.row-alt .td-week { background: var(--alt-row); }
+.td-week.is-computed { cursor: default; }
+.td-week.no-night { background: var(--section-bg) !important; }
+.td-week:not(.is-computed):not(.no-night):hover { background: var(--blue-dim) !important; cursor: pointer; }
+
+.td-week .cell-val {
+  display: block;
+  text-align: right;
+  padding: 0 10px;
+  height: 36px;
+  line-height: 36px;
+  font-size: 13px;
+  color: var(--text);
+  white-space: nowrap;
+}
+.td-week .cell-val.empty { color: var(--text-faint); }
+.td-week .cell-val.dash  { color: var(--text-faint); text-align: right; }
+.td-week.no-night .cell-val { color: var(--text-faint); text-align: center; }
+
+/* Totals cols */
+.td-total, .td-prev, .td-grow {
+  background: var(--total-bg);
+  text-align: right;
+  padding: 0 12px;
+  font-variant-numeric: tabular-nums;
+}
+.td-total {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+.td-total.dash { font-weight: 400; color: var(--text-faint); }
+.td-total.zero { color: var(--text-faint); font-weight: 400; }
+.td-prev { font-size: 13px; color: var(--text-faint); }
+.td-grow { font-size: 13px; color: var(--text-faint); }
+.td-grow.pos { color: #059669; font-weight: 600; }
+.td-grow.neg { color: #DC2626; font-weight: 600; }
+
+/* Inline edit input */
+.cell-input {
+  display: block;
+  width: 100%;
+  height: 36px;
+  border: none;
+  outline: none;
+  background: var(--blue-dim);
+  box-shadow: inset 0 0 0 1.5px #1500E8;
+  border-radius: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--text);
+  padding: 0 10px;
+}
+.cell-input.goal-input {
+  text-align: center;
+  font-style: italic;
+}
+/* hide number spinners */
+.cell-input::-webkit-outer-spin-button,
+.cell-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.cell-input[type=number] { -moz-appearance: textfield; }
+
+/* Export button */
+.export-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 16px 7px 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  transition: background 0.1s, border-color 0.1s;
+  letter-spacing: 0.01em;
+}
+.export-btn:hover { background: var(--alt-row); border-color: var(--border-strong); }
+.export-btn svg { flex-shrink: 0; }
+
+/* Print-only header */
+.print-header {
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 6mm;
+}
+.print-header-title { font-size: 15px; font-weight: 700; color: var(--text); }
+.print-header-sub { font-size: 10px; color: var(--text-muted); }
+
+/* ─── Print styles ─── */
+@media print {
+  @page { size: A4 landscape; margin: 10mm 10mm 10mm 10mm; }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body { font-size: 9px; background: #F2F2F6 !important; }
+
+  /* Show print header, hide screen controls */
+  .print-header { display: flex !important; }
+  .export-btn   { display: none !important; }
+  .week-controls { display: none !important; }
+  .wk-sub       { display: none !important; }
+  .year-pill    { display: none !important; }
+  .page-title   { display: none !important; }
+
+  .page { padding: 0 !important; max-width: none !important; }
+  .page-header { margin-bottom: 0 !important; }
+
+  /* Term blocks */
+  .term-block {
+    border-radius: 5px !important;
+    margin-bottom: 6mm !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    border: 1px solid #E2E2EA !important;
+    overflow: visible !important;
+  }
+
+  /* Term header */
+  .term-header {
+    height: 32px !important;
+    background: #1500E8 !important;
+    border-radius: 5px 5px 0 0 !important;
+  }
+  .term-name { font-size: 10px !important; letter-spacing: 0.09em !important; }
+  .term-meta { font-size: 9px !important; }
+
+  /* Table scroll → visible */
+  .table-wrap { overflow: visible !important; }
+  table { width: 100% !important; table-layout: fixed !important; }
+
+  /* Hide left label column */
+  thead th.th-label,
+  .td-label { display: none !important; }
+
+  /* Column widths for A4 landscape — label column excluded */
+  col.col-label { display: none !important; }
+  col.col-goal  { width: 56px !important; }
+  col.col-week  { width: 50px !important; }
+  col.col-total { width: 52px !important; }
+  col.col-prev  { width: 58px !important; }
+  col.col-grow  { width: 66px !important; }
+
+  /* Row heights */
+  tr.data-row td { height: 24px !important; }
+  tr.section-row td {
+    padding: 4px 8px 3px 12px !important;
+    font-size: 8px !important;
+    background: #EDEDF4 !important;
+  }
+
+  /* Header row */
+  thead th {
+    font-size: 9px !important;
+    padding: 6px 6px 5px !important;
+    background: #FFFFFF !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  thead th.th-label { padding-left: 12px !important; background: #FFFFFF !important; }
+  thead th.th-total, thead th.th-prev, thead th.th-grow { background: #F4F4FA !important; }
+  .wk-num { font-size: 9px !important; }
+
+  /* Label cells */
+  .td-label {
+    background: #FFFFFF !important;
+    padding: 0 8px 0 12px !important;
+    font-size: 9px !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  tr.row-alt .td-label { background: #F8F8FB !important; }
+
+  /* Goal cells */
+  .td-goal { font-size: 9px !important; background: #FFFFFF !important; }
+  tr.row-alt .td-goal { background: #F8F8FB !important; }
+
+  /* Week cells */
+  .td-week { background: #FFFFFF !important; }
+  tr.row-alt .td-week { background: #F8F8FB !important; }
+  .td-week.no-night { background: #EDEDF4 !important; }
+  .td-week .cell-val { font-size: 9px !important; height: 24px !important; line-height: 24px !important; padding: 0 6px !important; }
+
+  /* Totals */
+  .td-total, .td-prev, .td-grow {
+    background: #F4F4FA !important;
+    padding: 0 6px !important;
+    font-size: 9px !important;
+  }
+
+  /* Growth colours */
+  .td-grow.pos { color: #059669 !important; }
+  .td-grow.neg { color: #DC2626 !important; }
+}
+</style>
+
+<div class="page">
+  <div class="print-header">
+    <span class="print-header-title">Dreamers Youth — Weekly Data</span>
+    <span class="print-header-sub">2026 · All terms</span>
+  </div>
+  <div class="page-header">
+    <h1 class="page-title">Weekly data</h1>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span class="year-pill">2026</span>
+      <button class="export-btn" onclick="window.print()">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 1v8M4 6l3 3 3-3"/><path d="M2 10v1.5A1.5 1.5 0 003.5 13h7A1.5 1.5 0 0012 11.5V10"/>
+        </svg>
+        Export PDF
+      </button>
+    </div>
+  </div>
+  <div id="terms"></div>
+</div>
+
+<script>
+const SECTIONS = [
+  { key: 'attendance', label: 'ATTENDANCE', rows: [
+    { key: 'total_dept',    label: 'Total amount in department', goal: true,  type: 'sum' },
+    { key: 'youth_attend',  label: 'Youth attendance',       goal: false, type: 'sum' },
+    { key: 'total_leaders', label: 'Total leaders',          goal: true,  type: 'sum' },
+    { key: 'leader_ratio',  label: 'Leaders to youth ratio', goal: false, type: 'computed',
+      formula: (t) => { const l = sum(t,'total_leaders'), y = sum(t,'youth_attend'); return (l&&y) ? '1:'+(y/l).toFixed(1) : '—'; }
+    },
+  ]},
+  { key: 'new_people', label: 'NEW PEOPLE', rows: [
+    { key: 'np_1st',       label: '1st time NP',       goal: true,  type: 'sum' },
+    { key: 'np_2nd',       label: '2nd time NP',        goal: true,  type: 'sum' },
+    { key: 'np_3rd',       label: 'NP retained (3rd)', goal: true,  type: 'sum' },
+    { key: 'np_rate',      label: 'Retention rate',    goal: false, type: 'computed',
+      formula: (t) => { const f=sum(t,'np_1st'), r=sum(t,'np_3rd'); return f ? Math.round(r/f*100)+'%' : '—'; }
+    },
+  ]},
+  { key: 'life', label: 'LIVE METRICS', rows: [
+    { key: 'nc_1st',      label: '1st time NC',        goal: true,  type: 'sum' },
+    { key: 'rededs',      label: 'Rededication',       goal: true,  type: 'sum' },
+    { key: 'bibles',      label: 'Bibles',             goal: true,  type: 'sum' },
+    { key: 'fresh_start', label: 'Fresh Start course', goal: true,  type: 'sum' },
+    { key: 'devotions',   label: 'Devotions',          goal: false, type: 'sum' },
+    { key: 'water_bap',   label: 'Water baptisms',     goal: true,  type: 'sum' },
+    { key: 'hs_bap',      label: 'Baptised in HS',     goal: true,  type: 'sum' },
+  ]},
+  { key: 'connect', label: 'CONNECT & SUNDAY', rows: [
+    { key: 'connects',  label: 'Youth Connects',        goal: true, type: 'sum' },
+    { key: 'sunday_am', label: 'Sunday AM attendance',  goal: true, type: 'sum' },
+    { key: 'saints',    label: 'Saints',                goal: true, type: 'sum' },
+    { key: 'schools',   label: 'Schools',               goal: true, type: 'sum' },
+  ]},
+];
+
+const ALL_ROWS = SECTIONS.flatMap(s => s.rows);
+
+const state = Array.from({length:4}, (_,i) => ({
+  id: i+1, weeks: 10, noNight: new Set(), data: {}, goals: {}
+}));
+
+function ck(rowKey, w) { return rowKey+':'+w; }
+
+function sum(t, rowKey) {
+  let total = 0;
+  for (let w = 0; w < t.weeks; w++) {
+    if (t.noNight.has(w)) continue;
+    const v = t.data[ck(rowKey, w)];
+    if (typeof v === 'number') total += v;
+  }
+  return total;
+}
+
+function weeksWithData(t) {
+  const ws = new Set();
+  Object.keys(t.data).forEach(k => {
+    const [rk, w] = k.split(':');
+    const wi = +w;
+    if (!t.noNight.has(wi) && typeof t.data[k] === 'number') ws.add(wi);
+  });
+  return ws.size;
+}
+
+function renderAll() {
+  const root = document.getElementById('terms');
+  root.innerHTML = '';
+  state.forEach((t,ti) => root.appendChild(buildTerm(t,ti)));
+}
+
+function buildTerm(t, ti) {
+  const wwd = weeksWithData(t);
+  const block = document.createElement('div');
+  block.className = 'term-block';
+
+  // Header
+  const hdr = document.createElement('div');
+  hdr.className = 'term-header';
+  hdr.innerHTML = `
+    <span class="term-name">TERM ${t.id}</span>
+    <span class="term-meta">${t.weeks} week${t.weeks!==1?'s':''} · ${wwd} with data</span>
+    <div class="week-controls">
+      <button class="wk-btn" data-ti="${ti}" data-act="minus" ${t.weeks<=1?'disabled':''} title="Remove last week">−</button>
+      <span class="wk-count">${t.weeks} weeks</span>
+      <button class="wk-btn" data-ti="${ti}" data-act="plus"  ${t.weeks>=20?'disabled':''} title="Add a week">+</button>
+    </div>`;
+  block.appendChild(hdr);
+
+  // Table
+  const wrap = document.createElement('div');
+  wrap.className = 'table-wrap';
+  const table = document.createElement('table');
+
+  // colgroup
+  const cg = document.createElement('colgroup');
+  cg.innerHTML = `<col class="col-label"><col class="col-goal">`
+    + Array.from({length:t.weeks},()=>'<col class="col-week">').join('')
+    + `<col class="col-total"><col class="col-prev"><col class="col-grow">`;
+  table.appendChild(cg);
+
+  // thead
+  const thead = document.createElement('thead');
+  const hr = document.createElement('tr');
+  hr.innerHTML = `<th class="th-label">Key health stats</th><th class="th-goal">Faith goals</th>`;
+  for (let w=0; w<t.weeks; w++) {
+    const nn = t.noNight.has(w);
+    const th = document.createElement('th');
+    th.className = 'th-week'+(nn?' no-night':'');
+    th.dataset.ti = ti; th.dataset.w = w;
+    th.innerHTML = `<span class="wk-num">Wk ${w+1}</span><span class="wk-sub">${nn?'No night':'Click to mark'}</span>`;
+    hr.appendChild(th);
+  }
+  hr.innerHTML += `<th class="th-total">Totals</th><th class="th-prev">2025 totals</th><th class="th-grow">Growth from 2025</th>`;
+  thead.appendChild(hr);
+  table.appendChild(thead);
+
+  // tbody
+  const tbody = document.createElement('tbody');
+  const totalCols = 3 + t.weeks + 3;
+
+  SECTIONS.forEach(section => {
+    const sr = document.createElement('tr');
+    sr.className = 'section-row';
+    const std = document.createElement('td');
+    std.colSpan = totalCols;
+    std.textContent = section.label;
+    sr.appendChild(std);
+    tbody.appendChild(sr);
+
+    section.rows.forEach((row, ri) => {
+      const tr = document.createElement('tr');
+      tr.className = 'data-row'+(ri%2!==0?' row-alt':'');
+
+      // Label
+      const tl = document.createElement('td');
+      tl.className = 'td-label';
+      tl.textContent = row.label;
+      tr.appendChild(tl);
+
+      // Goal
+      const tg = document.createElement('td');
+      tg.className = 'td-goal'+(row.goal?'':' no-goal')+(t.goals[row.key]!==undefined?' has-value':'');
+      if (row.goal) {
+        tg.textContent = t.goals[row.key]!==undefined ? t.goals[row.key] : '0';
+        tg.dataset.ti=ti; tg.dataset.rk=row.key; tg.dataset.role='goal';
+      } else {
+        tg.textContent = '—';
+      }
+      tr.appendChild(tg);
+
+      // Week cells
+      for (let w=0; w<t.weeks; w++) {
+        const nn = t.noNight.has(w);
+        const td = document.createElement('td');
+        td.className = 'td-week'
+          +(row.type==='computed'?' is-computed':'')
+          +(nn?' no-night':'');
+
+        const span = document.createElement('span');
+        span.className = 'cell-val';
+
+        if (row.type==='computed' || nn) {
+          span.textContent = '—';
+          span.className += nn ? '' : ' dash';
+        } else {
+          const v = t.data[ck(row.key,w)];
+          span.textContent = v!==undefined ? v : '';
+          if (v===undefined) span.className += ' empty';
+          td.dataset.ti=ti; td.dataset.rk=row.key; td.dataset.w=w; td.dataset.role='cell';
+        }
+        td.appendChild(span);
+        tr.appendChild(td);
+      }
+
+      // Totals
+      const tt = document.createElement('td');
+      tt.className = 'td-total';
+      if (row.type==='computed') {
+        tt.textContent = row.formula(t);
+        tt.classList.add('dash');
+      } else {
+        const s = sum(t, row.key);
+        tt.textContent = s;
+        if (s===0) tt.classList.add('zero');
+      }
+      tr.appendChild(tt);
+
+      // 2025 totals (placeholder — no historical data yet)
+      const tp = document.createElement('td');
+      tp.className = 'td-prev';
+      tp.textContent = row.type==='computed' ? '—' : '0';
+      tr.appendChild(tp);
+
+      // Growth
+      const tgr = document.createElement('td');
+      tgr.className = 'td-grow';
+      if (row.type==='computed') {
+        tgr.textContent = '—';
+      } else {
+        const s = sum(t, row.key), prev = 0;
+        if (s===0 && prev===0) { tgr.textContent='—'; }
+        else {
+          const d = s - prev;
+          tgr.textContent = (d>=0?'+':'')+d;
+          tgr.classList.add(d>0?'pos':d<0?'neg':'');
+        }
+      }
+      tr.appendChild(tgr);
+
+      tbody.appendChild(tr);
+    });
+  });
+
+  table.appendChild(tbody);
+  wrap.appendChild(table);
+  block.appendChild(wrap);
+  return block;
+}
+
+// Event delegation
+document.getElementById('terms').addEventListener('click', e => {
+  // +/- week buttons
+  const btn = e.target.closest('.wk-btn');
+  if (btn) {
+    const ti = +btn.dataset.ti, act = btn.dataset.act;
+    if (act==='plus' && state[ti].weeks<20) {
+      state[ti].weeks++;
+    } else if (act==='minus' && state[ti].weeks>1) {
+      const removed = state[ti].weeks - 1;
+      state[ti].weeks--;
+      ALL_ROWS.forEach(r => delete state[ti].data[ck(r.key, removed)]);
+      state[ti].noNight.delete(removed);
+    }
+    renderAll(); return;
+  }
+
+  // Week header — toggle no youth night
+  const thw = e.target.closest('.th-week');
+  if (thw) {
+    const ti=+thw.dataset.ti, w=+thw.dataset.w;
+    state[ti].noNight.has(w) ? state[ti].noNight.delete(w) : state[ti].noNight.add(w);
+    renderAll(); return;
+  }
+
+  // Data cell or goal cell — start editing
+  const td = e.target.closest('[data-role="cell"],[data-role="goal"]');
+  if (td && !td.querySelector('input')) startEdit(td);
+});
+
+function startEdit(td) {
+  const ti=+td.dataset.ti, rk=td.dataset.rk, role=td.dataset.role;
+  const isGoal = role==='goal';
+  const w = isGoal ? null : +td.dataset.w;
+  const cur = isGoal ? (state[ti].goals[rk]??'') : (state[ti].data[ck(rk,w)]??'');
+
+  const inp = document.createElement('input');
+  inp.type = 'number'; inp.min = '0';
+  inp.className = 'cell-input'+(isGoal?' goal-input':'');
+  inp.autocomplete = 'off';
+  inp.inputMode = 'numeric';
+  inp.value = cur;
+  td.innerHTML = ''; td.appendChild(inp);
+  inp.focus(); inp.select();
+
+  let saved = false;
+  function save() {
+    if (saved) return; saved = true;
+    const raw = inp.value.trim();
+    const val = raw==='' ? undefined : Math.max(0, parseInt(raw,10)||0);
+    if (isGoal) {
+      val!==undefined ? (state[ti].goals[rk]=val) : delete state[ti].goals[rk];
+    } else {
+      val!==undefined ? (state[ti].data[ck(rk,w)]=val) : delete state[ti].data[ck(rk,w)];
+    }
+    renderAll();
+  }
+
+  inp.addEventListener('blur', save);
+  inp.addEventListener('keydown', e => {
+    if (e.key==='Enter') inp.blur();
+    if (e.key==='Escape') { saved=true; renderAll(); }
+  });
+}
+
+renderAll();
+</script>
