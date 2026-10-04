@@ -271,15 +271,11 @@
 
         <!-- Leaders & Department -->
         <div class="entry-section" id="ws-form">
-          <div class="entry-section-label">Leaders &amp; Department</div>
+          <div class="entry-section-label">Department</div>
           <div class="form-grid form-grid--2">
-            <div class="form-group ws-night-field">
+            <div class="form-group">
               <label class="entry-field-label">Total in department</label>
               <input id="ws-total-dept" type="number" min="0" value="0" class="input" autocomplete="off">
-            </div>
-            <div class="form-group ws-night-field">
-              <label class="entry-field-label">Total leaders</label>
-              <input id="ws-leaders" type="number" min="0" value="0" class="input" autocomplete="off">
             </div>
           </div>
         </div>
@@ -898,7 +894,6 @@
   function fillWSForm(d) {
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? 0; };
     set('ws-total-dept', d.total_in_department);
-    set('ws-leaders',    d.total_leaders);
     set('ws-sal-first',  d.salvations_first);
     set('ws-sal-reded',  d.salvations_rededs);
     set('ws-bibles',     d.bibles_given);
@@ -916,7 +911,7 @@
   }
 
   function clearWSForm() {
-    ['ws-total-dept','ws-leaders','ws-sal-first','ws-sal-reded','ws-bibles',
+    ['ws-total-dept','ws-sal-first','ws-sal-reded','ws-bibles',
      'ws-fresh','ws-water-bap','ws-hs-bap','ws-connect','ws-sunday','ws-saints','ws-schools'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = 0;
@@ -954,7 +949,6 @@
       week_number:          weekNum,
       no_youth_night:       noNight,
       total_in_department:  int('ws-total-dept'),
-      total_leaders:        int('ws-leaders'),
       salvations_first:     noNight ? null : int('ws-sal-first'),
       salvations_rededs:    noNight ? null : int('ws-sal-reded'),
       bibles_given:         int('ws-bibles'),
