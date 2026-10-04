@@ -705,7 +705,7 @@
   // ── Year comparison ─────────────────────────────────────────────────────────
   function initYearComparison() {
     const curYear = new Date().getFullYear();
-    const years   = [curYear + 1, curYear, curYear - 1, curYear - 2, curYear - 3];
+    const years   = Array.from({ length: curYear - 2019 + 1 }, (_, i) => curYear + 1 - i);
 
     const selA = document.getElementById('ycomp-year-a');
     const selB = document.getElementById('ycomp-year-b');
