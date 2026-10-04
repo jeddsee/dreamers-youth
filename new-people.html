@@ -169,7 +169,7 @@
           <th>Status</th>
           <th>Leader</th>
           <th>Visit 1</th><th>Visit 2</th><th>Visit 3</th>
-          <th>Contact</th>
+          <th>Latest contact</th>
           <th></th>
         </tr>
       </thead>
@@ -253,15 +253,15 @@
           <div class="form-grid form-grid--2" style="grid-template-columns:repeat(3,1fr)">
             <div class="form-group">
               <label>Visit 1</label>
-              <input id="d-v1" type="date" class="input">
+              <input id="d-v1" type="date" class="input" onchange="syncStatusFromVisits()">
             </div>
             <div class="form-group">
               <label>Visit 2</label>
-              <input id="d-v2" type="date" class="input">
+              <input id="d-v2" type="date" class="input" onchange="syncStatusFromVisits()">
             </div>
             <div class="form-group">
               <label>Visit 3</label>
-              <input id="d-v3" type="date" class="input">
+              <input id="d-v3" type="date" class="input" onchange="syncStatusFromVisits()">
             </div>
           </div>
           <div class="row gap-4 mt-2">
@@ -508,7 +508,7 @@
         <td class="text-xs">${np.visit_1_date ? formatDate(np.visit_1_date) : '—'}</td>
         <td class="text-xs">${np.visit_2_date ? formatDate(np.visit_2_date) : '—'}</td>
         <td class="text-xs">${np.visit_3_date ? formatDate(np.visit_3_date) : '—'}</td>
-        <td>${contactDots(np)}</td>
+        <td class="text-xs">${latestVisitDate(np)}</td>
         <td>${np.is_new_christian ? '<span class="badge badge--success">NC</span>' : ''}</td>
       `;
       tr.addEventListener('click', () => openDetailModal(np));
@@ -516,10 +516,10 @@
     });
   }
 
-  function contactDots(np) {
-    const c1 = np.initial_contact_done ? '🟢' : '⚪';
-    const c2 = np.catchup_done         ? '🟢' : '⚪';
-    return `<span title="Contact / Catch-up">${c1}${c2}</span>`;
+  function latestVisitDate(np) {
+    const dates = [np.visit_1_date, np.visit_2_date, np.visit_3_date].filter(Boolean);
+    if (!dates.length) return '—';
+    return formatDate(dates.sort().at(-1));
   }
 
   // ── Detail modal ────────────────────────────────────────────────────────────
@@ -593,6 +593,17 @@
     currentNP = null;
   }
 
+  function syncStatusFromVisits() {
+    const v1  = document.getElementById('d-v1').value;
+    const v2  = document.getElementById('d-v2').value;
+    const v3  = document.getElementById('d-v3').value;
+    const sel = document.getElementById('d-status');
+    if (!['visit_1','visit_2','visit_3'].includes(sel.value)) return;
+    if (v3)      sel.value = 'visit_3';
+    else if (v2) sel.value = 'visit_2';
+    else if (v1) sel.value = 'visit_1';
+  }
+
   function toggleNCFields() {
     const checked = document.getElementById('d-is-nc').checked;
     document.getElementById('nc-fields').classList.toggle('hidden', !checked);
@@ -604,8 +615,7 @@
     setLoading(btn, true);
 
     const v3 = document.getElementById('d-v3').value || null;
-    let status = document.getElementById('d-status').value;
-    if (v3 && status === 'visit_2') status = 'visit_3';
+    const status = document.getElementById('d-status').value;
 
     const updates = {
       name:                 document.getElementById('d-name').value.trim(),
