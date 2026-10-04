@@ -161,6 +161,26 @@
     .np-check { display: flex; align-items: center; gap: var(--s-1); font-size: var(--text-xs); cursor: pointer; }
     .np-check input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--c-primary); }
 
+    /* ── NP Comments ── */
+    .np-card__comments { border-top: 1px solid var(--c-border); margin-top: var(--s-3); padding-top: var(--s-3); }
+    .np-comment__latest { margin-bottom: var(--s-2); }
+    .np-comment__latest p { font-size: var(--text-sm); margin: 0 0 2px; color: var(--c-text); white-space: pre-wrap; }
+    .np-comment__ts { font-size: var(--text-xs); color: var(--c-text-muted); }
+    .np-comment__history { margin: var(--s-2) 0; border-left: 2px solid var(--c-border); padding-left: var(--s-3); }
+    .np-comment__hist-item { padding: var(--s-2) 0; border-bottom: 1px solid var(--c-border); }
+    .np-comment__hist-item:last-child { border-bottom: none; }
+    .np-comment__hist-item p { font-size: var(--text-sm); margin: 0 0 2px; white-space: pre-wrap; }
+    .np-comment__form textarea {
+      width: 100%; box-sizing: border-box;
+      font-size: var(--text-sm); font-family: inherit;
+      border: 1px solid var(--c-border); border-radius: var(--r-md);
+      padding: var(--s-2) var(--s-3); resize: vertical;
+      background: var(--c-bg); color: var(--c-text);
+    }
+    .np-comment__form textarea:focus { outline: 2px solid var(--c-primary); border-color: transparent; }
+    .np-comment__actions { display: flex; justify-content: space-between; align-items: center; margin-top: var(--s-2); }
+    .np-comment__hist-btn { background: none; border: none; padding: 0; font-size: var(--text-xs); color: var(--c-primary); cursor: pointer; text-decoration: underline; }
+
     /* ── Term review ── */
     .term-stats-grid {
       display: grid;
@@ -766,6 +786,7 @@
       document.getElementById('np-empty').classList.remove('hidden');
       return;
     }
+    await loadNPComments(newPeople.map(n => n.id));
     renderNPList();
   }
 
@@ -802,8 +823,21 @@
             Catch-up done
           </label>
         </div>
+        <div class="np-card__comments" id="npc-${np.id}">
+          <div class="np-comment__latest hidden"></div>
+          <div class="np-comment__history hidden" id="npc-hist-${np.id}"></div>
+          <div class="np-comment__form">
+            <textarea id="npc-input-${np.id}" placeholder="Add a comment…" rows="2"></textarea>
+            <div class="np-comment__actions">
+              <button class="np-comment__hist-btn hidden" data-hist-btn="${np.id}"
+                onclick="toggleNPCommentHistory('${np.id}')">History</button>
+              <button class="btn btn--sm btn--primary" onclick="saveNPComment('${np.id}')">Save</button>
+            </div>
+          </div>
+        </div>
       `;
       list.appendChild(card);
+      renderNPComments(np.id);
     });
   }
 
@@ -811,6 +845,102 @@
     await db.from('new_people').update({ [field]: value }).eq('id', id);
     const np = newPeople.find(n => n.id === id);
     if (np) np[field] = value;
+  }
+
+  // ── NP Comments ──────────────────────────────────────────────────────────
+  const npComments = {};
+
+  async function loadNPComments(npIds) {
+    if (!npIds.length) return;
+    const { data } = await db.from('np_comments')
+      .select('*')
+      .in('np_id', npIds)
+      .order('created_at', { ascending: false });
+    (data ?? []).forEach(c => {
+      if (!npComments[c.np_id]) npComments[c.np_id] = [];
+      npComments[c.np_id].push(c);
+    });
+  }
+
+  function renderNPComments(npId) {
+    const section = document.getElementById(`npc-${npId}`);
+    if (!section) return;
+    const comments = npComments[npId] ?? [];
+    const latest = comments[0];
+    const latestEl = section.querySelector('.np-comment__latest');
+    if (latest) {
+      latestEl.innerHTML = `<p>${escHtml(latest.comment)}</p><span class="np-comment__ts">Last saved ${relativeTime(latest.created_at)}</span>`;
+      latestEl.classList.remove('hidden');
+    } else {
+      latestEl.classList.add('hidden');
+    }
+    const histBtn = section.querySelector('[data-hist-btn]');
+    if (histBtn) {
+      histBtn.textContent = comments.length === 1 ? 'History (1)' : `History (${comments.length})`;
+      histBtn.classList.toggle('hidden', comments.length === 0);
+    }
+  }
+
+  async function saveNPComment(npId) {
+    const input = document.getElementById(`npc-input-${npId}`);
+    const comment = input.value.trim();
+    if (!comment) return;
+    const section = document.getElementById(`npc-${npId}`);
+    const btn = section.querySelector('.btn--primary');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    const { data, error } = await db.from('np_comments')
+      .insert({ np_id: npId, leader_id: identity.leader_id, comment })
+      .select().single();
+    if (!error && data) {
+      if (!npComments[npId]) npComments[npId] = [];
+      npComments[npId].unshift(data);
+      input.value = '';
+      renderNPComments(npId);
+      const histEl = document.getElementById(`npc-hist-${npId}`);
+      if (histEl && !histEl.classList.contains('hidden')) renderNPCommentHistory(npId);
+    }
+    btn.disabled = false;
+    btn.textContent = 'Save';
+  }
+
+  function toggleNPCommentHistory(npId) {
+    const histEl = document.getElementById(`npc-hist-${npId}`);
+    const btn = document.querySelector(`[data-hist-btn="${npId}"]`);
+    const open = histEl.classList.contains('hidden');
+    if (open) {
+      renderNPCommentHistory(npId);
+      histEl.classList.remove('hidden');
+      btn.textContent = 'Hide history';
+    } else {
+      histEl.classList.add('hidden');
+      const count = (npComments[npId] ?? []).length;
+      btn.textContent = `History (${count})`;
+    }
+  }
+
+  function renderNPCommentHistory(npId) {
+    const histEl = document.getElementById(`npc-hist-${npId}`);
+    const comments = npComments[npId] ?? [];
+    histEl.innerHTML = comments.map(c => `
+      <div class="np-comment__hist-item">
+        <p>${escHtml(c.comment)}</p>
+        <span class="np-comment__ts">${formatDate(c.created_at)}, ${new Date(c.created_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}</span>
+      </div>
+    `).join('');
+  }
+
+  function relativeTime(iso) {
+    if (!iso) return '';
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 7) return `${days}d ago`;
+    return formatDate(iso);
   }
 
   function getLastNPCheck() {
