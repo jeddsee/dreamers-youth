@@ -296,15 +296,15 @@
           <div class="form-grid form-grid--2" style="grid-template-columns:repeat(3,1fr)">
             <div class="form-group">
               <label>Visit 1</label>
-              <input id="d-v1" type="date" class="input" onchange="syncStatusFromVisits()">
+              <input id="d-v1" type="date" class="input">
             </div>
             <div class="form-group">
               <label>Visit 2</label>
-              <input id="d-v2" type="date" class="input" onchange="syncStatusFromVisits()">
+              <input id="d-v2" type="date" class="input">
             </div>
             <div class="form-group">
               <label>Visit 3</label>
-              <input id="d-v3" type="date" class="input" onchange="syncStatusFromVisits()">
+              <input id="d-v3" type="date" class="input">
             </div>
           </div>
           <div class="row gap-4 mt-2">
@@ -325,17 +325,6 @@
             <div class="form-group">
               <label>Assigned leader</label>
               <select id="d-leader" class="select"></select>
-            </div>
-            <div class="form-group">
-              <label>Status</label>
-              <select id="d-status" class="select" onchange="document.getElementById('archive-reason-group').style.display=this.value==='archived'?'':'none'">
-                <option value="visit_1">Visit 1</option>
-                <option value="visit_2">Visit 2</option>
-                <option value="visit_3">Visit 3</option>
-                <option value="ready_to_activate">Ready to activate</option>
-                <option value="activated">Activated</option>
-                <option value="archived">Archived</option>
-              </select>
             </div>
           </div>
           <div class="form-group mt-2" id="archive-reason-group" style="display:none">
@@ -649,7 +638,6 @@
     document.getElementById('d-v3').value           = np.visit_3_date || '';
     document.getElementById('d-contact').checked    = np.initial_contact_done;
     document.getElementById('d-catchup').checked    = np.catchup_done;
-    document.getElementById('d-status').value       = np.status;
     document.getElementById('d-notes').value        = np.notes || '';
     document.getElementById('d-archive-reason').value = np.archived_reason || '';
 
@@ -681,16 +669,6 @@
     currentNP = null;
   }
 
-  function syncStatusFromVisits() {
-    const v1  = document.getElementById('d-v1').value;
-    const v2  = document.getElementById('d-v2').value;
-    const v3  = document.getElementById('d-v3').value;
-    const sel = document.getElementById('d-status');
-    if (!['visit_1','visit_2','visit_3'].includes(sel.value)) return;
-    if (v3)      sel.value = 'visit_3';
-    else if (v2) sel.value = 'visit_2';
-    else if (v1) sel.value = 'visit_1';
-  }
 
   function toggleNCFields() {
     const checked = document.getElementById('d-is-nc').checked;
@@ -702,8 +680,16 @@
     const btn = document.getElementById('save-btn');
     setLoading(btn, true);
 
+    const v1 = document.getElementById('d-v1').value;
+    const v2 = document.getElementById('d-v2').value;
     const v3 = document.getElementById('d-v3').value || null;
-    const status = document.getElementById('d-status').value;
+    // Status is automated: locked once activated/archived, otherwise derived from visits
+    let status = currentNP.status;
+    if (status !== 'activated' && status !== 'archived') {
+      if (v3)      status = 'ready_to_activate';
+      else if (v2) status = 'visit_2';
+      else         status = 'visit_1';
+    }
 
     const updates = {
       name:                 document.getElementById('d-name').value.trim(),
