@@ -154,7 +154,7 @@
 
     <div class="sidebar-bottom">
       <span class="sidebar-bottom__label">Campus</span>
-      <div class="sidebar-bottom__value" id="sidebar-campus">—</div>
+      <div class="sidebar-campus-switcher" id="sidebar-campus-switcher"></div>
       <div class="sidebar-bottom__sub" id="sidebar-user">—</div>
       <button class="sidebar-logout" onclick="logout()">Sign out</button>
     </div>
@@ -276,7 +276,6 @@
             <div class="snap-subtitle" id="snap-weeks-subtitle"></div>
           </div>
           <div class="snap-header-actions">
-            <select id="snap-campus-select" class="select" onchange="switchSnapshotCampus(this.value)"></select>
             <button class="btn btn--outline btn--sm" onclick="exportSnapshotPDF()">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline-block;vertical-align:middle;margin-right:4px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
               Export PDF
@@ -493,21 +492,51 @@
 
   let identity, leaders = [], roster = [], weeklyStats = [], termReview = null;
   let addYouthLeaderId = null;
+  let allCampuses = [];
+  let snapCampusId = null;
+  let lifeChart = null;
 
   // ── Init ───────────────────────────────────────────────────────────────────
   async function init() {
     identity = requireIdentity('pastor');
     if (!identity) return;
-    document.getElementById('sidebar-campus').textContent = identity.campus_name;
-    document.getElementById('sidebar-user').textContent   = identity.leader_name;
+    snapCampusId = identity.campus_id;
+    document.getElementById('sidebar-user').textContent = identity.leader_name;
 
     document.getElementById('ws-date').value = mostRecentYouthNight(new Date(), identity.youth_night_dow);
 
     setupSidebarNav();
+    await populateCampusSwitcher();
     loadSnapshot();
     loadWeeklyEntry(document.getElementById('ws-date').value);
     generateQR();
     loadSetup();
+  }
+
+  // ── Campus switcher ─────────────────────────────────────────────────────────
+  async function populateCampusSwitcher() {
+    const { data } = await db.from('campuses').select('id, name').eq('archived', false).order('name');
+    allCampuses = data ?? [];
+    renderCampusSwitcher();
+  }
+
+  function renderCampusSwitcher() {
+    const el = document.getElementById('sidebar-campus-switcher');
+    const btns = allCampuses.map(c =>
+      `<button class="campus-switcher-btn${snapCampusId === c.id ? ' active' : ''}" onclick="selectCampus('${c.id}')">${escHtml(c.name)}</button>`
+    );
+    if (allCampuses.length > 1) {
+      btns.push(`<button class="campus-switcher-btn campus-switcher-btn--all${snapCampusId === 'all' ? ' active' : ''}" onclick="selectCampus('all')">All Campuses</button>`);
+    }
+    el.innerHTML = btns.join('');
+  }
+
+  function selectCampus(id) {
+    snapCampusId = id;
+    renderCampusSwitcher();
+    if (!document.getElementById('section-snapshot').classList.contains('hidden')) {
+      loadSnapshot();
+    }
   }
 
   // ── Sidebar nav ─────────────────────────────────────────────────────────────
@@ -621,122 +650,129 @@
   }
 
   // ── Snapshot ────────────────────────────────────────────────────────────────
-  let snapCampusId = null;
-  let lifeChart = null;
-
-  async function switchSnapshotCampus(campusId) {
-    snapCampusId = campusId;
-    await loadSnapshot();
-  }
-
-  function exportSnapshotPDF() {
-    window.print();
-  }
+  function exportSnapshotPDF() { window.print(); }
 
   async function loadSnapshot() {
-    if (!snapCampusId) snapCampusId = identity.campus_id;
-
     document.getElementById('snap-loading').classList.remove('hidden');
     document.getElementById('snap-content').classList.add('hidden');
 
+    const isAll = snapCampusId === 'all';
     const mostRecentDate = mostRecentYouthNight(new Date(), identity.youth_night_dow);
 
-    const [leadersRes, rosterRes, statsRes, campusesRes] = await Promise.all([
-      db.from('leaders').select('id, name, role').eq('campus_id', snapCampusId).eq('active', true).order('name'),
-      db.from('youth_roster').select('id, is_new_christian').eq('campus_id', snapCampusId).eq('active', true),
-      db.from('weekly_stats').select('*').eq('campus_id', snapCampusId).order('entry_date', {ascending: false}).limit(20),
-      db.from('campuses').select('id, name').eq('archived', false).order('name'),
-    ]);
+    // Build queries — single campus or all campuses
+    let leadersQ = db.from('leaders').select('id, name, role, campus_id').eq('active', true).order('name');
+    let rosterQ  = db.from('youth_roster').select('id, is_new_christian, campus_id').eq('active', true);
+    let statsQ   = db.from('weekly_stats').select('*').order('entry_date', { ascending: false }).limit(isAll ? 60 : 20);
 
+    if (isAll) {
+      const ids = allCampuses.map(c => c.id);
+      leadersQ = leadersQ.in('campus_id', ids);
+      rosterQ  = rosterQ.in('campus_id', ids);
+      statsQ   = statsQ.in('campus_id', ids);
+    } else {
+      leadersQ = leadersQ.eq('campus_id', snapCampusId);
+      rosterQ  = rosterQ.eq('campus_id', snapCampusId);
+      statsQ   = statsQ.eq('campus_id', snapCampusId);
+    }
+
+    const [leadersRes, rosterRes, statsRes] = await Promise.all([leadersQ, rosterQ, statsQ]);
     leaders     = leadersRes.data ?? [];
     roster      = rosterRes.data ?? [];
     weeklyStats = statsRes.data ?? [];
 
-    // Populate campus selector
-    const campusSel = document.getElementById('snap-campus-select');
-    campusSel.innerHTML = '';
-    (campusesRes.data ?? []).forEach(c => {
-      const opt = document.createElement('option');
-      opt.value = c.id;
-      opt.textContent = c.name;
-      if (c.id === snapCampusId) opt.selected = true;
-      campusSel.appendChild(opt);
-    });
-
     // Header
-    const campusName = campusSel.selectedOptions[0]?.textContent ?? identity.campus_name;
-    const year = new Date().getFullYear();
+    const campusLabel = isAll
+      ? 'All Campuses'
+      : (allCampuses.find(c => c.id === snapCampusId)?.name ?? identity.campus_name);
     const activeStats = weeklyStats.filter(w => !w.no_youth_night);
-    document.getElementById('snap-campus-title').textContent   = campusName;
-    document.getElementById('snap-weeks-subtitle').textContent = `${year} — ${activeStats.length} week${activeStats.length !== 1 ? 's' : ''} of data`;
+    const year = new Date().getFullYear();
+    document.getElementById('snap-campus-title').textContent   = campusLabel;
+    document.getElementById('snap-weeks-subtitle').textContent =
+      `${year} — ${activeStats.length} week${activeStats.length !== 1 ? 's' : ''} of data` +
+      (isAll && allCampuses.length > 1 ? ` across ${allCampuses.length} campuses` : '');
 
-    // Leader submission status this week
+    // Submission status
     const leaderOnly = leaders.filter(l => l.role === 'leader');
     const entryRes = await Promise.all(
       leaderOnly.map(l =>
-        db.from('leader_entries')
-          .select('entry_date')
-          .eq('leader_id', l.id)
-          .eq('entry_date', mostRecentDate)
-          .maybeSingle()
+        db.from('leader_entries').select('entry_date')
+          .eq('leader_id', l.id).eq('entry_date', mostRecentDate).maybeSingle()
       )
     );
 
-    const subBody = document.getElementById('snap-submission-leaders');
+    const subBody    = document.getElementById('snap-submission-leaders');
     const subSummary = document.getElementById('snap-sub-summary');
     subBody.innerHTML = '';
+
     if (!leaderOnly.length) {
-      subBody.innerHTML = `<div class="snap-leader-chip" style="color:var(--c-text-muted)">${escHtml(campusName)} / No leaders set up</div>`;
-      subSummary.textContent = 'No leaders set up';
+      const msg = isAll ? 'No leaders set up' : `${campusLabel} / No leaders set up`;
+      subBody.innerHTML = `<div class="snap-leader-chip" style="color:var(--c-text-muted)">${escHtml(msg)}</div>`;
+      subSummary.textContent = 'No leaders';
     } else {
-      const submitted = entryRes.filter(r => !!r?.data).length;
-      subSummary.textContent = `${submitted} / ${leaderOnly.length} submitted`;
-      leaderOnly.forEach((l, i) => {
-        const done = !!entryRes[i]?.data;
-        const chip = document.createElement('div');
-        chip.className = 'snap-leader-chip';
-        chip.innerHTML = `<span class="fw-medium">${escHtml(l.name)}</span><span class="badge badge--${done ? 'success' : 'danger'}">${done ? 'Submitted' : 'Missing'}</span>`;
-        subBody.appendChild(chip);
-      });
+      const submittedCount = entryRes.filter(r => !!r?.data).length;
+      subSummary.textContent = `${submittedCount} / ${leaderOnly.length} submitted`;
+
+      if (isAll) {
+        // Group chips by campus
+        allCampuses.forEach(campus => {
+          const campusLeaders = leaderOnly.filter(l => l.campus_id === campus.id);
+          if (!campusLeaders.length) return;
+          const group = document.createElement('div');
+          group.style.cssText = 'width:100%';
+          group.innerHTML = `<div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:var(--c-text-muted);margin-bottom:var(--s-2)">${escHtml(campus.name)}</div>`;
+          const row = document.createElement('div');
+          row.style.cssText = 'display:flex;flex-wrap:wrap;gap:var(--s-2);margin-bottom:var(--s-3)';
+          campusLeaders.forEach(l => {
+            const idx = leaderOnly.indexOf(l);
+            const done = !!entryRes[idx]?.data;
+            const chip = document.createElement('div');
+            chip.className = 'snap-leader-chip';
+            chip.innerHTML = `<span class="fw-medium">${escHtml(l.name)}</span><span class="badge badge--${done ? 'success' : 'danger'}">${done ? 'Submitted' : 'Missing'}</span>`;
+            row.appendChild(chip);
+          });
+          group.appendChild(row);
+          subBody.appendChild(group);
+        });
+      } else {
+        leaderOnly.forEach((l, i) => {
+          const done = !!entryRes[i]?.data;
+          const chip = document.createElement('div');
+          chip.className = 'snap-leader-chip';
+          chip.innerHTML = `<span class="fw-medium">${escHtml(l.name)}</span><span class="badge badge--${done ? 'success' : 'danger'}">${done ? 'Submitted' : 'Missing'}</span>`;
+          subBody.appendChild(chip);
+        });
+      }
     }
 
-    // Stat calculations
+    // Stat helpers
     const avg = arr => arr.length ? Math.round(arr.reduce((a,b) => a+b, 0) / arr.length) : 0;
     const sum = arr => arr.reduce((a,b) => a+b, 0);
     const col = key => activeStats.map(w => w[key] ?? 0);
 
-    // Attendance hero
-    document.getElementById('snap-avg-att').textContent   = avg(col('attendance'));
+    // Attendance
+    document.getElementById('snap-avg-att').textContent    = avg(col('attendance'));
     document.getElementById('snap-total-dept').textContent = roster.length;
 
     // New People
-    const first     = sum(col('first_timers'));
-    const second    = sum(col('second_timers'));
-    const third     = sum(col('third_timers'));
+    const first = sum(col('first_timers')), second = sum(col('second_timers')), third = sum(col('third_timers'));
     const retention = first > 0 ? Math.round((second + third) / (first * 2) * 100) : 0;
     document.getElementById('snap-np-cards').innerHTML = [
-      { label: '1st Timers',     value: first,            cls: 'stat-card--red' },
-      { label: '2nd Timers',     value: second,           cls: 'stat-card--red' },
-      { label: '3rd Timers',     value: third,            cls: 'stat-card--red' },
-      { label: 'Retention Rate', value: `${retention}%`,  cls: 'stat-card--fill-red' },
+      { label: '1st Timers',     value: first,           cls: 'stat-card--red' },
+      { label: '2nd Timers',     value: second,          cls: 'stat-card--red' },
+      { label: '3rd Timers',     value: third,           cls: 'stat-card--red' },
+      { label: 'Retention Rate', value: `${retention}%`, cls: 'stat-card--fill-red' },
     ].map(c => `<div class="stat-card ${c.cls}"><div class="stat-card__label">${c.label}</div><div class="stat-card__value">${c.value}</div></div>`).join('');
 
     // Life Metrics
-    const nc     = roster.filter(y => y.is_new_christian).length;
-    const salF   = sum(col('salvations_first'));
-    const salR   = sum(col('salvations_rededs'));
-    const bibles = sum(col('bibles_given'));
-    const fresh  = sum(col('fresh_start'));
-    const watBap = sum(col('water_baptisms'));
-    const hsBap  = sum(col('hs_baptisms'));
+    const nc = roster.filter(y => y.is_new_christian).length;
     document.getElementById('snap-life-cards').innerHTML = [
-      { label: 'New Christians (Total)', value: nc,     cls: 'stat-card--fill-lime' },
-      { label: 'First-Time Decisions',   value: salF,   cls: 'stat-card--lime' },
-      { label: 'Rededications',          value: salR,   cls: 'stat-card--lime' },
-      { label: 'Bibles Given',           value: bibles, cls: 'stat-card--lime' },
-      { label: 'New Christian Course',   value: fresh,  cls: 'stat-card--lime' },
-      { label: 'Water Baptisms',         value: watBap, cls: 'stat-card--lime' },
-      { label: 'HS Baptisms',            value: hsBap,  cls: 'stat-card--lime' },
+      { label: 'New Christians (Total)', value: nc,                       cls: 'stat-card--fill-lime' },
+      { label: 'First-Time Decisions',   value: sum(col('salvations_first')),  cls: 'stat-card--lime' },
+      { label: 'Rededications',          value: sum(col('salvations_rededs')), cls: 'stat-card--lime' },
+      { label: 'Bibles Given',           value: sum(col('bibles_given')),      cls: 'stat-card--lime' },
+      { label: 'New Christian Course',   value: sum(col('fresh_start')),       cls: 'stat-card--lime' },
+      { label: 'Water Baptisms',         value: sum(col('water_baptisms')),    cls: 'stat-card--lime' },
+      { label: 'HS Baptisms',            value: sum(col('hs_baptisms')),       cls: 'stat-card--lime' },
     ].map(c => `<div class="stat-card ${c.cls}"><div class="stat-card__label">${c.label}</div><div class="stat-card__value">${c.value}</div></div>`).join('');
 
     // Connect & Sunday
@@ -747,19 +783,19 @@
       { label: 'Schools Visited',  value: sum(col('schools_visited')) },
     ].map(c => `<div class="stat-card"><div class="stat-card__label">${c.label}</div><div class="stat-card__value">${c.value}</div></div>`).join('');
 
-    // Life metrics chart
+    // Chart — aggregate by date so multi-campus weeks merge cleanly
     renderLifeMetricsChart(activeStats);
 
     document.getElementById('snap-loading').classList.add('hidden');
     document.getElementById('snap-content').classList.remove('hidden');
   }
 
-  function renderLifeMetricsChart(activeStats) {
-    const canvas = document.getElementById('life-metrics-chart');
+  function renderLifeMetricsChart(stats) {
+    const canvas  = document.getElementById('life-metrics-chart');
     const emptyEl = document.getElementById('snap-chart-empty');
     if (lifeChart) { lifeChart.destroy(); lifeChart = null; }
 
-    if (!activeStats.length) {
+    if (!stats.length) {
       emptyEl.classList.remove('hidden');
       canvas.classList.add('hidden');
       return;
@@ -767,41 +803,39 @@
     emptyEl.classList.add('hidden');
     canvas.classList.remove('hidden');
 
-    const sorted = [...activeStats].reverse();
+    // Aggregate by date (multiple campuses may share a date)
+    const byDate = {};
+    stats.forEach(w => {
+      if (!byDate[w.entry_date]) byDate[w.entry_date] = { salvations: 0, water: 0, hs: 0 };
+      byDate[w.entry_date].salvations += (w.salvations_first ?? 0) + (w.salvations_rededs ?? 0);
+      byDate[w.entry_date].water      += (w.water_baptisms ?? 0);
+      byDate[w.entry_date].hs         += (w.hs_baptisms ?? 0);
+    });
+    const dates   = Object.keys(byDate).sort();
+    const labels  = dates.map(d => formatDate(d));
+
     lifeChart = new Chart(canvas, {
       type: 'line',
       data: {
-        labels: sorted.map(w => formatDate(w.entry_date)),
+        labels,
         datasets: [
           {
             label: 'Salvations',
-            data: sorted.map(w => (w.salvations_first ?? 0) + (w.salvations_rededs ?? 0)),
-            borderColor: '#ff3500',
-            backgroundColor: 'rgba(255,53,0,0.08)',
-            borderWidth: 2,
-            tension: 0.35,
-            fill: true,
-            pointRadius: 4,
+            data: dates.map(d => byDate[d].salvations),
+            borderColor: '#ff3500', backgroundColor: 'rgba(255,53,0,0.08)',
+            borderWidth: 2, tension: 0.35, fill: true, pointRadius: 4,
           },
           {
             label: 'Water baptisms',
-            data: sorted.map(w => w.water_baptisms ?? 0),
-            borderColor: '#0000ff',
-            backgroundColor: 'rgba(0,0,255,0.06)',
-            borderWidth: 2,
-            tension: 0.35,
-            fill: true,
-            pointRadius: 4,
+            data: dates.map(d => byDate[d].water),
+            borderColor: '#0000ff', backgroundColor: 'rgba(0,0,255,0.06)',
+            borderWidth: 2, tension: 0.35, fill: true, pointRadius: 4,
           },
           {
             label: 'HS baptisms',
-            data: sorted.map(w => w.hs_baptisms ?? 0),
-            borderColor: '#8aaa00',
-            backgroundColor: 'rgba(190,255,0,0.15)',
-            borderWidth: 2,
-            tension: 0.35,
-            fill: true,
-            pointRadius: 4,
+            data: dates.map(d => byDate[d].hs),
+            borderColor: '#8aaa00', backgroundColor: 'rgba(190,255,0,0.15)',
+            borderWidth: 2, tension: 0.35, fill: true, pointRadius: 4,
           },
         ],
       },
@@ -809,10 +843,7 @@
         responsive: true,
         interaction: { mode: 'index', intersect: false },
         plugins: {
-          legend: {
-            position: 'bottom',
-            labels: { font: { family: 'Outfit', size: 12 }, boxWidth: 12, padding: 16 },
-          },
+          legend: { position: 'bottom', labels: { font: { family: 'Outfit', size: 12 }, boxWidth: 12, padding: 16 } },
         },
         scales: {
           y: { beginAtZero: true, ticks: { stepSize: 1, font: { family: 'Outfit' } } },

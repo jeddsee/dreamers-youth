@@ -755,6 +755,39 @@ h4 { font-size: var(--text-base); font-weight: 600; }
 }
 .sidebar-logout:hover { color: rgba(255,255,255,0.7); }
 
+.sidebar-campus-switcher {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-bottom: var(--s-3);
+}
+.campus-switcher-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: rgba(255,255,255,0.55);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.campus-switcher-btn:hover { background: rgba(255,255,255,0.07); color: #fff; }
+.campus-switcher-btn.active { background: rgba(255,255,255,0.12); color: #fff; font-weight: 600; }
+.campus-switcher-btn--all {
+  margin-top: var(--s-2);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding-top: var(--s-2);
+  color: rgba(255,255,255,0.35);
+}
+.campus-switcher-btn--all.active { color: #fff; }
+
 .main-content {
   flex: 1;
   overflow-x: hidden;
