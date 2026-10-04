@@ -1064,14 +1064,14 @@ h4 { font-size: var(--text-base); font-weight: 600; }
   flex-wrap: wrap;
   align-items: flex-end;
   gap: var(--s-4);
-  padding: var(--s-4) var(--s-5);
+  padding: var(--s-6) var(--s-6);
   border: 2px solid #111;
   border-radius: var(--r-lg);
   margin-bottom: var(--s-6);
 }
-.ycomp-filter-group { display: flex; flex-direction: column; gap: var(--s-1); }
+.ycomp-filter-group { display: flex; flex-direction: column; gap: var(--s-2); }
 .ycomp-filter-label {
-  font-size: 0.6rem;
+  font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -1081,7 +1081,8 @@ h4 { font-size: var(--text-base); font-weight: 600; }
   font-family: inherit;
   font-size: var(--text-sm);
   font-weight: 500;
-  padding: var(--s-2) var(--s-7) var(--s-2) var(--s-3);
+  height: 44px;
+  padding: 0 var(--s-8) 0 var(--s-4);
   border: 1.5px solid #111;
   border-radius: var(--r-md);
   background: var(--c-surface);
@@ -1089,9 +1090,9 @@ h4 { font-size: var(--text-base); font-weight: 600; }
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 10px center;
+  background-position: right 12px center;
   cursor: pointer;
-  min-width: 110px;
+  min-width: 120px;
 }
 .ycomp-select:focus { outline: none; border-color: #0000ff; }
 
