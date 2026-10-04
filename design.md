@@ -12,7 +12,7 @@ Version 1.0 · October 2026
 
 **Minimal chrome.** No sidebar navs, no mega-menus. Leaders see only what's relevant to them. Pastors have more, but it's still structured as simple sections, not a dashboard of dashboards.
 
-**Data entry is fast.** Weekly attendance must be completable in under 2 minutes. Toggle-based inputs (Yes / Maybe / No) instead of text fields wherever possible.
+**Data is fast.** Weekly attendance must be completable in under 2 minutes. Toggle-based inputs (Yes / Maybe / No) instead of text fields wherever possible.
 
 **Instant feedback.** Every save shows a confirmation. Errors are explained in plain language ("That name and phone number already exists — check here").
 
