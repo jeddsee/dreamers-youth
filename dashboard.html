@@ -126,10 +126,6 @@
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="5" x2="8" y2="11"/><line x1="5" y1="8" x2="11" y2="8"/></svg>
         Weekly entry
       </button>
-      <button class="sidebar-nav-item" data-nav="term">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5"/><line x1="5" y1="1" x2="5" y2="4"/><line x1="11" y1="1" x2="11" y2="4"/><line x1="1.5" y1="6.5" x2="14.5" y2="6.5"/></svg>
-        Term
-      </button>
     </div>
 
     <div class="sidebar-section">
@@ -141,6 +137,10 @@
       <a class="sidebar-nav-item" href="new-christians.html">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2L9.5 6h4.5l-3.6 2.6 1.4 4.4L8 10.5 4.2 13l1.4-4.4L2 6h4.5z"/></svg>
         New Christians
+      </a>
+      <a class="sidebar-nav-item" href="leaders.html">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5" cy="4" r="2.5"/><circle cx="11" cy="4" r="2.5"/><path d="M1 13c0-2.2 1.8-4 4-4h2"/><path d="M9 9h2c2.2 0 4 1.8 4 4"/><line x1="11" y1="11" x2="11" y2="15"/><line x1="9" y1="13" x2="13" y2="13"/></svg>
+        Leaders
       </a>
     </div>
 
@@ -329,31 +329,7 @@
       </div>
     </section>
 
-    <!-- ══ TERM MANAGEMENT ═════════════════════════════════════════════════ -->
-    <section id="section-term" class="hidden">
-      <div id="term-loading" class="loading-overlay"><div class="spinner"></div> Loading…</div>
-      <div id="term-content" class="hidden main-content__body">
 
-        <div class="card mb-4" id="term-control-card">
-          <div class="row row--between">
-            <div>
-              <div class="fw-semibold" id="term-label">Current term</div>
-              <div class="text-sm text-muted" id="term-sublabel"></div>
-            </div>
-            <button class="btn btn--primary" id="term-toggle-btn" onclick="toggleTermReview()"></button>
-          </div>
-        </div>
-
-        <div id="term-open-section" class="hidden">
-          <h3 class="mb-4">Leader submission status</h3>
-          <div class="card card--flush mb-4" id="term-leader-list"></div>
-
-          <h3 class="mb-4 mt-6">Collated results</h3>
-          <div id="term-collated"></div>
-        </div>
-
-      </div>
-    </section>
 
     <!-- ══ SETUP ═══════════════════════════════════════════════════════════ -->
     <section id="section-setup" class="hidden">
