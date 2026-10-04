@@ -284,6 +284,16 @@
           </div>
         </div>
 
+        <!-- Period filter -->
+        <div class="snap-period-bar">
+          <span class="snap-period-label">Period</span>
+          <button class="snap-period-pill active" onclick="setSnapPeriod('all',this)">All</button>
+          <button class="snap-period-pill" onclick="setSnapPeriod('term',this)">This Term</button>
+          <button class="snap-period-pill" onclick="setSnapPeriod('12',this)">12 weeks</button>
+          <button class="snap-period-pill" onclick="setSnapPeriod('8',this)">8 weeks</button>
+          <button class="snap-period-pill" onclick="setSnapPeriod('4',this)">4 weeks</button>
+        </div>
+
         <!-- Submission status -->
         <div class="snap-submission-card">
           <div class="snap-submission-head">
@@ -471,6 +481,7 @@
   let addYouthLeaderId = null;
   let allCampuses = [];
   let snapCampusId = null;
+  let snapPeriod = 'all';
   let lifeChart = null;
 
   // ── Init ───────────────────────────────────────────────────────────────────
@@ -510,6 +521,8 @@
 
   function selectCampus(id) {
     snapCampusId = id;
+    snapPeriod = 'all';
+    document.querySelectorAll('.snap-period-pill').forEach((b, i) => b.classList.toggle('active', i === 0));
     renderCampusSwitcher();
     if (!document.getElementById('section-snapshot').classList.contains('hidden')) {
       loadSnapshot();
@@ -650,7 +663,7 @@
 
     // Build queries — single campus or all campuses
     let leadersQ = db.from('leaders').select('id, name, role, campus_id').eq('active', true).order('name');
-    let rosterQ  = db.from('youth_roster').select('id, is_new_christian, campus_id').eq('active', true);
+    let rosterQ  = db.from('youth_roster').select('id, is_new_christian, water_baptised, campus_id').eq('active', true);
     let statsQ   = db.from('weekly_stats').select('*').order('entry_date', { ascending: false }).limit(isAll ? 60 : 20);
 
     if (isAll) {
@@ -673,12 +686,7 @@
     const campusLabel = isAll
       ? 'All Campuses'
       : (allCampuses.find(c => c.id === snapCampusId)?.name ?? identity.campus_name);
-    const activeStats = weeklyStats.filter(w => !w.no_youth_night);
-    const year = new Date().getFullYear();
-    document.getElementById('snap-campus-title').textContent   = campusLabel;
-    document.getElementById('snap-weeks-subtitle').textContent =
-      `${year} — ${activeStats.length} week${activeStats.length !== 1 ? 's' : ''} of data` +
-      (isAll && allCampuses.length > 1 ? ` across ${allCampuses.length} campuses` : '');
+    document.getElementById('snap-campus-title').textContent = campusLabel;
 
     // Submission status
     const leaderOnly = leaders.filter(l => l.role === 'leader');
