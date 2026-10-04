@@ -35,6 +35,31 @@
       border-color: var(--c-primary);
     }
 
+    /* Sub-filters (year / gender) */
+    .sub-filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--s-3);
+      padding: var(--s-3) var(--s-5);
+      background: var(--c-bg);
+      border-bottom: 1px solid var(--c-border);
+      align-items: center;
+    }
+    .sub-filter-group {
+      display: flex;
+      align-items: center;
+      gap: var(--s-2);
+      flex-wrap: wrap;
+    }
+    .sub-filter-label {
+      font-size: var(--text-xs);
+      font-weight: 700;
+      color: var(--c-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      white-space: nowrap;
+    }
+
     /* NP table */
     .np-table-wrap { overflow-x: auto; }
     .np-table {
@@ -148,6 +173,24 @@
     <button class="filter-btn" data-status="activated">Activated</button>
     <button class="filter-btn" data-status="archived">Archived</button>
     <button class="btn btn--primary btn--sm" style="margin-left:auto;flex-shrink:0" onclick="openAddModal()">+ Add</button>
+  </div>
+
+  <div class="sub-filter-bar">
+    <div class="sub-filter-group">
+      <span class="sub-filter-label">Year</span>
+      <button class="filter-btn" data-year="Year 7">Yr 7</button>
+      <button class="filter-btn" data-year="Year 8">Yr 8</button>
+      <button class="filter-btn" data-year="Year 9">Yr 9</button>
+      <button class="filter-btn" data-year="Year 10">Yr 10</button>
+      <button class="filter-btn" data-year="Year 11">Yr 11</button>
+      <button class="filter-btn" data-year="Year 12">Yr 12</button>
+      <button class="filter-btn" data-year="Other / Left school">Other</button>
+    </div>
+    <div class="sub-filter-group">
+      <span class="sub-filter-label">Gender</span>
+      <button class="filter-btn" data-gender="Male">Male</button>
+      <button class="filter-btn" data-gender="Female">Female</button>
+    </div>
   </div>
 
   <div style="padding:var(--s-4) var(--s-5) 0">
@@ -433,7 +476,8 @@
   <script>
   const { db } = DY;
 
-  let identity, allNP = [], leaders = [], currentNP = null, currentFilter = 'all';
+  let identity, allNP = [], leaders = [], currentNP = null, currentFilter = 'all',
+      currentYearFilter = null, currentGenderFilter = null;
 
   async function init() {
     identity = requireIdentity('pastor');
@@ -481,15 +525,59 @@
         renderTable(currentFilter);
       });
     });
+
+    document.querySelectorAll('.filter-btn[data-year]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (currentYearFilter === btn.dataset.year) {
+          currentYearFilter = null;
+          btn.classList.remove('active');
+        } else {
+          document.querySelectorAll('.filter-btn[data-year]').forEach(b => b.classList.remove('active'));
+          currentYearFilter = btn.dataset.year;
+          btn.classList.add('active');
+        }
+        renderTable(currentFilter);
+      });
+    });
+
+    document.querySelectorAll('.filter-btn[data-gender]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (currentGenderFilter === btn.dataset.gender) {
+          currentGenderFilter = null;
+          btn.classList.remove('active');
+        } else {
+          document.querySelectorAll('.filter-btn[data-gender]').forEach(b => b.classList.remove('active'));
+          currentGenderFilter = btn.dataset.gender;
+          btn.classList.add('active');
+        }
+        renderTable(currentFilter);
+      });
+    });
   }
 
   function renderTable(filter) {
-    const rows = filter === 'all' ? allNP : allNP.filter(np => np.status === filter);
+    let rows = filter === 'all' ? allNP : allNP.filter(np => np.status === filter);
+
+    // Ready: only show people needing a leader assigned
+    if (filter === 'ready_to_activate') rows = rows.filter(np => !np.leader_id);
+
+    // Year level — exclusive toggle
+    if (currentYearFilter) rows = rows.filter(np => np.year_level === currentYearFilter);
+
+    // Gender — exclusive toggle
+    if (currentGenderFilter) rows = rows.filter(np => np.gender === currentGenderFilter);
+
     const empty = document.getElementById('empty-state');
     const wrap  = document.getElementById('table-wrap');
     const tbody = document.getElementById('np-tbody');
 
     if (!rows.length) {
+      empty.querySelector('h3').textContent =
+        filter === 'ready_to_activate' ? 'No unassigned people ready to activate' : 'No new people yet';
+      empty.querySelector('p').textContent =
+        filter === 'ready_to_activate'
+          ? 'Everyone in Ready has a leader assigned — great work!'
+          : 'New visitors who self-register or are added manually will appear here.';
       empty.classList.remove('hidden');
       wrap.classList.add('hidden');
       return;
