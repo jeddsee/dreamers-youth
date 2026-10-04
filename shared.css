@@ -650,20 +650,12 @@ h4 { font-size: var(--text-base); font-weight: 600; }
   align-items: center;
   gap: var(--s-3);
 }
-.sidebar__logomark {
-  font-family: var(--font);
-  font-weight: 800;
-  font-size: 1rem;
-  letter-spacing: -0.04em;
-  color: #fff;
-  background: #0000ff;
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+.sidebar__logo-img {
+  width: 68px;
+  height: auto;
+  display: block;
+  margin: -8px -4px -4px;
+  mix-blend-mode: screen;
 }
 
 .sidebar-section {
@@ -701,8 +693,17 @@ h4 { font-size: var(--text-base); font-weight: 600; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.sidebar-nav-item svg {
+  width: 14px;
+  height: 14px;
+  min-width: 14px;
+  flex-shrink: 0;
+  opacity: 0.65;
+}
 .sidebar-nav-item:hover { background: rgba(255,255,255,0.07); color: #fff; text-decoration: none; }
+.sidebar-nav-item:hover svg { opacity: 0.9; }
 .sidebar-nav-item.active { background: #0000ff; color: #fff; }
+.sidebar-nav-item.active svg { opacity: 1; }
 
 .sidebar-bottom {
   margin-top: auto;
