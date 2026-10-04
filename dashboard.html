@@ -621,27 +621,59 @@
   }
 
   // ── Snapshot ────────────────────────────────────────────────────────────────
+  let snapCampusId = null;
+  let lifeChart = null;
+
+  async function switchSnapshotCampus(campusId) {
+    snapCampusId = campusId;
+    await loadSnapshot();
+  }
+
+  function exportSnapshotPDF() {
+    window.print();
+  }
+
   async function loadSnapshot() {
+    if (!snapCampusId) snapCampusId = identity.campus_id;
+
     document.getElementById('snap-loading').classList.remove('hidden');
     document.getElementById('snap-content').classList.add('hidden');
 
-    const term = termFromDate();
-    const mostRecentDate = mostRecentYouthNight();
+    const mostRecentDate = mostRecentYouthNight(new Date(), identity.youth_night_dow);
 
-    const [leadersRes, rosterRes, statsRes, npRes] = await Promise.all([
-      db.from('leaders').select('id, name, role').eq('campus_id', identity.campus_id).eq('active', true).order('name'),
-      db.from('youth_roster').select('*').eq('campus_id', identity.campus_id).eq('active', true),
-      db.from('weekly_stats').select('*').eq('campus_id', identity.campus_id).order('entry_date', {ascending: false}).limit(8),
-      db.from('new_people').select('status, connection_status, leader_id').eq('campus_id', identity.campus_id).not('status', 'in', '("archived")'),
+    const [leadersRes, rosterRes, statsRes, campusesRes] = await Promise.all([
+      db.from('leaders').select('id, name, role').eq('campus_id', snapCampusId).eq('active', true).order('name'),
+      db.from('youth_roster').select('id, is_new_christian').eq('campus_id', snapCampusId).eq('active', true),
+      db.from('weekly_stats').select('*').eq('campus_id', snapCampusId).order('entry_date', {ascending: false}).limit(20),
+      db.from('campuses').select('id, name').eq('archived', false).order('name'),
     ]);
 
-    leaders = leadersRes.data ?? [];
-    roster  = rosterRes.data ?? [];
+    leaders     = leadersRes.data ?? [];
+    roster      = rosterRes.data ?? [];
     weeklyStats = statsRes.data ?? [];
 
+    // Populate campus selector
+    const campusSel = document.getElementById('snap-campus-select');
+    campusSel.innerHTML = '';
+    (campusesRes.data ?? []).forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.name;
+      if (c.id === snapCampusId) opt.selected = true;
+      campusSel.appendChild(opt);
+    });
+
+    // Header
+    const campusName = campusSel.selectedOptions[0]?.textContent ?? identity.campus_name;
+    const year = new Date().getFullYear();
+    const activeStats = weeklyStats.filter(w => !w.no_youth_night);
+    document.getElementById('snap-campus-title').textContent   = campusName;
+    document.getElementById('snap-weeks-subtitle').textContent = `${year} — ${activeStats.length} week${activeStats.length !== 1 ? 's' : ''} of data`;
+
     // Leader submission status this week
+    const leaderOnly = leaders.filter(l => l.role === 'leader');
     const entryRes = await Promise.all(
-      leaders.filter(l => l.role === 'leader').map(l =>
+      leaderOnly.map(l =>
         db.from('leader_entries')
           .select('entry_date')
           .eq('leader_id', l.id)
@@ -650,124 +682,46 @@
       )
     );
 
-    const statusList = document.getElementById('leader-status-list');
-    statusList.innerHTML = '';
-    leaders.filter(l => l.role === 'leader').forEach((l, i) => {
-      const submitted = !!entryRes[i]?.data;
-      const row = document.createElement('div');
-      row.className = 'leader-status-row';
-      row.innerHTML = `
-        <span class="fw-medium">${escHtml(l.name)}</span>
-        <span class="badge badge--${submitted ? 'success' : 'danger'}">${submitted ? 'Submitted' : 'Missing'}</span>
-      `;
-      statusList.appendChild(row);
-    });
+    const subBody = document.getElementById('snap-submission-leaders');
+    const subSummary = document.getElementById('snap-sub-summary');
+    subBody.innerHTML = '';
+    if (!leaderOnly.length) {
+      subBody.innerHTML = `<div class="snap-leader-chip" style="color:var(--c-text-muted)">${escHtml(campusName)} / No leaders set up</div>`;
+      subSummary.textContent = 'No leaders set up';
+    } else {
+      const submitted = entryRes.filter(r => !!r?.data).length;
+      subSummary.textContent = `${submitted} / ${leaderOnly.length} submitted`;
+      leaderOnly.forEach((l, i) => {
+        const done = !!entryRes[i]?.data;
+        const chip = document.createElement('div');
+        chip.className = 'snap-leader-chip';
+        chip.innerHTML = `<span class="fw-medium">${escHtml(l.name)}</span><span class="badge badge--${done ? 'success' : 'danger'}">${done ? 'Submitted' : 'Missing'}</span>`;
+        subBody.appendChild(chip);
+      });
+    }
 
-    // Category distribution
-    const cats = { contributor: 0, connected: 0, community: 0 };
-    roster.forEach(y => { if (cats[y.category] !== undefined) cats[y.category]++; });
-    const total = roster.length || 1;
-    const catEl = document.getElementById('category-dist');
-    catEl.innerHTML = `
-      <div style="padding:var(--s-4) var(--s-5)">
-        <div class="row row--between text-sm mb-2">
-          <span>🥇 Contributor <strong>${cats.contributor}</strong></span>
-          <span>🔵 Connected <strong>${cats.connected}</strong></span>
-          <span>🟢 Community <strong>${cats.community}</strong></span>
-          <span class="text-muted">Total: ${roster.length}</span>
-        </div>
-        <div class="dist-bar">
-          <div class="dist-bar__seg" style="width:${(cats.contributor/total*100).toFixed(1)}%;background:var(--c-contributor)"></div>
-          <div class="dist-bar__seg" style="width:${(cats.connected/total*100).toFixed(1)}%;background:var(--c-connected)"></div>
-          <div class="dist-bar__seg" style="width:${(cats.community/total*100).toFixed(1)}%;background:var(--c-community)"></div>
-        </div>
-      </div>
-      ${leaders.filter(l=>l.role==='leader').map(l => {
-        const ry = roster.filter(y => y.leader_id === l.id);
-        const lc = { contributor: 0, connected: 0, community: 0 };
-        ry.forEach(y => { if (lc[y.category] !== undefined) lc[y.category]++; });
-        const lt = ry.length || 1;
-        return `
-          <div style="padding:var(--s-3) var(--s-5);border-top:1px solid var(--c-border)">
-            <div class="row row--between text-sm mb-2">
-              <span class="fw-medium">${escHtml(l.name)}</span>
-              <span class="text-muted">${ry.length} youth</span>
-            </div>
-            <div class="dist-bar">
-              <div class="dist-bar__seg" style="width:${(lc.contributor/lt*100).toFixed(1)}%;background:var(--c-contributor)"></div>
-              <div class="dist-bar__seg" style="width:${(lc.connected/lt*100).toFixed(1)}%;background:var(--c-connected)"></div>
-              <div class="dist-bar__seg" style="width:${(lc.community/lt*100).toFixed(1)}%;background:var(--c-community)"></div>
-            </div>
-          </div>
-        `;
-      }).join('')}
-    `;
-
-    // Milestones
-    const water   = roster.filter(y => y.water_baptised).length;
-    const hs      = roster.filter(y => y.hs_baptised).length;
-    const serving = roster.filter(y => y.serving).length;
-    const milestoneEl = document.getElementById('milestone-stats');
-    milestoneEl.innerHTML = [
-      { value: `${water} / ${roster.length}`, label: '💧 Water baptised' },
-      { value: `${hs}    / ${roster.length}`, label: '🔥 HS baptised' },
-      { value: `${serving} / ${roster.length}`, label: '🙌 Serving' },
-      { value: `${water && roster.length ? Math.round(water/roster.length*100) : 0}%`, label: 'Baptism rate' },
-    ].map(s => `<div class="stat-tile"><div class="stat-tile__value">${s.value}</div><div class="stat-tile__label">${s.label}</div></div>`).join('');
-
-    // Roster breakdown (year level + gender)
-    const males   = roster.filter(y => y.gender === 'Male').length;
-    const females = roster.filter(y => y.gender === 'Female').length;
-    const yearCounts = {};
-    roster.forEach(y => { if (y.year_level) yearCounts[y.year_level] = (yearCounts[y.year_level]||0)+1; });
-    const breakdownEl = document.getElementById('roster-breakdown');
-    breakdownEl.innerHTML = [
-      { value: males,   label: 'Male' },
-      { value: females, label: 'Female' },
-      ...Object.entries(yearCounts).sort().map(([yr, n]) => ({ value: n, label: yr })),
-    ].map(s => `<div class="stat-tile"><div class="stat-tile__value">${s.value}</div><div class="stat-tile__label">${s.label}</div></div>`).join('');
-
-    // Health stats table
-    const tbody = document.getElementById('health-tbody');
-    tbody.innerHTML = weeklyStats.map(ws => `
-      <tr>
-        <td>${formatDate(ws.entry_date)}</td>
-        <td>${ws.no_youth_night ? '<span class="badge badge--neutral">No night</span>' : (ws.attendance ?? '—')}</td>
-        <td>${ws.first_timers ?? '—'}</td>
-        <td>${ws.second_timers ?? '—'}</td>
-        <td>${ws.third_timers ?? '—'}</td>
-        <td>${(ws.salvations_first || 0) + (ws.salvations_rededs || 0)}</td>
-        <td>${ws.water_baptisms ?? '—'}</td>
-        <td>${ws.fresh_start ?? '—'}</td>
-        <td>${ws.connect_attendance ?? '—'}</td>
-      </tr>
-    `).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--c-text-muted);padding:var(--s-5)">No stats entered yet</td></tr>';
-
-    // ── Stat card sections ────────────────────────────────────────────────
-    const activeStats = weeklyStats.filter(w => !w.no_youth_night);
+    // Stat calculations
     const avg = arr => arr.length ? Math.round(arr.reduce((a,b) => a+b, 0) / arr.length) : 0;
     const sum = arr => arr.reduce((a,b) => a+b, 0);
-    const col = (key) => activeStats.map(w => w[key] ?? 0);
+    const col = key => activeStats.map(w => w[key] ?? 0);
 
-    const avgAtt   = avg(col('attendance'));
-    const totalDep = roster.length;
+    // Attendance hero
+    document.getElementById('snap-avg-att').textContent   = avg(col('attendance'));
+    document.getElementById('snap-total-dept').textContent = roster.length;
 
-    document.getElementById('snap-avg-att').textContent  = avgAtt;
-    document.getElementById('snap-total-dept').textContent = totalDep;
-
-    // New People cards
-    const first = sum(col('first_timers'));
-    const second = sum(col('second_timers'));
-    const third  = sum(col('third_timers'));
+    // New People
+    const first     = sum(col('first_timers'));
+    const second    = sum(col('second_timers'));
+    const third     = sum(col('third_timers'));
     const retention = first > 0 ? Math.round((second + third) / (first * 2) * 100) : 0;
     document.getElementById('snap-np-cards').innerHTML = [
-      { label: '1st Timers',     value: first,  cls: 'stat-card--red' },
-      { label: '2nd Timers',     value: second, cls: 'stat-card--red' },
-      { label: '3rd Timers',     value: third,  cls: 'stat-card--red' },
-      { label: 'Retention Rate', value: `${retention}%`, cls: 'stat-card--fill-red' },
+      { label: '1st Timers',     value: first,            cls: 'stat-card--red' },
+      { label: '2nd Timers',     value: second,           cls: 'stat-card--red' },
+      { label: '3rd Timers',     value: third,            cls: 'stat-card--red' },
+      { label: 'Retention Rate', value: `${retention}%`,  cls: 'stat-card--fill-red' },
     ].map(c => `<div class="stat-card ${c.cls}"><div class="stat-card__label">${c.label}</div><div class="stat-card__value">${c.value}</div></div>`).join('');
 
-    // Life Metrics cards
+    // Life Metrics
     const nc     = roster.filter(y => y.is_new_christian).length;
     const salF   = sum(col('salvations_first'));
     const salR   = sum(col('salvations_rededs'));
@@ -776,25 +730,96 @@
     const watBap = sum(col('water_baptisms'));
     const hsBap  = sum(col('hs_baptisms'));
     document.getElementById('snap-life-cards').innerHTML = [
-      { label: 'New Christians (Total)',   value: nc,     cls: 'stat-card--fill-lime' },
-      { label: 'First-Time Decisions',     value: salF,   cls: 'stat-card--lime' },
-      { label: 'Rededications',            value: salR,   cls: 'stat-card--lime' },
-      { label: 'Bibles Given',             value: bibles, cls: 'stat-card--lime' },
-      { label: 'New Christian Course',     value: fresh,  cls: 'stat-card--lime' },
-      { label: 'Water Baptisms',           value: watBap, cls: 'stat-card--lime' },
-      { label: 'HS Baptisms',              value: hsBap,  cls: 'stat-card--lime' },
+      { label: 'New Christians (Total)', value: nc,     cls: 'stat-card--fill-lime' },
+      { label: 'First-Time Decisions',   value: salF,   cls: 'stat-card--lime' },
+      { label: 'Rededications',          value: salR,   cls: 'stat-card--lime' },
+      { label: 'Bibles Given',           value: bibles, cls: 'stat-card--lime' },
+      { label: 'New Christian Course',   value: fresh,  cls: 'stat-card--lime' },
+      { label: 'Water Baptisms',         value: watBap, cls: 'stat-card--lime' },
+      { label: 'HS Baptisms',            value: hsBap,  cls: 'stat-card--lime' },
     ].map(c => `<div class="stat-card ${c.cls}"><div class="stat-card__label">${c.label}</div><div class="stat-card__value">${c.value}</div></div>`).join('');
 
-    // Connect & Sunday cards
+    // Connect & Sunday
     document.getElementById('snap-connect-cards').innerHTML = [
-      { label: 'Avg Connect Att.',  value: avg(col('connect_attendance')) },
-      { label: 'Avg Sunday Att.',   value: avg(col('sunday_attendance')) },
-      { label: 'Avg Saints Att.',   value: avg(col('saints_attendance')) },
-      { label: 'Schools Visited',   value: sum(col('schools_visited')) },
+      { label: 'Avg Connect Att.', value: avg(col('connect_attendance')) },
+      { label: 'Avg Sunday Att.',  value: avg(col('sunday_attendance')) },
+      { label: 'Avg Saints Att.',  value: avg(col('saints_attendance')) },
+      { label: 'Schools Visited',  value: sum(col('schools_visited')) },
     ].map(c => `<div class="stat-card"><div class="stat-card__label">${c.label}</div><div class="stat-card__value">${c.value}</div></div>`).join('');
+
+    // Life metrics chart
+    renderLifeMetricsChart(activeStats);
 
     document.getElementById('snap-loading').classList.add('hidden');
     document.getElementById('snap-content').classList.remove('hidden');
+  }
+
+  function renderLifeMetricsChart(activeStats) {
+    const canvas = document.getElementById('life-metrics-chart');
+    const emptyEl = document.getElementById('snap-chart-empty');
+    if (lifeChart) { lifeChart.destroy(); lifeChart = null; }
+
+    if (!activeStats.length) {
+      emptyEl.classList.remove('hidden');
+      canvas.classList.add('hidden');
+      return;
+    }
+    emptyEl.classList.add('hidden');
+    canvas.classList.remove('hidden');
+
+    const sorted = [...activeStats].reverse();
+    lifeChart = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: sorted.map(w => formatDate(w.entry_date)),
+        datasets: [
+          {
+            label: 'Salvations',
+            data: sorted.map(w => (w.salvations_first ?? 0) + (w.salvations_rededs ?? 0)),
+            borderColor: '#ff3500',
+            backgroundColor: 'rgba(255,53,0,0.08)',
+            borderWidth: 2,
+            tension: 0.35,
+            fill: true,
+            pointRadius: 4,
+          },
+          {
+            label: 'Water baptisms',
+            data: sorted.map(w => w.water_baptisms ?? 0),
+            borderColor: '#0000ff',
+            backgroundColor: 'rgba(0,0,255,0.06)',
+            borderWidth: 2,
+            tension: 0.35,
+            fill: true,
+            pointRadius: 4,
+          },
+          {
+            label: 'HS baptisms',
+            data: sorted.map(w => w.hs_baptisms ?? 0),
+            borderColor: '#8aaa00',
+            backgroundColor: 'rgba(190,255,0,0.15)',
+            borderWidth: 2,
+            tension: 0.35,
+            fill: true,
+            pointRadius: 4,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { font: { family: 'Outfit', size: 12 }, boxWidth: 12, padding: 16 },
+          },
+        },
+        scales: {
+          y: { beginAtZero: true, ticks: { stepSize: 1, font: { family: 'Outfit' } } },
+          x: { ticks: { font: { family: 'Outfit', size: 11 }, maxRotation: 45 } },
+        },
+      },
+    });
   }
 
   // ── Term management ─────────────────────────────────────────────────────────
