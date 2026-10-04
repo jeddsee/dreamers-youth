@@ -157,6 +157,16 @@
     .entry-no-night-title { font-weight: 600; font-size: var(--text-sm); }
     .entry-no-night-sub  { font-size: var(--text-xs); color: var(--c-text-muted); margin-top: 2px; }
     .entry-save-row { display: flex; align-items: center; gap: var(--s-4); margin-top: var(--s-2); }
+
+  @media print {
+    .sidebar { display: none !important; }
+    .main-content { margin-left: 0 !important; width: 100% !important; }
+    .snap-period-pills, .snap-campus-row, .ycomp-filter-bar,
+    .btn, button, .sidebar-logout { display: none !important; }
+    .app-layout { display: block; }
+    body { background: #fff !important; }
+    * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  }
   </style>
 </head>
 <body>
@@ -655,7 +665,7 @@
   const { db } = DY;
 
   let identity, leaders = [], roster = [], weeklyStats = [], termReview = null;
-  let archivedCount = 0;
+  let archivedCount = 0, snapNP = [];
   let addYouthLeaderId = null;
   let allCampuses = [];
   let snapCampusId = null;
@@ -1007,6 +1017,7 @@
     let rosterQ  = db.from('youth_roster').select('id, is_new_christian, water_baptised, category, campus_id').eq('active', true);
     let archQ    = db.from('youth_roster').select('id', { count: 'exact', head: true }).eq('active', false);
     let statsQ   = db.from('weekly_stats').select('*').order('entry_date', { ascending: false }).limit(isAll ? 60 : 20);
+    let npQ      = db.from('new_people').select('status, campus_id').not('status', 'in', '("archived")');
 
     if (isAll) {
       const ids = allCampuses.map(c => c.id);
@@ -1014,18 +1025,21 @@
       rosterQ  = rosterQ.in('campus_id', ids);
       archQ    = archQ.in('campus_id', ids);
       statsQ   = statsQ.in('campus_id', ids);
+      npQ      = npQ.in('campus_id', ids);
     } else {
       leadersQ = leadersQ.eq('campus_id', snapCampusId);
       rosterQ  = rosterQ.eq('campus_id', snapCampusId);
       archQ    = archQ.eq('campus_id', snapCampusId);
       statsQ   = statsQ.eq('campus_id', snapCampusId);
+      npQ      = npQ.eq('campus_id', snapCampusId);
     }
 
-    const [leadersRes, rosterRes, archRes, statsRes] = await Promise.all([leadersQ, rosterQ, archQ, statsQ]);
-    leaders      = leadersRes.data ?? [];
-    roster       = rosterRes.data ?? [];
+    const [leadersRes, rosterRes, archRes, statsRes, npRes] = await Promise.all([leadersQ, rosterQ, archQ, statsQ, npQ]);
+    leaders       = leadersRes.data ?? [];
+    roster        = rosterRes.data ?? [];
     archivedCount = archRes.count ?? 0;
-    weeklyStats  = statsRes.data ?? [];
+    weeklyStats   = statsRes.data ?? [];
+    snapNP        = npRes.data ?? [];
 
     // Header
     const campusLabel = isAll
@@ -1149,13 +1163,17 @@
     document.getElementById('snap-avg-att').textContent    = avg(col('attendance'));
     document.getElementById('snap-total-dept').textContent = roster.length;
 
-    // New People
-    const first = sum(col('first_timers')), second = sum(col('second_timers')), third = sum(col('third_timers'));
-    const retention = first > 0 ? Math.round((second + third) / (first * 2) * 100) : 0;
+    // New People — counts from actual new_people records
+    const npCount = s => snapNP.filter(n => n.status === s).length;
+    const v1 = npCount('visit_1'), v2 = npCount('visit_2'), v3 = npCount('visit_3');
+    const ready = npCount('ready_to_activate'), activated = npCount('activated');
+    const retention = v1 > 0 ? Math.round((v2 + v3) / (v1 * 2) * 100) : 0;
     document.getElementById('snap-np-cards').innerHTML = [
-      { label: '1st Timers',     value: first,           cls: 'stat-card--red' },
-      { label: '2nd Timers',     value: second,          cls: 'stat-card--red' },
-      { label: '3rd Timers',     value: third,           cls: 'stat-card--red' },
+      { label: 'Visit 1',        value: v1,              cls: 'stat-card--red' },
+      { label: 'Visit 2',        value: v2,              cls: 'stat-card--red' },
+      { label: 'Visit 3',        value: v3,              cls: 'stat-card--red' },
+      { label: 'Ready',          value: ready,           cls: 'stat-card--red' },
+      { label: 'Activated',      value: activated,       cls: 'stat-card--fill-red' },
       { label: 'Retention Rate', value: `${retention}%`, cls: 'stat-card--fill-red' },
     ].map(c => `<div class="stat-card ${c.cls}"><div class="stat-card__label">${c.label}</div><div class="stat-card__value">${c.value}</div></div>`).join('');
 
