@@ -373,6 +373,7 @@
         <!-- Period filter -->
         <div class="snap-period-bar">
           <span class="snap-period-label">Period</span>
+          <button class="snap-period-pill" data-period="year" onclick="setSnapPeriod('year',this)">This Year</button>
           <button class="snap-period-pill" data-period="t1" onclick="setSnapPeriod('t1',this)">Term 1</button>
           <button class="snap-period-pill" data-period="t2" onclick="setSnapPeriod('t2',this)">Term 2</button>
           <button class="snap-period-pill" data-period="t3" onclick="setSnapPeriod('t3',this)">Term 3</button>
@@ -669,7 +670,7 @@
   let addYouthLeaderId = null;
   let allCampuses = [];
   let snapCampusId = null;
-  let snapPeriod   = termFromDate(new Date()).split(' ')[0].toLowerCase(); // 't1'–'t4'
+  let snapPeriod   = 'year';
   let snapDateFrom = null;
   let snapDateTo   = null;
   let lifeChart = null;
@@ -716,7 +717,7 @@
 
   function selectCampus(id) {
     snapCampusId = id;
-    snapPeriod   = termFromDate(new Date()).split(' ')[0].toLowerCase();
+    snapPeriod   = 'year';
     snapDateFrom = null;
     snapDateTo   = null;
     const df = document.getElementById('snap-date-from');
@@ -1110,6 +1111,11 @@
     const active = weeklyStats.filter(w => !w.no_youth_night);
     if (snapPeriod === 'custom' && snapDateFrom && snapDateTo) {
       return active.filter(w => w.entry_date >= snapDateFrom && w.entry_date <= snapDateTo);
+    }
+    if (snapPeriod === 'year') {
+      const yearStr = String(new Date().getFullYear());
+      const today   = new Date().toISOString().split('T')[0];
+      return active.filter(w => w.entry_date >= `${yearStr}-01-01` && w.entry_date <= today);
     }
     if (['t1','t2','t3','t4'].includes(snapPeriod)) {
       const label = snapPeriod.toUpperCase(); // 'T1'…'T4'
