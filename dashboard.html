@@ -176,11 +176,6 @@
           <div id="ws-saved" class="badge badge--success hidden" style="align-self:flex-end">Saved</div>
         </div>
 
-        <div id="ws-no-night-banner" class="hidden" style="background:var(--c-warning-light);border:1px solid #FDE68A;border-radius:var(--r-lg);padding:var(--s-4);margin-bottom:var(--s-4)">
-          <div class="fw-semibold" style="color:var(--c-warning-text)">No youth night this week</div>
-          <div class="text-sm" style="color:var(--c-warning-text)">Leader entries suppressed for this date.</div>
-        </div>
-
         <div id="ws-error" class="error-banner hidden" style="margin-bottom:var(--s-4)"></div>
 
         <div class="card">
@@ -196,27 +191,27 @@
             <div class="card__header"><h3>Life metrics</h3></div>
             <div class="card__body">
               <div class="form-grid form-grid--2">
-                <div class="form-group">
+                <div class="form-group ws-night-field">
                   <label>Attendance <span class="text-muted text-xs">(from Planning Centre)</span></label>
                   <input id="ws-attendance" type="number" min="0" class="input" placeholder="0">
                 </div>
-                <div class="form-group">
+                <div class="form-group ws-night-field">
                   <label>1st timers</label>
                   <input id="ws-first" type="number" min="0" class="input" placeholder="0">
                 </div>
-                <div class="form-group">
+                <div class="form-group ws-night-field">
                   <label>2nd timers</label>
                   <input id="ws-second" type="number" min="0" class="input" placeholder="0">
                 </div>
-                <div class="form-group">
+                <div class="form-group ws-night-field">
                   <label>3rd timers</label>
                   <input id="ws-third" type="number" min="0" class="input" placeholder="0">
                 </div>
-                <div class="form-group">
+                <div class="form-group ws-night-field">
                   <label>Salvations (first time)</label>
                   <input id="ws-sal-first" type="number" min="0" class="input" placeholder="0">
                 </div>
-                <div class="form-group">
+                <div class="form-group ws-night-field">
                   <label>Salvations (rededication)</label>
                   <input id="ws-sal-reded" type="number" min="0" class="input" placeholder="0">
                 </div>
@@ -241,7 +236,13 @@
                   <input id="ws-schools" type="number" min="0" class="input" placeholder="0">
                 </div>
                 <div class="form-group">
-                  <label>Youth Connect attendance</label>
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--s-1)">
+                    <label style="margin:0">Youth Connect attendance</label>
+                    <label style="display:flex;align-items:center;gap:var(--s-1);cursor:pointer;font-size:var(--text-xs);color:var(--c-text-muted);font-weight:500">
+                      <input type="checkbox" id="ws-no-connect" onchange="toggleNoConnect()">
+                      No Connect
+                    </label>
+                  </div>
                   <input id="ws-connect" type="number" min="0" class="input" placeholder="0">
                 </div>
                 <div class="form-group">
@@ -561,20 +562,13 @@
 
   async function loadWeeklyEntry(date) {
     document.getElementById('ws-saved').classList.add('hidden');
-    document.getElementById('ws-no-night-banner').classList.add('hidden');
     const { data } = await db.from('weekly_stats')
       .select('*').eq('campus_id', identity.campus_id).eq('entry_date', date).maybeSingle();
     if (!data) {
       clearWSForm();
-      document.getElementById('ws-no-night').checked = false;
-      document.getElementById('ws-form').classList.remove('hidden');
       return;
     }
     fillWSForm(data);
-    if (data.no_youth_night) {
-      document.getElementById('ws-no-night-banner').classList.remove('hidden');
-      document.getElementById('ws-form').classList.add('hidden');
-    }
     document.getElementById('ws-saved').classList.remove('hidden');
   }
 
@@ -595,7 +589,10 @@
     set('ws-sunday', d.sunday_attendance);
     set('ws-saints', d.saints_attendance);
     set('ws-notes', d.notes);
-    document.getElementById('ws-no-night').checked = d.no_youth_night;
+    document.getElementById('ws-no-night').checked = !!d.no_youth_night;
+    document.getElementById('ws-no-connect').checked = false;
+    applyNoNightState();
+    applyNoConnectState();
   }
 
   function clearWSForm() {
@@ -605,13 +602,28 @@
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
+    document.getElementById('ws-no-night').checked = false;
+    document.getElementById('ws-no-connect').checked = false;
+    applyNoNightState();
+    applyNoConnectState();
   }
 
-  function toggleNoNight() {
-    const checked = document.getElementById('ws-no-night').checked;
-    document.getElementById('ws-form').classList.toggle('hidden', checked);
-    document.getElementById('ws-no-night-banner').classList.toggle('hidden', !checked);
+  function applyNoNightState() {
+    const disabled = document.getElementById('ws-no-night').checked;
+    document.querySelectorAll('.ws-night-field').forEach(group => {
+      group.querySelectorAll('input').forEach(el => { el.disabled = disabled; });
+      group.style.opacity = disabled ? '0.38' : '';
+    });
   }
+
+  function applyNoConnectState() {
+    const disabled = document.getElementById('ws-no-connect').checked;
+    const input = document.getElementById('ws-connect');
+    if (input) { input.disabled = disabled; input.style.opacity = disabled ? '0.38' : ''; }
+  }
+
+  function toggleNoNight() { applyNoNightState(); }
+  function toggleNoConnect() { applyNoConnectState(); }
 
   const int = id => parseInt(document.getElementById(id)?.value) || null;
   const str = id => document.getElementById(id)?.value.trim() || null;
@@ -619,9 +631,10 @@
   async function saveWeeklyStats() {
     const btn = document.getElementById('ws-save-btn');
     setLoading(btn, true);
-    const date     = document.getElementById('ws-date').value;
-    const noNight  = document.getElementById('ws-no-night').checked;
-    const payload  = {
+    const date      = document.getElementById('ws-date').value;
+    const noNight   = document.getElementById('ws-no-night').checked;
+    const noConnect = document.getElementById('ws-no-connect').checked;
+    const payload   = {
       campus_id:         identity.campus_id,
       entry_date:        date,
       term:              termFromDate(date),
@@ -632,15 +645,15 @@
       third_timers:      noNight ? null : int('ws-third'),
       salvations_first:  noNight ? null : int('ws-sal-first'),
       salvations_rededs: noNight ? null : int('ws-sal-reded'),
-      bibles_given:      noNight ? null : int('ws-bibles'),
-      fresh_start:       noNight ? null : int('ws-fresh'),
-      water_baptisms:    noNight ? null : int('ws-water-bap'),
-      hs_baptisms:       noNight ? null : int('ws-hs-bap'),
-      schools_visited:   noNight ? null : int('ws-schools'),
-      connect_attendance:noNight ? null : int('ws-connect'),
-      sunday_attendance: noNight ? null : int('ws-sunday'),
-      saints_attendance: noNight ? null : int('ws-saints'),
-      notes:             str('ws-notes'),
+      bibles_given:      int('ws-bibles'),
+      fresh_start:       int('ws-fresh'),
+      water_baptisms:    int('ws-water-bap'),
+      hs_baptisms:       int('ws-hs-bap'),
+      schools_visited:   int('ws-schools'),
+      connect_attendance: noConnect ? null : int('ws-connect'),
+      sunday_attendance:  int('ws-sunday'),
+      saints_attendance:  int('ws-saints'),
+      notes:              str('ws-notes'),
     };
     const { error } = await db.from('weekly_stats')
       .upsert(payload, { onConflict: 'campus_id,entry_date' });
