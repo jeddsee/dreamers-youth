@@ -101,6 +101,62 @@
 
     .modal-backdrop { display: none; }
     .modal-backdrop.open { display: flex; }
+
+    /* ── Weekly Entry (restructured) ── */
+    .entry-page-header { margin-bottom: var(--s-6); }
+    .entry-page-header h1 { font-size: 1.4rem; font-weight: 700; margin-bottom: var(--s-1); }
+    .entry-page-header p { color: var(--c-text-muted); font-size: var(--text-sm); }
+
+    .entry-section {
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: var(--r-lg);
+      padding: var(--s-5);
+      margin-bottom: var(--s-4);
+    }
+    .entry-section-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.09em;
+      color: var(--c-text-muted);
+      text-transform: uppercase;
+      margin-bottom: var(--s-4);
+    }
+    .entry-field-label {
+      display: block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--c-text-muted);
+      text-transform: uppercase;
+      margin-bottom: var(--s-2);
+    }
+    .entry-info-banner {
+      background: rgba(21,0,232,0.05);
+      border: 1px solid rgba(21,0,232,0.18);
+      border-radius: var(--r-md);
+      padding: var(--s-4) var(--s-5);
+      font-size: var(--text-sm);
+      color: var(--c-text);
+      line-height: 1.55;
+    }
+    .entry-no-night-row {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--s-3);
+      margin-top: var(--s-4);
+      cursor: pointer;
+      padding-top: var(--s-4);
+      border-top: 1px solid var(--c-border);
+    }
+    .entry-no-night-row input[type="checkbox"] {
+      width: 16px; height: 16px;
+      margin-top: 2px; flex-shrink: 0;
+      accent-color: var(--c-warning);
+    }
+    .entry-no-night-title { font-weight: 600; font-size: var(--text-sm); }
+    .entry-no-night-sub  { font-size: var(--text-xs); color: var(--c-text-muted); margin-top: 2px; }
+    .entry-save-row { display: flex; align-items: center; gap: var(--s-4); margin-top: var(--s-2); }
   </style>
 </head>
 <body>
@@ -117,6 +173,10 @@
       <button class="sidebar-nav-item active" data-nav="snapshot">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
         Dashboard
+      </button>
+      <button class="sidebar-nav-item" data-nav="yearcomp">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="1,11 5,6 9,9 15,3"/><polyline points="1,14 5,9 9,12 15,6"/></svg>
+        Year comparison
       </button>
     </div>
 
@@ -168,100 +228,132 @@
     <!-- ══ WEEKLY ENTRY ════════════════════════════════════════════════════ -->
     <section id="section-entry">
       <div class="main-content__body">
-        <div class="row row--between mb-4">
-          <div class="form-group" style="flex:1;max-width:200px">
-            <label class="text-sm fw-semibold">Youth night date</label>
-            <input type="date" id="ws-date" class="input">
+
+        <div class="entry-page-header">
+          <h1>Add weekly entry</h1>
+          <p>Record campus stats — attendance comes automatically from the Campus Portal</p>
+        </div>
+
+        <!-- Week Details -->
+        <div class="entry-section">
+          <div class="entry-section-label">Week details</div>
+          <div class="form-grid form-grid--2">
+            <div class="form-group">
+              <label class="entry-field-label">Term</label>
+              <select id="ws-term" class="select" onchange="onTermWeekChange()">
+                <option value="T1">Term 1</option>
+                <option value="T2">Term 2</option>
+                <option value="T3">Term 3</option>
+                <option value="T4">Term 4</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="entry-field-label">Week number</label>
+              <input id="ws-week" type="number" min="1" max="20" value="1" class="input" onchange="onTermWeekChange()">
+            </div>
           </div>
-          <div id="ws-saved" class="badge badge--success hidden" style="align-self:flex-end">Saved</div>
+          <label class="entry-no-night-row">
+            <input type="checkbox" id="ws-no-night" onchange="toggleNoNight()">
+            <div>
+              <div class="entry-no-night-title">No youth night this week</div>
+              <div class="entry-no-night-sub">This week will be recorded but excluded from all averages</div>
+            </div>
+          </label>
+        </div>
+
+        <!-- Attendance — auto from Campus Portal -->
+        <div class="entry-section">
+          <div class="entry-section-label">Attendance — from Campus Portal</div>
+          <div class="entry-info-banner">
+            Youth attendance, new people, and expected attendance totals are pulled automatically from leader entries in the Campus Portal. No need to enter them here.
+          </div>
+        </div>
+
+        <!-- Leaders & Department -->
+        <div class="entry-section" id="ws-form">
+          <div class="entry-section-label">Leaders &amp; Department</div>
+          <div class="form-grid form-grid--2">
+            <div class="form-group ws-night-field">
+              <label class="entry-field-label">Total in department</label>
+              <input id="ws-total-dept" type="number" min="0" value="0" class="input" autocomplete="off">
+            </div>
+            <div class="form-group ws-night-field">
+              <label class="entry-field-label">Total leaders</label>
+              <input id="ws-leaders" type="number" min="0" value="0" class="input" autocomplete="off">
+            </div>
+          </div>
+        </div>
+
+        <!-- Life Metrics -->
+        <div class="entry-section">
+          <div class="entry-section-label">Life metrics</div>
+          <div class="form-grid form-grid--2">
+            <div class="form-group ws-night-field">
+              <label class="entry-field-label">First-time decisions</label>
+              <input id="ws-sal-first" type="number" min="0" value="0" class="input" autocomplete="off">
+            </div>
+            <div class="form-group ws-night-field">
+              <label class="entry-field-label">Rededications</label>
+              <input id="ws-sal-reded" type="number" min="0" value="0" class="input" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label class="entry-field-label">Bibles given</label>
+              <input id="ws-bibles" type="number" min="0" value="0" class="input" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label class="entry-field-label">Fresh Start course</label>
+              <input id="ws-fresh" type="number" min="0" value="0" class="input" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label class="entry-field-label">Water baptisms</label>
+              <input id="ws-water-bap" type="number" min="0" value="0" class="input" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label class="entry-field-label">Baptised in HS</label>
+              <input id="ws-hs-bap" type="number" min="0" value="0" class="input" autocomplete="off">
+            </div>
+          </div>
+        </div>
+
+        <!-- Connect & Sunday -->
+        <div class="entry-section">
+          <div class="entry-section-label">Connect &amp; Sunday</div>
+          <div class="form-grid form-grid--2">
+            <div class="form-group">
+              <label class="entry-field-label">Youth Connects</label>
+              <input id="ws-connect" type="number" min="0" value="0" class="input" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label class="entry-field-label">Sunday AM attendance</label>
+              <input id="ws-sunday" type="number" min="0" value="0" class="input" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label class="entry-field-label">Saints</label>
+              <input id="ws-saints" type="number" min="0" value="0" class="input" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label class="entry-field-label">Schools visited</label>
+              <input id="ws-schools" type="number" min="0" value="0" class="input" autocomplete="off">
+            </div>
+          </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="entry-section">
+          <div class="entry-section-label">Notes</div>
+          <textarea id="ws-notes" class="textarea" rows="2" placeholder="Any notes for this week…"></textarea>
         </div>
 
         <div id="ws-error" class="error-banner hidden" style="margin-bottom:var(--s-4)"></div>
 
-        <div class="card">
-          <label class="row" style="gap:var(--s-3);cursor:pointer;padding:var(--s-4)">
-            <input type="checkbox" id="ws-no-night" style="accent-color:var(--c-warning);width:20px;height:20px"
-              onchange="toggleNoNight()">
-            <span class="fw-semibold">No youth night this week</span>
-          </label>
+        <div class="entry-save-row">
+          <button class="btn btn--primary" id="ws-save-btn" onclick="saveWeeklyStats()">Save entry</button>
+          <div id="ws-saved" class="badge badge--success hidden">Saved</div>
         </div>
 
-        <div id="ws-form" class="mt-4">
-          <div class="card">
-            <div class="card__header"><h3>Life metrics</h3></div>
-            <div class="card__body">
-              <div class="form-grid form-grid--2">
-                <div class="form-group ws-night-field">
-                  <label>Attendance <span class="text-muted text-xs">(from Planning Centre)</span></label>
-                  <input id="ws-attendance" type="number" min="0" class="input" placeholder="0">
-                </div>
-                <div class="form-group ws-night-field">
-                  <label>1st timers</label>
-                  <input id="ws-first" type="number" min="0" class="input" placeholder="0">
-                </div>
-                <div class="form-group ws-night-field">
-                  <label>2nd timers</label>
-                  <input id="ws-second" type="number" min="0" class="input" placeholder="0">
-                </div>
-                <div class="form-group ws-night-field">
-                  <label>3rd timers</label>
-                  <input id="ws-third" type="number" min="0" class="input" placeholder="0">
-                </div>
-                <div class="form-group ws-night-field">
-                  <label>Salvations (first time)</label>
-                  <input id="ws-sal-first" type="number" min="0" class="input" placeholder="0">
-                </div>
-                <div class="form-group ws-night-field">
-                  <label>Salvations (rededication)</label>
-                  <input id="ws-sal-reded" type="number" min="0" class="input" placeholder="0">
-                </div>
-                <div class="form-group">
-                  <label>Bibles given</label>
-                  <input id="ws-bibles" type="number" min="0" class="input" placeholder="0">
-                </div>
-                <div class="form-group">
-                  <label>Fresh Start / NC course</label>
-                  <input id="ws-fresh" type="number" min="0" class="input" placeholder="0">
-                </div>
-                <div class="form-group">
-                  <label>Water baptisms</label>
-                  <input id="ws-water-bap" type="number" min="0" class="input" placeholder="0">
-                </div>
-                <div class="form-group">
-                  <label>HS baptisms</label>
-                  <input id="ws-hs-bap" type="number" min="0" class="input" placeholder="0">
-                </div>
-                <div class="form-group">
-                  <label>Schools visited</label>
-                  <input id="ws-schools" type="number" min="0" class="input" placeholder="0">
-                </div>
-                <div class="form-group">
-                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--s-1)">
-                    <label style="margin:0">Youth Connect attendance</label>
-                    <label style="display:flex;align-items:center;gap:var(--s-1);cursor:pointer;font-size:var(--text-xs);color:var(--c-text-muted);font-weight:500">
-                      <input type="checkbox" id="ws-no-connect" onchange="toggleNoConnect()">
-                      No Connect
-                    </label>
-                  </div>
-                  <input id="ws-connect" type="number" min="0" class="input" placeholder="0">
-                </div>
-                <div class="form-group">
-                  <label>Sunday attendance</label>
-                  <input id="ws-sunday" type="number" min="0" class="input" placeholder="0">
-                </div>
-                <div class="form-group">
-                  <label>Saints attendance</label>
-                  <input id="ws-saints" type="number" min="0" class="input" placeholder="0">
-                </div>
-              </div>
-              <div class="form-group mt-4">
-                <label>Notes</label>
-                <textarea id="ws-notes" class="textarea" rows="2" placeholder="Any notes for this week…"></textarea>
-              </div>
-              <button class="btn btn--primary mt-4" id="ws-save-btn" onclick="saveWeeklyStats()">Save</button>
-            </div>
-          </div>
-        </div>
+        <!-- Hidden date field used for Supabase keying -->
+        <input type="date" id="ws-date" style="display:none">
+
       </div>
     </section>
 
@@ -347,6 +439,62 @@
     </section>
 
 
+
+    <!-- ══ YEAR COMPARISON ══════════════════════════════════════════════════ -->
+    <section id="section-yearcomp" class="hidden">
+      <div id="ycomp-loading" class="loading-overlay hidden"><div class="spinner"></div></div>
+      <div class="main-content__body">
+        <div class="snap-header">
+          <div>
+            <h1 class="snap-title">Year comparison</h1>
+            <div class="snap-subtitle">Compare any two years side-by-side</div>
+          </div>
+          <div class="snap-header-actions">
+            <button class="btn btn--outline btn--sm" onclick="window.print()">Export PDF</button>
+          </div>
+        </div>
+
+        <div class="ycomp-filter-bar">
+          <div class="ycomp-filter-group">
+            <label class="ycomp-filter-label">Year A</label>
+            <select id="ycomp-year-a" class="ycomp-select"></select>
+          </div>
+          <div class="ycomp-filter-group">
+            <label class="ycomp-filter-label">Year B</label>
+            <select id="ycomp-year-b" class="ycomp-select"></select>
+          </div>
+          <div class="ycomp-filter-group">
+            <label class="ycomp-filter-label">Term</label>
+            <select id="ycomp-term" class="ycomp-select">
+              <option value="">All terms</option>
+              <option value="T1">Term 1</option>
+              <option value="T2">Term 2</option>
+              <option value="T3">Term 3</option>
+              <option value="T4">Term 4</option>
+            </select>
+          </div>
+          <div class="ycomp-filter-group">
+            <label class="ycomp-filter-label">Campus</label>
+            <select id="ycomp-campus" class="ycomp-select"></select>
+          </div>
+          <div class="ycomp-filter-group">
+            <label class="ycomp-filter-label">From week</label>
+            <select id="ycomp-from-week" class="ycomp-select">
+              <option value="">All weeks</option>
+            </select>
+          </div>
+          <div class="ycomp-filter-group">
+            <label class="ycomp-filter-label">To week</label>
+            <select id="ycomp-to-week" class="ycomp-select">
+              <option value="">All weeks</option>
+            </select>
+          </div>
+          <button class="btn btn--primary" onclick="runYearComparison()">Compare</button>
+        </div>
+
+        <div id="ycomp-results" class="hidden"></div>
+      </div>
+    </section>
 
     <!-- ══ SETUP ═══════════════════════════════════════════════════════════ -->
     <section id="section-setup" class="hidden">
@@ -501,12 +649,17 @@
     snapCampusId = identity.campus_id;
     document.getElementById('sidebar-user').textContent = identity.leader_name;
 
-    document.getElementById('ws-date').value = mostRecentYouthNight(new Date(), identity.youth_night_dow);
+    // Auto-detect current term and set week 1
+    const termKey = currentTermKey();
+    const termSelect = document.getElementById('ws-term');
+    if (termSelect) termSelect.value = termKey;
+    const initDate = termWeekToDate(termKey, 1);
+    document.getElementById('ws-date').value = initDate;
 
     setupSidebarNav();
     await populateCampusSwitcher();
     loadSnapshot();
-    loadWeeklyEntry(document.getElementById('ws-date').value);
+    loadWeeklyEntry(initDate);
     generateQR();
     loadSetup();
   }
@@ -553,6 +706,7 @@
         document.getElementById(`section-${btn.dataset.nav}`).classList.remove('hidden');
         if (btn.dataset.nav === 'snapshot') loadSnapshot();
         if (btn.dataset.nav === 'term')     loadTermSection();
+        if (btn.dataset.nav === 'yearcomp') initYearComparison();
       });
     });
     // Show snapshot by default
@@ -560,55 +714,217 @@
     document.getElementById('section-snapshot').classList.remove('hidden');
   }
 
+  // ── Year comparison ─────────────────────────────────────────────────────────
+  function initYearComparison() {
+    const curYear = new Date().getFullYear();
+    const years   = [curYear + 1, curYear, curYear - 1, curYear - 2, curYear - 3];
+
+    const selA = document.getElementById('ycomp-year-a');
+    const selB = document.getElementById('ycomp-year-b');
+    selA.innerHTML = years.map(y => `<option${y === curYear ? ' selected' : ''}>${y}</option>`).join('');
+    selB.innerHTML = years.map(y => `<option${y === curYear - 1 ? ' selected' : ''}>${y}</option>`).join('');
+
+    const selC = document.getElementById('ycomp-campus');
+    selC.innerHTML = `<option value="">All campuses</option>` +
+      allCampuses.map(c => `<option value="${c.id}">${escHtml(c.name)}</option>`).join('');
+
+    const weekOpts = Array.from({ length: 20 }, (_, i) =>
+      `<option value="${i + 1}">Week ${i + 1}</option>`).join('');
+    document.getElementById('ycomp-from-week').innerHTML = `<option value="">All weeks</option>${weekOpts}`;
+    document.getElementById('ycomp-to-week').innerHTML   = `<option value="">All weeks</option>${weekOpts}`;
+
+    document.getElementById('ycomp-results').classList.add('hidden');
+  }
+
+  async function runYearComparison() {
+    const yearA    = document.getElementById('ycomp-year-a').value;
+    const yearB    = document.getElementById('ycomp-year-b').value;
+    const term     = document.getElementById('ycomp-term').value;
+    const campusId = document.getElementById('ycomp-campus').value;
+    const fromWk   = parseInt(document.getElementById('ycomp-from-week').value) || null;
+    const toWk     = parseInt(document.getElementById('ycomp-to-week').value) || null;
+
+    document.getElementById('ycomp-loading').classList.remove('hidden');
+
+    const isAll = !campusId;
+    let q = db.from('weekly_stats').select('*').order('entry_date', { ascending: true });
+    if (isAll) q = q.in('campus_id', allCampuses.map(c => c.id));
+    else       q = q.eq('campus_id', campusId);
+
+    const { data } = await q;
+    const rows = data ?? [];
+
+    const partition = (year) => {
+      let filtered = rows.filter(w => {
+        if (!w.term || w.no_youth_night) return false;
+        const [t, y] = w.term.split(' ');
+        if (y !== year) return false;
+        if (term && t !== term) return false;
+        return true;
+      });
+      if (fromWk || toWk) {
+        filtered = filtered.slice((fromWk || 1) - 1, toWk ?? filtered.length);
+      }
+      return filtered;
+    };
+
+    const statsA = partition(yearA);
+    const statsB = partition(yearB);
+    document.getElementById('ycomp-loading').classList.add('hidden');
+    renderYearCompResults(statsA, statsB, yearA, yearB, term, campusId);
+  }
+
+  function renderYearCompResults(statsA, statsB, yearA, yearB, term, campusId) {
+    const avg  = arr => arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : 0;
+    const sum  = arr => arr.reduce((a, b) => a + b, 0);
+    const colA = key => statsA.map(w => w[key] ?? 0);
+    const colB = key => statsB.map(w => w[key] ?? 0);
+
+    const termLabel   = term ? `Term ${term.replace('T', '')}` : 'All terms';
+    const campusLabel = campusId
+      ? (allCampuses.find(c => c.id === campusId)?.name ?? '—')
+      : 'All campuses';
+    const weeksMsg = s => `${s.length} week${s.length !== 1 ? 's' : ''}`;
+
+    const card = (label, vA, vB, isPct) => {
+      const diff  = vA - vB;
+      const cls   = diff > 0 ? 'ycomp-delta--up' : diff < 0 ? 'ycomp-delta--down' : 'ycomp-delta--flat';
+      const arrow = diff > 0 ? '↑' : diff < 0 ? '↓' : '→';
+      const sign  = diff > 0 ? '+' : '';
+      const sfx   = isPct ? '%' : '';
+      return `<div class="ycomp-card">
+        <div class="ycomp-card__label">${label}</div>
+        <div class="ycomp-card__row">
+          <div class="ycomp-card__primary">
+            <span class="ycomp-card__val">${vA}${sfx}</span>
+            <span class="ycomp-card__yr">${yearA}</span>
+          </div>
+          <span class="ycomp-card__vs">vs</span>
+          <div class="ycomp-card__secondary">
+            <span class="ycomp-card__val">${vB}${sfx}</span>
+            <span class="ycomp-card__yr">${yearB}</span>
+          </div>
+          <div class="ycomp-card__delta ${cls}">${arrow} ${sign}${diff}${sfx}</div>
+        </div>
+      </div>`;
+    };
+
+    const firstA = sum(colA('first_timers')),   firstB = sum(colB('first_timers'));
+    const secA   = sum(colA('second_timers')),   secB  = sum(colB('second_timers'));
+    const thirdA = sum(colA('third_timers')),   thirdB = sum(colB('third_timers'));
+    const retA = firstA > 0 ? Math.round((secA + thirdA) / (firstA * 2) * 100) : 0;
+    const retB = firstB > 0 ? Math.round((secB + thirdB) / (firstB * 2) * 100) : 0;
+
+    const el = document.getElementById('ycomp-results');
+    el.innerHTML = `
+      <div class="ycomp-summary">
+        Comparing <strong>${yearA}</strong> vs <strong>${yearB}</strong>
+        &mdash; ${escHtml(termLabel)} &mdash; ${escHtml(campusLabel)}
+        &mdash; <span class="text-muted">${weeksMsg(statsA)} / ${weeksMsg(statsB)}</span>
+      </div>
+
+      <span class="section-badge section-badge--dark">Attendance</span>
+      <div class="ycomp-grid mb-5">
+        ${card('Avg Attendance', avg(colA('attendance')), avg(colB('attendance')))}
+        ${card('Weeks of Data',  statsA.length,           statsB.length)}
+      </div>
+
+      <span class="section-badge section-badge--red">New People</span>
+      <div class="ycomp-grid mb-5">
+        ${card('1st Timers',     firstA, firstB)}
+        ${card('2nd Timers',     secA,   secB)}
+        ${card('3rd Timers',     thirdA, thirdB)}
+        ${card('Retention Rate', retA,   retB, true)}
+      </div>
+
+      <span class="section-badge section-badge--lime">Life Metrics</span>
+      <div class="ycomp-grid mb-5">
+        ${card('First-Time Decisions', sum(colA('salvations_first')),  sum(colB('salvations_first')))}
+        ${card('Rededications',        sum(colA('salvations_rededs')), sum(colB('salvations_rededs')))}
+        ${card('Bibles Given',         sum(colA('bibles_given')),      sum(colB('bibles_given')))}
+        ${card('Fresh Start',          sum(colA('fresh_start')),       sum(colB('fresh_start')))}
+        ${card('Water Baptisms',       sum(colA('water_baptisms')),    sum(colB('water_baptisms')))}
+        ${card('HS Baptisms',          sum(colA('hs_baptisms')),       sum(colB('hs_baptisms')))}
+      </div>
+
+      <span class="section-badge section-badge--dark">Connect &amp; Sunday</span>
+      <div class="ycomp-grid mb-5">
+        ${card('Avg Connect Att.', avg(colA('connect_attendance')), avg(colB('connect_attendance')))}
+        ${card('Avg Sunday Att.',  avg(colA('sunday_attendance')),  avg(colB('sunday_attendance')))}
+        ${card('Avg Saints Att.',  avg(colA('saints_attendance')),  avg(colB('saints_attendance')))}
+        ${card('Schools Visited',  sum(colA('schools_visited')),    sum(colB('schools_visited')))}
+      </div>
+    `;
+    el.classList.remove('hidden');
+  }
+
   // ── Weekly entry ────────────────────────────────────────────────────────────
-  document.getElementById('ws-date').addEventListener('change', e => loadWeeklyEntry(e.target.value));
+
+  // Map term key + week number → approximate entry_date based on campus youth night DOW
+  function termWeekToDate(termKey, weekNum) {
+    const year = new Date().getFullYear();
+    const starts = { T1: `${year}-02-03`, T2: `${year}-04-22`, T3: `${year}-07-14`, T4: `${year}-10-06` };
+    const start = new Date(starts[termKey] || starts['T1']);
+    start.setDate(start.getDate() + (weekNum - 1) * 7);
+    const dow = identity?.youth_night_dow ?? 5;
+    const diff = (dow - start.getDay() + 7) % 7;
+    start.setDate(start.getDate() + diff);
+    return start.toISOString().split('T')[0];
+  }
+
+  // Detect current term key from today's date
+  function currentTermKey() {
+    const t = termFromDate(new Date()); // e.g. "T3 2026"
+    return t ? t.split(' ')[0] : 'T4';
+  }
+
+  function onTermWeekChange() {
+    const term = document.getElementById('ws-term').value;
+    const week = parseInt(document.getElementById('ws-week').value) || 1;
+    const date = termWeekToDate(term, week);
+    document.getElementById('ws-date').value = date;
+    loadWeeklyEntry(date);
+  }
 
   async function loadWeeklyEntry(date) {
     document.getElementById('ws-saved').classList.add('hidden');
     const { data } = await db.from('weekly_stats')
       .select('*').eq('campus_id', identity.campus_id).eq('entry_date', date).maybeSingle();
-    if (!data) {
-      clearWSForm();
-      return;
-    }
+    if (!data) { clearWSForm(); return; }
     fillWSForm(data);
     document.getElementById('ws-saved').classList.remove('hidden');
   }
 
   function fillWSForm(d) {
-    const set = (id, val) => { const el = document.getElementById(id); if(el) el.value = val ?? ''; };
-    set('ws-attendance', d.attendance);
-    set('ws-first', d.first_timers);
-    set('ws-second', d.second_timers);
-    set('ws-third', d.third_timers);
-    set('ws-sal-first', d.salvations_first);
-    set('ws-sal-reded', d.salvations_rededs);
-    set('ws-bibles', d.bibles_given);
-    set('ws-fresh', d.fresh_start);
-    set('ws-water-bap', d.water_baptisms);
-    set('ws-hs-bap', d.hs_baptisms);
-    set('ws-schools', d.schools_visited);
-    set('ws-connect', d.connect_attendance);
-    set('ws-sunday', d.sunday_attendance);
-    set('ws-saints', d.saints_attendance);
-    set('ws-notes', d.notes);
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? 0; };
+    set('ws-total-dept', d.total_in_department);
+    set('ws-leaders',    d.total_leaders);
+    set('ws-sal-first',  d.salvations_first);
+    set('ws-sal-reded',  d.salvations_rededs);
+    set('ws-bibles',     d.bibles_given);
+    set('ws-fresh',      d.fresh_start);
+    set('ws-water-bap',  d.water_baptisms);
+    set('ws-hs-bap',     d.hs_baptisms);
+    set('ws-connect',    d.connect_attendance);
+    set('ws-sunday',     d.sunday_attendance);
+    set('ws-saints',     d.saints_attendance);
+    set('ws-schools',    d.schools_visited);
+    const notes = document.getElementById('ws-notes');
+    if (notes) notes.value = d.notes ?? '';
     document.getElementById('ws-no-night').checked = !!d.no_youth_night;
-    document.getElementById('ws-no-connect').checked = false;
     applyNoNightState();
-    applyNoConnectState();
   }
 
   function clearWSForm() {
-    ['ws-attendance','ws-first','ws-second','ws-third','ws-sal-first','ws-sal-reded',
-     'ws-bibles','ws-fresh','ws-water-bap','ws-hs-bap','ws-schools','ws-connect',
-     'ws-sunday','ws-saints','ws-notes'].forEach(id => {
+    ['ws-total-dept','ws-leaders','ws-sal-first','ws-sal-reded','ws-bibles',
+     'ws-fresh','ws-water-bap','ws-hs-bap','ws-connect','ws-sunday','ws-saints','ws-schools'].forEach(id => {
       const el = document.getElementById(id);
-      if (el) el.value = '';
+      if (el) el.value = 0;
     });
+    const notes = document.getElementById('ws-notes');
+    if (notes) notes.value = '';
     document.getElementById('ws-no-night').checked = false;
-    document.getElementById('ws-no-connect').checked = false;
     applyNoNightState();
-    applyNoConnectState();
   }
 
   function applyNoNightState() {
@@ -619,44 +935,37 @@
     });
   }
 
-  function applyNoConnectState() {
-    const disabled = document.getElementById('ws-no-connect').checked;
-    const input = document.getElementById('ws-connect');
-    if (input) { input.disabled = disabled; input.style.opacity = disabled ? '0.38' : ''; }
-  }
-
   function toggleNoNight() { applyNoNightState(); }
-  function toggleNoConnect() { applyNoConnectState(); }
 
   const int = id => parseInt(document.getElementById(id)?.value) || null;
   const str = id => document.getElementById(id)?.value.trim() || null;
 
   async function saveWeeklyStats() {
-    const btn = document.getElementById('ws-save-btn');
+    const btn     = document.getElementById('ws-save-btn');
     setLoading(btn, true);
-    const date      = document.getElementById('ws-date').value;
-    const noNight   = document.getElementById('ws-no-night').checked;
-    const noConnect = document.getElementById('ws-no-connect').checked;
-    const payload   = {
-      campus_id:         identity.campus_id,
-      entry_date:        date,
-      term:              termFromDate(date),
-      no_youth_night:    noNight,
-      attendance:        noNight ? null : int('ws-attendance'),
-      first_timers:      noNight ? null : int('ws-first'),
-      second_timers:     noNight ? null : int('ws-second'),
-      third_timers:      noNight ? null : int('ws-third'),
-      salvations_first:  noNight ? null : int('ws-sal-first'),
-      salvations_rededs: noNight ? null : int('ws-sal-reded'),
-      bibles_given:      int('ws-bibles'),
-      fresh_start:       int('ws-fresh'),
-      water_baptisms:    int('ws-water-bap'),
-      hs_baptisms:       int('ws-hs-bap'),
-      schools_visited:   int('ws-schools'),
-      connect_attendance: noConnect ? null : int('ws-connect'),
-      sunday_attendance:  int('ws-sunday'),
-      saints_attendance:  int('ws-saints'),
-      notes:              str('ws-notes'),
+    const date    = document.getElementById('ws-date').value;
+    const term    = document.getElementById('ws-term').value;
+    const weekNum = parseInt(document.getElementById('ws-week').value) || 1;
+    const noNight = document.getElementById('ws-no-night').checked;
+    const payload = {
+      campus_id:            identity.campus_id,
+      entry_date:           date,
+      term:                 `${term} ${new Date().getFullYear()}`,
+      week_number:          weekNum,
+      no_youth_night:       noNight,
+      total_in_department:  int('ws-total-dept'),
+      total_leaders:        int('ws-leaders'),
+      salvations_first:     noNight ? null : int('ws-sal-first'),
+      salvations_rededs:    noNight ? null : int('ws-sal-reded'),
+      bibles_given:         int('ws-bibles'),
+      fresh_start:          int('ws-fresh'),
+      water_baptisms:       int('ws-water-bap'),
+      hs_baptisms:          int('ws-hs-bap'),
+      connect_attendance:   int('ws-connect'),
+      sunday_attendance:    int('ws-sunday'),
+      saints_attendance:    int('ws-saints'),
+      schools_visited:      int('ws-schools'),
+      notes:                str('ws-notes'),
     };
     const { error } = await db.from('weekly_stats')
       .upsert(payload, { onConflict: 'campus_id,entry_date' });
