@@ -6,6 +6,7 @@
   <title>Dreamers Youth</title>
   <link rel="stylesheet" href="shared.css">
   <style>
+    body { background: #000; }
     .login-wrap {
       min-height: 100vh;
       display: flex;
@@ -13,46 +14,69 @@
       align-items: center;
       justify-content: center;
       padding: var(--s-6) var(--s-4);
-      background: #0000ff;
+      background: #000;
     }
 
     .login-card {
-      background: var(--c-surface);
+      background: rgba(0, 0, 255, 0.88);
       border-radius: var(--r-lg);
       padding: var(--s-8) var(--s-6);
       width: 100%;
       max-width: 400px;
-      box-shadow: var(--shadow-lg);
+      box-shadow: 0 20px 60px rgb(0 0 255 / .35);
+      backdrop-filter: blur(8px);
     }
 
     .login-logo {
       text-align: center;
       margin-bottom: var(--s-8);
     }
-    .login-logo__icon {
-      font-size: 2.5rem;
-      margin-bottom: var(--s-3);
+    .login-logo img {
+      width: 80px;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+      mix-blend-mode: multiply;
     }
-    .login-logo h1 {
-      font-size: var(--text-2xl);
-      color: var(--c-text);
-      margin-bottom: var(--s-1);
-    }
-    .login-logo p {
-      font-size: var(--text-sm);
-      color: var(--c-text-muted);
-    }
+
+    /* White text inside card */
+    .login-card label,
+    .login-card .form-group label { color: #fff; }
 
     .visitor-link {
       text-align: center;
       margin-top: var(--s-6);
       padding-top: var(--s-6);
-      border-top: 1px solid var(--c-border);
+      border-top: 1px solid rgba(255,255,255,0.2);
     }
     .visitor-link p {
       font-size: var(--text-sm);
-      color: var(--c-text-muted);
+      color: rgba(255,255,255,0.75);
       margin-bottom: var(--s-3);
+    }
+
+    /* Continue button: white on blue card */
+    .login-card .btn--primary {
+      background: #fff;
+      color: #0000ff;
+    }
+    .login-card .btn--primary:hover:not(:disabled) { background: #e8e8ff; }
+
+    /* Ghost button: white outline */
+    .login-card .btn--ghost {
+      border-color: rgba(255,255,255,0.4);
+      color: #fff;
+    }
+    .login-card .btn--ghost:hover:not(:disabled) {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+    }
+
+    /* Error banner adjusted for dark card */
+    .login-card .error-banner {
+      background: rgba(0,0,0,0.3);
+      border-color: rgba(255,255,255,0.2);
+      color: #fff;
     }
   </style>
 </head>
@@ -60,9 +84,7 @@
   <div class="login-wrap">
     <div class="login-card">
       <div class="login-logo">
-        <div class="login-logo__icon" style="font-family:'Outfit',sans-serif;font-weight:800;font-size:2rem;letter-spacing:-0.04em;color:#fff;background:#0000ff;width:56px;height:56px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto var(--s-3);">DY</div>
-        <h1>Dreamers Youth</h1>
-        <p>Ministry management</p>
+        <img src="dy-logo.png" alt="Dreamers Youth">
       </div>
 
       <div id="error-banner" class="error-banner hidden" style="margin-bottom:var(--s-4)"></div>
