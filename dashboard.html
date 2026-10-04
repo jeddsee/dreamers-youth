@@ -561,6 +561,48 @@
     </div>
   </div>
 
+  <!-- ── Edit Leader Modal ────────────────────────────────────────────── -->
+  <div class="modal-backdrop" id="edit-leader-modal">
+    <div class="modal">
+      <div class="modal__header">
+        <h3>Edit leader</h3>
+        <button class="modal__close" onclick="closeEditLeaderModal()">✕</button>
+      </div>
+      <div class="modal__body">
+        <input type="hidden" id="el-id">
+        <div class="stack">
+          <div class="form-group">
+            <label>Name <span class="required">*</span></label>
+            <input id="el-name" type="text" class="input">
+          </div>
+          <div class="form-grid form-grid--2">
+            <div class="form-group">
+              <label>Year level</label>
+              <select id="el-year" class="select">
+                <option value="">Select…</option>
+                <option>Year 7</option><option>Year 8</option><option>Year 9</option>
+                <option>Year 10</option><option>Year 11</option><option>Year 12</option>
+                <option>Other / Left school</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Gender</label>
+              <select id="el-gender" class="select">
+                <option value="">Select…</option>
+                <option>Male</option><option>Female</option><option>Prefer not to say</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div id="el-error" class="error-banner hidden mt-3"></div>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost" onclick="closeEditLeaderModal()">Cancel</button>
+        <button class="btn btn--primary" id="el-save-btn" onclick="submitEditLeader()">Save</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Add Youth Modal ───────────────────────────────────────────────── -->
   <div class="modal-backdrop" id="add-youth-modal">
     <div class="modal">
@@ -1332,7 +1374,7 @@
     if (campus) document.getElementById('campus-dow-select').value = campus.youth_night_dow ?? 5;
 
     const [lRes, rRes] = await Promise.all([
-      db.from('leaders').select('id, name, role, active').eq('campus_id', identity.campus_id).order('name'),
+      db.from('leaders').select('id, name, role, year_level, gender, active').eq('campus_id', identity.campus_id).order('name'),
       db.from('youth_roster').select('id, name, leader_id, year_level, gender, category, active').eq('campus_id', identity.campus_id).order('name'),
     ]);
     leaders = lRes.data ?? [];
@@ -1346,15 +1388,23 @@
   function renderLeadersList() {
     const el = document.getElementById('leaders-list');
     const active = leaders.filter(l => l.active);
-    el.innerHTML = active.map(l => `
+    el.innerHTML = active.map(l => {
+      const meta = l.role === 'leader'
+        ? [l.year_level, l.gender].filter(Boolean).join(' · ')
+        : '';
+      return `
       <div class="leader-setup-row">
         <div>
           <span class="fw-medium">${escHtml(l.name)}</span>
           <span class="badge badge--neutral" style="margin-left:var(--s-2)">${l.role}</span>
+          ${meta ? `<span class="text-xs text-muted" style="margin-left:var(--s-2)">${escHtml(meta)}</span>` : ''}
         </div>
-        <button class="btn btn--ghost btn--sm" onclick="deactivateLeader('${l.id}','${escHtml(l.name)}')">Deactivate</button>
-      </div>
-    `).join('') || '<div class="leader-setup-row text-muted">No leaders yet</div>';
+        <div style="display:flex;gap:var(--s-2)">
+          ${l.role === 'leader' ? `<button class="btn btn--ghost btn--sm" onclick="openEditLeaderModal('${l.id}')">Edit</button>` : ''}
+          <button class="btn btn--ghost btn--sm" onclick="deactivateLeader('${l.id}','${escHtml(l.name)}')">Deactivate</button>
+        </div>
+      </div>`;
+    }).join('') || '<div class="leader-setup-row text-muted">No leaders yet</div>';
   }
 
   function renderRosterAccordion() {
@@ -1401,6 +1451,35 @@
   // Add leader
   function openAddLeaderModal() { document.getElementById('add-leader-modal').classList.add('open'); }
   function closeAddLeaderModal() { document.getElementById('add-leader-modal').classList.remove('open'); }
+
+  function openEditLeaderModal(id) {
+    const l = leaders.find(x => x.id === id);
+    if (!l) return;
+    document.getElementById('el-id').value     = id;
+    document.getElementById('el-name').value   = l.name;
+    document.getElementById('el-year').value   = l.year_level || '';
+    document.getElementById('el-gender').value = l.gender || '';
+    document.getElementById('el-error').classList.add('hidden');
+    document.getElementById('edit-leader-modal').classList.add('open');
+  }
+  function closeEditLeaderModal() { document.getElementById('edit-leader-modal').classList.remove('open'); }
+
+  async function submitEditLeader() {
+    const id     = document.getElementById('el-id').value;
+    const name   = document.getElementById('el-name').value.trim();
+    const year   = document.getElementById('el-year').value || null;
+    const gender = document.getElementById('el-gender').value || null;
+    if (!name) { showError('Name is required.', 'el-error'); return; }
+    const btn = document.getElementById('el-save-btn');
+    setLoading(btn, true);
+    const { error } = await db.from('leaders').update({ name, year_level: year, gender }).eq('id', id);
+    setLoading(btn, false);
+    if (error) { showError('Save failed.', 'el-error'); return; }
+    const l = leaders.find(x => x.id === id);
+    if (l) { l.name = name; l.year_level = year; l.gender = gender; }
+    closeEditLeaderModal();
+    renderLeadersList();
+  }
 
   async function submitAddLeader() {
     const name = document.getElementById('al-name').value.trim();
