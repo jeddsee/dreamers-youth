@@ -815,8 +815,8 @@ h4 { font-size: var(--text-base); font-weight: 600; }
   gap: var(--s-2);
   min-height: 88px;
 }
-.stat-card--red   { border-color: #ff3500; }
-.stat-card--lime  { border-color: #beff00; }
+.stat-card--red   { border-color: #ff3500; background: #fff5f2; }
+.stat-card--lime  { border-color: #beff00; background: #f6ffd4; }
 .stat-card--blue  { border-color: #0000ff; }
 
 .stat-card--fill-blue { background: #0000ff; border-color: #0000ff; }
@@ -864,6 +864,83 @@ h4 { font-size: var(--text-base); font-weight: 600; }
 .stat-hero .stat-card__label { color: rgba(255,255,255,0.7); font-size: 0.7rem; }
 .stat-hero .stat-card__value { color: #fff; font-size: 2.5rem; font-weight: 800; line-height: 1; }
 .stat-hero .stat-card__sub   { color: rgba(255,255,255,0.6); font-size: var(--text-sm); margin-top: var(--s-1); }
+
+/* ── Snapshot layout ─────────────────────────────────────────────────────────*/
+.snap-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-4);
+  margin-bottom: var(--s-5);
+  flex-wrap: wrap;
+}
+.snap-title {
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: #111;
+  line-height: 1;
+  margin: 0 0 var(--s-1);
+  letter-spacing: -0.03em;
+}
+.snap-subtitle {
+  font-size: var(--text-sm);
+  color: var(--c-text-muted);
+  font-weight: 500;
+}
+.snap-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  flex-shrink: 0;
+}
+.snap-header-actions .select { width: auto; min-width: 140px; }
+
+.snap-submission-card {
+  background: #fff;
+  border: 2px solid #111;
+  border-radius: var(--r-lg);
+  margin-bottom: var(--s-5);
+  overflow: hidden;
+}
+.snap-submission-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--s-3) var(--s-5);
+  border-bottom: 1px solid #e0e0e0;
+}
+.snap-submission-body {
+  padding: var(--s-4) var(--s-5);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+}
+.snap-leader-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding: var(--s-2) var(--s-4);
+  border: 1px solid var(--c-border-dark);
+  border-radius: var(--r);
+  background: var(--c-bg);
+  font-size: var(--text-sm);
+  min-width: 200px;
+}
+
+.snap-chart-card {
+  background: #fff;
+  border: 2px solid #111;
+  border-radius: var(--r-lg);
+  padding: var(--s-5);
+  margin-bottom: var(--s-6);
+}
+.snap-chart-card h3 {
+  font-size: var(--text-base);
+  font-weight: 700;
+  margin-bottom: var(--s-4);
+  color: #111;
+}
 
 /* ── Utility ─────────────────────────────────────────────────────────────────*/
 .hidden { display: none !important; }
