@@ -103,8 +103,9 @@
       background: #fff;
       border: 1px solid var(--c-border-dark);
       border-radius: var(--r);
-      max-height: 220px;
+      max-height: 260px;
       overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
       z-index: 50;
       list-style: none;
       box-shadow: var(--shadow-md);
@@ -232,10 +233,6 @@
       // If user edits the text, clear any previous selection
       selectedLeader = null;
       goBtn.disabled = true;
-    });
-
-    leaderSearch.addEventListener('focus', () => {
-      renderList(leaderSearch.value.trim().toLowerCase());
     });
 
     // Close dropdown when clicking outside
