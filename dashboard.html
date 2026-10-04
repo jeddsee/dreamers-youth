@@ -328,6 +328,10 @@
         <span class="section-badge section-badge--lime">Life Metrics</span>
         <div class="stat-card-grid mb-5" id="snap-life-cards"></div>
 
+        <!-- Discipleship Stages -->
+        <span class="section-badge section-badge--dark">Discipleship Stages</span>
+        <div class="stat-card-grid stat-card-grid--4 mb-5" id="snap-stage-cards"></div>
+
         <!-- Connect & Sunday -->
         <span class="section-badge section-badge--dark">Connect &amp; Sunday</span>
         <div class="stat-card-grid stat-card-grid--4 mb-5" id="snap-connect-cards"></div>
@@ -481,6 +485,7 @@
   const { db } = DY;
 
   let identity, leaders = [], roster = [], weeklyStats = [], termReview = null;
+  let archivedCount = 0;
   let addYouthLeaderId = null;
   let allCampuses = [];
   let snapCampusId = null;
@@ -672,24 +677,28 @@
 
     // Build queries — single campus or all campuses
     let leadersQ = db.from('leaders').select('id, name, role, campus_id').eq('active', true).order('name');
-    let rosterQ  = db.from('youth_roster').select('id, is_new_christian, water_baptised, campus_id').eq('active', true);
+    let rosterQ  = db.from('youth_roster').select('id, is_new_christian, water_baptised, category, campus_id').eq('active', true);
+    let archQ    = db.from('youth_roster').select('id', { count: 'exact', head: true }).eq('active', false);
     let statsQ   = db.from('weekly_stats').select('*').order('entry_date', { ascending: false }).limit(isAll ? 60 : 20);
 
     if (isAll) {
       const ids = allCampuses.map(c => c.id);
       leadersQ = leadersQ.in('campus_id', ids);
       rosterQ  = rosterQ.in('campus_id', ids);
+      archQ    = archQ.in('campus_id', ids);
       statsQ   = statsQ.in('campus_id', ids);
     } else {
       leadersQ = leadersQ.eq('campus_id', snapCampusId);
       rosterQ  = rosterQ.eq('campus_id', snapCampusId);
+      archQ    = archQ.eq('campus_id', snapCampusId);
       statsQ   = statsQ.eq('campus_id', snapCampusId);
     }
 
-    const [leadersRes, rosterRes, statsRes] = await Promise.all([leadersQ, rosterQ, statsQ]);
-    leaders     = leadersRes.data ?? [];
-    roster      = rosterRes.data ?? [];
-    weeklyStats = statsRes.data ?? [];
+    const [leadersRes, rosterRes, archRes, statsRes] = await Promise.all([leadersQ, rosterQ, archQ, statsQ]);
+    leaders      = leadersRes.data ?? [];
+    roster       = rosterRes.data ?? [];
+    archivedCount = archRes.count ?? 0;
+    weeklyStats  = statsRes.data ?? [];
 
     // Header
     const campusLabel = isAll
@@ -838,6 +847,24 @@
       { label: '% Youth Baptised',       value: baptisedPct !== null ? `${baptisedPct}%` : '—',  cls: 'stat-card--lime' },
       { label: 'HS Baptisms',            value: sum(col('hs_baptisms')),                          cls: 'stat-card--lime' },
     ].map(c => `<div class="stat-card ${c.cls}"><div class="stat-card__label">${c.label}</div><div class="stat-card__value">${c.value}</div></div>`).join('');
+
+    // Discipleship Stages
+    const stageTotal  = roster.length || 1;
+    const stagePct    = n => `${Math.round(n / stageTotal * 100)}%`;
+    const community   = roster.filter(y => y.category === 'community').length;
+    const connected   = roster.filter(y => y.category === 'connected').length;
+    const contributor = roster.filter(y => y.category === 'contributor').length;
+    const card = (label, value, cls) =>
+      `<div class="stat-card ${cls}">` +
+        `<div class="stat-card__label">${label}</div>` +
+        `<div class="stat-card__value">${value}</div>` +
+        `<div class="stat-card__sub">${roster.length ? stagePct(value) : '—'} of dept</div>` +
+      `</div>`;
+    document.getElementById('snap-stage-cards').innerHTML =
+      card('Community',        community,     'stat-card--community') +
+      card('Connected',        connected,     'stat-card--connected') +
+      card('Contributor',      contributor,   'stat-card--contributor') +
+      card('Ready to Archive', archivedCount, archivedCount > 0 ? 'stat-card--fill-red' : '');
 
     // Connect & Sunday
     document.getElementById('snap-connect-cards').innerHTML = [

@@ -863,6 +863,10 @@ h4 { font-size: var(--text-base); font-weight: 600; }
 .stat-card--fill-red  { background: #ff3500; border-color: #ff3500; }
 .stat-card--fill-lime { background: #beff00; border-color: #beff00; }
 
+.stat-card--community  { border-color: var(--c-community);   background: var(--c-community-light); }
+.stat-card--connected  { border-color: var(--c-connected);   background: var(--c-connected-light); }
+.stat-card--contributor { border-color: var(--c-contributor); background: var(--c-contributor-light); }
+
 .stat-card__label {
   font-size: 0.625rem;
   font-weight: 700;
