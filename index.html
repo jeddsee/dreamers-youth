@@ -78,6 +78,41 @@
       border-color: rgba(255,255,255,0.2);
       color: #fff;
     }
+
+    /* Searchable name combobox */
+    .combobox { position: relative; }
+    .combobox__list {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0; right: 0;
+      background: #fff;
+      border: 1px solid var(--c-border-dark);
+      border-radius: var(--r);
+      max-height: 220px;
+      overflow-y: auto;
+      z-index: 50;
+      list-style: none;
+      box-shadow: var(--shadow-md);
+      padding: var(--s-1) 0;
+    }
+    .combobox__list.hidden { display: none; }
+    .combobox__list li {
+      padding: var(--s-2) var(--s-3);
+      cursor: pointer;
+      font-size: var(--text-sm);
+      color: var(--c-text);
+    }
+    .combobox__list li:hover,
+    .combobox__list li[aria-selected="true"] {
+      background: var(--c-primary-light);
+      color: var(--c-primary-text);
+    }
+    .combobox__list li.no-results {
+      color: var(--c-text-muted);
+      cursor: default;
+      font-size: var(--text-sm);
+    }
+    .combobox__list li.no-results:hover { background: none; }
   </style>
 </head>
 <body>
@@ -98,23 +133,17 @@
         </div>
 
         <div class="form-group" id="leader-group" style="display:none">
-          <label for="leader-select">Your name</label>
-          <select id="leader-select" class="select" required>
-            <option value="">Select name…</option>
-          </select>
+          <label for="leader-search">Your name</label>
+          <div class="combobox" id="leader-combobox">
+            <input type="text" id="leader-search" class="input" placeholder="Type to search…" autocomplete="off">
+            <ul class="combobox__list hidden" id="leader-list" role="listbox"></ul>
+          </div>
         </div>
 
         <button id="go-btn" type="submit" class="btn btn--primary btn--full" disabled>
           Continue
         </button>
       </form>
-
-      <div class="visitor-link">
-        <p>New here?</p>
-        <a id="register-link" href="register.html" class="btn btn--ghost btn--full btn--sm">
-          Register as a new visitor
-        </a>
-      </div>
     </div>
   </div>
 
@@ -123,64 +152,44 @@
   <script>
     const { db } = DY;
 
-    const campusSelect = document.getElementById('campus-select');
-    const leaderGroup  = document.getElementById('leader-group');
-    const leaderSelect = document.getElementById('leader-select');
-    const goBtn        = document.getElementById('go-btn');
-    const registerLink = document.getElementById('register-link');
+    const campusSelect  = document.getElementById('campus-select');
+    const leaderGroup   = document.getElementById('leader-group');
+    const leaderSearch  = document.getElementById('leader-search');
+    const leaderList    = document.getElementById('leader-list');
+    const goBtn         = document.getElementById('go-btn');
 
     let leaders = [];
+    let selectedLeader = null; // { id, name, role }
 
-    // Load campuses on page load
+    // ── Load campuses ──────────────────────────────────────────────────────────
     (async () => {
       campusSelect.disabled = true;
-
       try {
         const { data, error } = await db
           .from('campuses')
           .select('id, name, slug, youth_night_dow')
           .eq('archived', false)
           .order('name');
-
-        if (error) {
-          showError('Could not load campuses: ' + (error.message || JSON.stringify(error)));
-          campusSelect.disabled = false;
-          return;
-        }
-
-        if (!data || data.length === 0) {
-          showError('No campuses found in the database.');
-          campusSelect.disabled = false;
-          return;
-        }
-
+        if (error) { showError('Could not load campuses.'); campusSelect.disabled = false; return; }
+        if (!data?.length) { showError('No campuses found.'); campusSelect.disabled = false; return; }
         data.forEach(c => {
           const opt = document.createElement('option');
-          opt.value = c.id;
-          opt.textContent = c.name;
-          opt.dataset.slug = c.slug;
-          opt.dataset.dow  = c.youth_night_dow ?? 5;
+          opt.value = c.id; opt.textContent = c.name;
+          opt.dataset.slug = c.slug; opt.dataset.dow = c.youth_night_dow ?? 5;
           campusSelect.appendChild(opt);
         });
-      } catch (e) {
-        showError('Unexpected error: ' + e.message);
-      }
-
+      } catch (e) { showError('Unexpected error: ' + e.message); }
       campusSelect.disabled = false;
     })();
 
-    // On campus change: load leaders for that campus
+    // ── Campus change: load + show name combobox ───────────────────────────────
     campusSelect.addEventListener('change', async () => {
       const campusId = campusSelect.value;
       hideError();
-      leaderSelect.innerHTML = '<option value="">Select name…</option>';
+      resetLeader();
       leaderGroup.style.display = 'none';
       goBtn.disabled = true;
-
       if (!campusId) return;
-
-      const slug = campusSelect.selectedOptions[0].dataset.slug;
-      registerLink.href = `register.html?campus=${slug}`;
 
       campusSelect.disabled = true;
       const { data, error } = await db
@@ -193,39 +202,90 @@
 
       if (error) { showError('Could not load leaders for this campus.'); return; }
 
-      leaders = data;
-      data.forEach(l => {
-        const opt = document.createElement('option');
-        opt.value = l.id;
-        opt.textContent = l.name;
-        opt.dataset.role = l.role;
-        leaderSelect.appendChild(opt);
-      });
-
+      // Sort alphabetically (DB already orders but ensure consistency)
+      leaders = (data ?? []).sort((a, b) => a.name.localeCompare(b.name));
       leaderGroup.style.display = '';
+      leaderSearch.focus();
     });
 
-    // Enable go button when name is selected
-    leaderSelect.addEventListener('change', () => {
-      goBtn.disabled = !leaderSelect.value;
+    // ── Combobox: filter on input ──────────────────────────────────────────────
+    leaderSearch.addEventListener('input', () => {
+      const q = leaderSearch.value.trim().toLowerCase();
+      renderList(q);
+      // If user edits the text, clear any previous selection
+      selectedLeader = null;
+      goBtn.disabled = true;
     });
 
-    // On submit: store identity and route
+    leaderSearch.addEventListener('focus', () => {
+      renderList(leaderSearch.value.trim().toLowerCase());
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', e => {
+      if (!document.getElementById('leader-combobox').contains(e.target)) {
+        leaderList.classList.add('hidden');
+        // If focus leaves without a valid selection, clear the field
+        if (!selectedLeader) leaderSearch.value = '';
+      }
+    });
+
+    function renderList(query) {
+      const matches = query
+        ? leaders.filter(l => l.name.toLowerCase().includes(query))
+        : leaders;
+
+      leaderList.innerHTML = '';
+      if (!matches.length) {
+        const li = document.createElement('li');
+        li.className = 'no-results'; li.textContent = 'No names found';
+        leaderList.appendChild(li);
+      } else {
+        matches.forEach(l => {
+          const li = document.createElement('li');
+          li.textContent = l.name;
+          li.setAttribute('role', 'option');
+          li.addEventListener('mousedown', e => {
+            e.preventDefault(); // prevent blur before click
+            selectLeader(l);
+          });
+          leaderList.appendChild(li);
+        });
+      }
+      leaderList.classList.remove('hidden');
+    }
+
+    function selectLeader(l) {
+      selectedLeader      = l;
+      leaderSearch.value  = l.name;
+      leaderList.classList.add('hidden');
+      goBtn.disabled = false;
+    }
+
+    function resetLeader() {
+      selectedLeader     = null;
+      leaderSearch.value = '';
+      leaderList.classList.add('hidden');
+      leaders = [];
+    }
+
+    // ── Submit ─────────────────────────────────────────────────────────────────
     document.getElementById('login-form').addEventListener('submit', e => {
       e.preventDefault();
-      const campusId   = campusSelect.value;
-      const campusName = campusSelect.selectedOptions[0]?.textContent;
-      const leaderId   = leaderSelect.value;
-      const leaderOpt  = leaderSelect.selectedOptions[0];
-      const leaderName = leaderOpt?.textContent;
-      const role       = leaderOpt?.dataset.role;
-
-      if (!campusId || !leaderId) return;
-
+      const campusId        = campusSelect.value;
+      const campusName      = campusSelect.selectedOptions[0]?.textContent;
       const youth_night_dow = parseInt(campusSelect.selectedOptions[0]?.dataset.dow ?? '5', 10);
-      setIdentity({ campus_id: campusId, campus_name: campusName, leader_id: leaderId, leader_name: leaderName, role, youth_night_dow });
+      if (!campusId || !selectedLeader) return;
 
-      window.location.href = role === 'pastor' ? 'dashboard.html' : 'leader.html';
+      setIdentity({
+        campus_id:    campusId,
+        campus_name:  campusName,
+        leader_id:    selectedLeader.id,
+        leader_name:  selectedLeader.name,
+        role:         selectedLeader.role,
+        youth_night_dow,
+      });
+      window.location.href = selectedLeader.role === 'pastor' ? 'dashboard.html' : 'leader.html';
     });
   </script>
 </body>
