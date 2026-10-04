@@ -1017,7 +1017,7 @@
     let rosterQ  = db.from('youth_roster').select('id, is_new_christian, water_baptised, category, campus_id').eq('active', true);
     let archQ    = db.from('youth_roster').select('id', { count: 'exact', head: true }).eq('active', false);
     let statsQ   = db.from('weekly_stats').select('*').order('entry_date', { ascending: false }).limit(isAll ? 60 : 20);
-    let npQ      = db.from('new_people').select('status, campus_id').not('status', 'in', '("archived")');
+    let npQ      = db.from('new_people').select('status, campus_id, created_at').not('status', 'in', '("archived")');
 
     if (isAll) {
       const ids = allCampuses.map(c => c.id);
@@ -1166,14 +1166,31 @@
     // New People — counts from actual new_people records
     const npCount = s => snapNP.filter(n => n.status === s).length;
     const v1 = npCount('visit_1'), v2 = npCount('visit_2'), v3 = npCount('visit_3');
-    const ready = npCount('ready_to_activate'), activated = npCount('activated');
+    const ready = npCount('ready_to_activate');
     const retention = v1 > 0 ? Math.round((v2 + v3) / (v1 * 2) * 100) : 0;
+
+    // Total new people added in the selected period
+    const year = new Date().getFullYear();
+    const npInPeriod = snapNP.filter(n => {
+      const d = new Date(n.created_at);
+      if (snapPeriod === 'custom' && snapDateFrom && snapDateTo) {
+        const dateStr = n.created_at.slice(0, 10);
+        return dateStr >= snapDateFrom && dateStr <= snapDateTo;
+      }
+      if (['t1','t2','t3','t4'].includes(snapPeriod)) {
+        const range = TERM_RANGES.find(r => r.term === snapPeriod.toUpperCase());
+        return range && d.getFullYear() === year &&
+               d.getMonth() + 1 >= range.startMonth && d.getMonth() + 1 <= range.endMonth;
+      }
+      return d.getFullYear() === year; // 'all' = this calendar year
+    }).length;
+
     document.getElementById('snap-np-cards').innerHTML = [
       { label: 'Visit 1',        value: v1,              cls: 'stat-card--red' },
       { label: 'Visit 2',        value: v2,              cls: 'stat-card--red' },
       { label: 'Visit 3',        value: v3,              cls: 'stat-card--red' },
       { label: 'Ready',          value: ready,           cls: 'stat-card--red' },
-      { label: 'Activated',      value: activated,       cls: 'stat-card--fill-red' },
+      { label: 'Total This Period', value: npInPeriod,   cls: 'stat-card--fill-red' },
       { label: 'Retention Rate', value: `${retention}%`, cls: 'stat-card--fill-red' },
     ].map(c => `<div class="stat-card ${c.cls}"><div class="stat-card__label">${c.label}</div><div class="stat-card__value">${c.value}</div></div>`).join('');
 
