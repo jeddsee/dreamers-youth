@@ -698,6 +698,19 @@
     const canActivate = np.visit_3_date && np.status !== 'activated' && np.status !== 'archived';
     document.getElementById('activate-banner').classList.toggle('hidden', !canActivate);
 
+    // Archive / Unarchive / Unactivate button
+    const archiveBtn = document.getElementById('archive-btn');
+    if (np.status === 'archived') {
+      archiveBtn.textContent = 'Unarchive';
+      archiveBtn.onclick = unarchiveCurrentNP;
+    } else if (np.status === 'activated') {
+      archiveBtn.textContent = 'Unactivate';
+      archiveBtn.onclick = unactivateCurrentNP;
+    } else {
+      archiveBtn.textContent = 'Archive';
+      archiveBtn.onclick = archiveCurrentNP;
+    }
+
     document.getElementById('detail-error').classList.add('hidden');
     document.getElementById('detail-modal').classList.add('open');
   }
@@ -794,6 +807,40 @@
     currentNP.status = 'archived';
     const idx = allNP.findIndex(n => n.id === currentNP.id);
     if (idx !== -1) allNP[idx].status = 'archived';
+    renderTable(currentFilter);
+    closeDetailModal();
+  }
+
+  function statusFromVisits(np) {
+    if (np.visit_3_date) return 'visit_3';
+    if (np.visit_2_date) return 'visit_2';
+    return 'visit_1';
+  }
+
+  async function unarchiveCurrentNP() {
+    if (!currentNP) return;
+    const status = statusFromVisits(currentNP);
+    const { error } = await db.from('new_people')
+      .update({ status, archived_reason: null })
+      .eq('id', currentNP.id);
+    if (error) { showError('Unarchive failed.', 'detail-error'); return; }
+    currentNP.status = status;
+    currentNP.archived_reason = null;
+    const idx = allNP.findIndex(n => n.id === currentNP.id);
+    if (idx !== -1) allNP[idx] = { ...currentNP };
+    renderTable(currentFilter);
+    closeDetailModal();
+  }
+
+  async function unactivateCurrentNP() {
+    if (!currentNP) return;
+    if (!confirm(`Move ${currentNP.name} back to New People?`)) return;
+    const status = statusFromVisits(currentNP);
+    const { error } = await db.from('new_people').update({ status }).eq('id', currentNP.id);
+    if (error) { showError('Unactivate failed.', 'detail-error'); return; }
+    currentNP.status = status;
+    const idx = allNP.findIndex(n => n.id === currentNP.id);
+    if (idx !== -1) allNP[idx] = { ...currentNP };
     renderTable(currentFilter);
     closeDetailModal();
   }
