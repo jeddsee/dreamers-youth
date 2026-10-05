@@ -646,8 +646,8 @@
     return count;
   }
 
-  // ─── Save manual youth attendance ───
-  async function saveYouthAttendance(input) {
+  // ─── Generic save for any leader_entries field ───
+  async function saveAttendanceField(input, field) {
     const leaderId  = input.dataset.leaderId;
     const entryDate = input.dataset.entryDate;
     const term      = input.dataset.term;
@@ -657,23 +657,24 @@
 
     input.disabled = true;
     const { error } = await db.from('leader_entries').upsert({
-      leader_id:        leaderId,
-      campus_id:        ldCampus,
-      entry_date:       entryDate,
-      term:             term,
-      youth_attendance: val,
+      leader_id:  leaderId,
+      campus_id:  ldCampus,
+      entry_date: entryDate,
+      term:       term,
+      [field]:    val,
     }, { onConflict: 'leader_id,entry_date' });
     input.disabled = false;
 
     if (!error) {
       const idx = allEntries.findIndex(e => e.leader_id === leaderId && e.entry_date === entryDate);
-      if (idx !== -1) {
-        allEntries[idx].youth_attendance = val;
-      } else {
-        allEntries.push({ leader_id: leaderId, campus_id: ldCampus, entry_date: entryDate, term, youth_attendance: val });
-      }
+      if (idx !== -1) allEntries[idx][field] = val;
+      else allEntries.push({ leader_id: leaderId, campus_id: ldCampus, entry_date: entryDate, term, [field]: val });
     }
   }
+
+  function saveYouthAttendance(input)   { saveAttendanceField(input, 'youth_attendance');   }
+  function saveSundayAttendance(input)  { saveAttendanceField(input, 'sunday_attendance');  }
+  function saveConnectAttendance(input) { saveAttendanceField(input, 'connect_attendance'); }
 
   // ─── Render ───
   function renderAll() {
@@ -911,18 +912,28 @@
         </tr>`;
       }
 
-      // Sunday
+      // Sunday — editable inputs
       {
+        const esc = s => String(s).replace(/"/g, '&quot;');
+        const wkCells = displayDates.map(date => {
+          const entry  = lookup[termKey]?.[date]?.[leader.id] ?? null;
+          const val    = entry?.sunday_attendance ?? null;
+          const valStr = val != null ? String(val) : '';
+          return `<td class="td-week"><input type="number" class="cell-input"
+            value="${esc(valStr)}"
+            data-leader-id="${esc(leader.id)}"
+            data-entry-date="${esc(date)}"
+            data-term="${esc(termKey)}"
+            onchange="saveSundayAttendance(this)"
+            min="0" max="999" placeholder=""></td>`;
+        }).join('');
+        const emptyCells = Array.from({length: emptyWeekCount}, () =>
+          `<td class="td-week"><span class="cell-val empty"></span></td>`
+        ).join('');
         const wkVals = displayDates.map(date => {
           const entry = lookup[termKey]?.[date]?.[leader.id] ?? null;
           return entry?.sunday_attendance ?? null;
         });
-        const emptyCells = Array.from({length: emptyWeekCount}, () =>
-          `<td class="td-week"><span class="cell-val empty"></span></td>`
-        ).join('');
-        const wkCells = wkVals.map(v =>
-          `<td class="td-week"><span class="cell-val${cellCls(v)}">${fmtVal(v)}</span></td>`
-        ).join('');
         const a = avg(wkVals); const t = sum(wkVals);
         tbodyRows += `<tr class="data-row">
           <td class="td-label indent">Sunday</td>
@@ -932,18 +943,28 @@
         </tr>`;
       }
 
-      // Connect groups
+      // Connect groups — editable inputs
       {
+        const esc = s => String(s).replace(/"/g, '&quot;');
+        const wkCells = displayDates.map(date => {
+          const entry  = lookup[termKey]?.[date]?.[leader.id] ?? null;
+          const val    = entry?.connect_attendance ?? null;
+          const valStr = val != null ? String(val) : '';
+          return `<td class="td-week"><input type="number" class="cell-input"
+            value="${esc(valStr)}"
+            data-leader-id="${esc(leader.id)}"
+            data-entry-date="${esc(date)}"
+            data-term="${esc(termKey)}"
+            onchange="saveConnectAttendance(this)"
+            min="0" max="999" placeholder=""></td>`;
+        }).join('');
+        const emptyCells = Array.from({length: emptyWeekCount}, () =>
+          `<td class="td-week"><span class="cell-val empty"></span></td>`
+        ).join('');
         const wkVals = displayDates.map(date => {
           const entry = lookup[termKey]?.[date]?.[leader.id] ?? null;
           return entry?.connect_attendance ?? null;
         });
-        const emptyCells = Array.from({length: emptyWeekCount}, () =>
-          `<td class="td-week"><span class="cell-val empty"></span></td>`
-        ).join('');
-        const wkCells = wkVals.map(v =>
-          `<td class="td-week"><span class="cell-val${cellCls(v)}">${fmtVal(v)}</span></td>`
-        ).join('');
         const a = avg(wkVals); const t = sum(wkVals);
         tbodyRows += `<tr class="data-row row-alt">
           <td class="td-label indent">Connect groups</td>
