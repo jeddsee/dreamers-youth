@@ -126,6 +126,26 @@
       margin-top: var(--s-4);
     }
     .nc-section h4 { color: var(--c-success-text); }
+
+    /* Comment / activity log */
+    .comment-item {
+      padding: var(--s-3);
+      border: 1px solid var(--c-border);
+      border-radius: var(--r);
+      background: var(--c-bg);
+    }
+    .comment-item + .comment-item { margin-top: var(--s-2); }
+    .comment-item__meta {
+      font-size: var(--text-xs);
+      color: var(--c-text-muted);
+      margin-bottom: var(--s-1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .comment-item__text { font-size: var(--text-sm); }
+    .comment-item__actions { display: flex; gap: var(--s-2); margin-top: var(--s-2); }
+    .comment-item--legacy { border-style: dashed; opacity: 0.75; }
   </style>
 </head>
 <body>
@@ -376,23 +396,16 @@
               <select id="d-nc-leader" class="select"></select>
             </div>
           </div>
-          <div class="row row--wrap gap-4" style="margin-top:var(--s-3)">
-            <label style="display:flex;align-items:center;gap:var(--s-2);font-size:var(--text-sm);cursor:pointer">
-              <input type="checkbox" id="d-nc-bap" style="accent-color:var(--c-primary);width:16px;height:16px">
-              💧 Water baptised
-            </label>
-            <label style="display:flex;align-items:center;gap:var(--s-2);font-size:var(--text-sm);cursor:pointer">
-              <input type="checkbox" id="d-nc-bible" style="accent-color:var(--c-primary);width:16px;height:16px">
-              📖 Bible given
-            </label>
-            <label style="display:flex;align-items:center;gap:var(--s-2);font-size:var(--text-sm);cursor:pointer">
-              <input type="checkbox" id="d-nc-fs" style="accent-color:var(--c-primary);width:16px;height:16px">
-              🌱 Fresh Start started
-            </label>
-            <label style="display:flex;align-items:center;gap:var(--s-2);font-size:var(--text-sm);cursor:pointer">
-              <input type="checkbox" id="d-nc-fsc" style="accent-color:var(--c-primary);width:16px;height:16px">
-              ✅ Fresh Start complete
-            </label>
+          <p class="form-hint" style="margin-top:var(--s-3)">Discipleship steps are tracked in the <a href="new-christians.html" style="color:var(--c-primary)">New Christians page</a>.</p>
+        </div>
+
+        <!-- Comment history -->
+        <div class="detail-section" id="detail-comments-section">
+          <h4>Comment history</h4>
+          <div id="detail-comments-list" class="stack--sm"></div>
+          <div style="margin-top:var(--s-3)">
+            <textarea id="detail-comment-input" class="textarea" rows="2" placeholder="Add a comment…"></textarea>
+            <button class="btn btn--primary btn--sm" style="margin-top:var(--s-2)" onclick="saveDetailComment()">Add comment</button>
           </div>
         </div>
       </div>
@@ -476,7 +489,8 @@
   const { db } = DY;
 
   let identity, allNP = [], leaders = [], currentNP = null, currentFilter = 'all',
-      currentYearFilter = null, currentGenderFilter = null;
+      currentYearFilter = null, currentGenderFilter = null,
+      detailComments = [], myLeaderId = null;
 
   async function init() {
     DY.initSidebar();
@@ -661,11 +675,12 @@
     if (np.is_new_christian) {
       document.getElementById('d-nc-date').value  = np.decision_date || '';
       document.getElementById('d-nc-type').value  = np.decision_type || '';
-      document.getElementById('d-nc-bap').checked  = np.baptism_done;
-      document.getElementById('d-nc-bible').checked = np.bible_given;
-      document.getElementById('d-nc-fs').checked   = np.fresh_start_started;
-      document.getElementById('d-nc-fsc').checked  = np.fresh_start_completed;
     }
+
+    // Load comment history non-blocking
+    document.getElementById('detail-comments-list').innerHTML = '<span class="text-xs text-muted">Loading…</span>';
+    document.getElementById('detail-comment-input').value = '';
+    loadDetailComments(np.id);
 
     // Activate banner
     const canActivate = np.visit_3_date && np.status !== 'activated' && np.status !== 'archived';
@@ -725,13 +740,9 @@
 
     if (updates.is_new_christian) {
       Object.assign(updates, {
-        decision_date:        document.getElementById('d-nc-date').value || null,
-        decision_type:        document.getElementById('d-nc-type').value || null,
-        nc_leader_id:         document.getElementById('d-nc-leader').value || null,
-        baptism_done:         document.getElementById('d-nc-bap').checked,
-        bible_given:          document.getElementById('d-nc-bible').checked,
-        fresh_start_started:  document.getElementById('d-nc-fs').checked,
-        fresh_start_completed:document.getElementById('d-nc-fsc').checked,
+        decision_date: document.getElementById('d-nc-date').value || null,
+        decision_type: document.getElementById('d-nc-type').value || null,
+        nc_leader_id:  document.getElementById('d-nc-leader').value || null,
       });
     }
 
@@ -841,6 +852,132 @@
     allNP.unshift(data);
     renderTable(currentFilter);
     closeAddModal();
+  }
+
+  // ── Comment history ─────────────────────────────────────────────────────────
+  async function resolveMyLeaderId() {
+    if (myLeaderId) return myLeaderId;
+    const { data } = await db.from('leaders')
+      .select('id')
+      .eq('campus_id', identity.campus_id)
+      .eq('name', identity.leader_name)
+      .maybeSingle();
+    myLeaderId = data?.id ?? null;
+    return myLeaderId;
+  }
+
+  function relTs(iso) {
+    if (!iso) return '';
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1)   return 'just now';
+    if (mins < 60)  return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24)   return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 30)  return `${days}d ago`;
+    return formatDate(iso);
+  }
+
+  async function loadDetailComments(npId) {
+    const { data } = await db.from('np_comments')
+      .select('*, leaders(name)')
+      .eq('np_id', npId)
+      .order('created_at', { ascending: true });
+    detailComments = data ?? [];
+    renderDetailComments();
+  }
+
+  function renderDetailComments() {
+    const list = document.getElementById('detail-comments-list');
+    if (!list || !currentNP) return;
+    const items = [];
+
+    // Legacy note from NP record
+    if (currentNP.notes) {
+      items.push(`
+        <div class="comment-item comment-item--legacy">
+          <div class="comment-item__meta">
+            <span>Saved note</span>
+            <span>from NP record</span>
+          </div>
+          <div class="comment-item__text">${escHtml(currentNP.notes)}</div>
+        </div>
+      `);
+    }
+
+    detailComments.forEach(c => {
+      const author = c.leaders?.name || 'Unknown';
+      const ts     = relTs(c.created_at);
+      const isOwn  = c.leader_id === myLeaderId;
+      items.push(`
+        <div class="comment-item" id="citem-${c.id}">
+          <div class="comment-item__meta">
+            <span><strong>${escHtml(author)}</strong></span>
+            <span>${escHtml(ts)}</span>
+          </div>
+          <div class="comment-item__text" id="ctext-${c.id}">${escHtml(c.comment)}</div>
+          ${isOwn ? `
+            <div class="comment-item__actions">
+              <button class="btn btn--ghost btn--sm" onclick="startEditDetailComment('${c.id}', ${JSON.stringify(escHtml(c.comment))})">Edit</button>
+              <button class="btn btn--danger btn--sm" onclick="deleteDetailComment('${c.id}')">Delete</button>
+            </div>
+          ` : ''}
+        </div>
+      `);
+    });
+
+    list.innerHTML = items.length ? items.join('') : '<span class="text-xs text-muted">No comments yet.</span>';
+  }
+
+  async function saveDetailComment() {
+    if (!currentNP) return;
+    const input = document.getElementById('detail-comment-input');
+    const text  = input.value.trim();
+    if (!text) return;
+    const lid = await resolveMyLeaderId();
+    if (!lid) { alert('Could not identify your leader record.'); return; }
+    const { data, error } = await db.from('np_comments').insert({
+      np_id: currentNP.id, leader_id: lid, comment: text,
+    }).select('*, leaders(name)').single();
+    if (error) { alert('Could not save comment.'); return; }
+    input.value = '';
+    detailComments.push(data);
+    renderDetailComments();
+  }
+
+  function startEditDetailComment(id, currentText) {
+    const item = document.getElementById(`citem-${id}`);
+    if (!item) return;
+    const textEl = item.querySelector(`#ctext-${id}`);
+    const actionsEl = item.querySelector('.comment-item__actions');
+    // Replace text with textarea
+    textEl.innerHTML = `<textarea id="cedit-${id}" class="textarea comment-item__edit-input" rows="2">${currentText}</textarea>
+      <div style="display:flex;gap:var(--s-2);margin-top:var(--s-2)">
+        <button class="btn btn--primary btn--sm" onclick="submitEditDetailComment('${id}')">Save</button>
+        <button class="btn btn--ghost btn--sm" onclick="renderDetailComments()">Cancel</button>
+      </div>`;
+    if (actionsEl) actionsEl.hidden = true;
+  }
+
+  async function submitEditDetailComment(id) {
+    const ta = document.getElementById(`cedit-${id}`);
+    if (!ta) return;
+    const text = ta.value.trim();
+    if (!text) return;
+    const { error } = await db.from('np_comments').update({ comment: text }).eq('id', id);
+    if (error) { alert('Could not save edit.'); return; }
+    const idx = detailComments.findIndex(c => c.id == id);
+    if (idx !== -1) detailComments[idx].comment = text;
+    renderDetailComments();
+  }
+
+  async function deleteDetailComment(id) {
+    if (!confirm('Delete this comment?')) return;
+    const { error } = await db.from('np_comments').delete().eq('id', id);
+    if (error) { alert('Could not delete comment.'); return; }
+    detailComments = detailComments.filter(c => c.id != id);
+    renderDetailComments();
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
