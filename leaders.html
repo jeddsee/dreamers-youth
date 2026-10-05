@@ -182,11 +182,7 @@
           <thead>
             <tr>
               <th>Leader</th>
-              <th>Role</th>
               <th>Youth</th>
-              <th>Male</th>
-              <th>Female</th>
-              <th>Year levels</th>
             </tr>
           </thead>
           <tbody id="team-tbody"></tbody>
@@ -404,7 +400,7 @@ function renderTeamTable() {
   const leaders = allLeaders.filter(l => l.role === 'leader');
 
   if (!leaders.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--c-text-muted);padding:var(--s-6)">No leaders set up yet.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:var(--c-text-muted);padding:var(--s-6)">No leaders set up yet.</td></tr>';
     return;
   }
 
@@ -423,37 +419,15 @@ function renderTeamTable() {
   }).filter(({ filtered }) => !filtersActive || filtered.length > 0);
 
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--c-text-muted);padding:var(--s-6)">No leaders match this filter.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="2" style="text-align:center;color:var(--c-text-muted);padding:var(--s-6)">No leaders match this filter.</td></tr>`;
     return;
   }
 
   tbody.innerHTML = rows.map(({ l, youth, filtered }) => {
 
-    const males   = filtered.filter(y => y.gender === 'Male').length;
-    const females = filtered.filter(y => y.gender === 'Female').length;
-
-    // Year breakdown from the gender-filtered (but not year-filtered) set
-    const forYears = genderFilter !== 'all'
-      ? youth.filter(y => y.gender === genderFilter)
-      : youth;
-    const yearCounts = {};
-    forYears.forEach(y => {
-      if (y.year_level) yearCounts[y.year_level] = (yearCounts[y.year_level] || 0) + 1;
-    });
-    const yearSummary = Object.entries(yearCounts)
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([yr, n]) => `${yr.replace('Year ', 'Yr ')}×${n}`)
-      .join('  ') || '—';
-
-    const catMap = { contributor: 'badge--contributor', connected: 'badge--connected', community: 'badge--community' };
-
     return `<tr>
       <td class="fw-semibold">${escHtml(l.name)}</td>
-      <td><span class="badge ${catMap[l.role] ?? 'badge--neutral'}">${l.role}</span></td>
       <td class="fw-semibold">${filtered.length}</td>
-      <td>${males}</td>
-      <td>${females}</td>
-      <td style="font-size:var(--text-xs);color:var(--c-text-muted);white-space:normal;line-height:1.6">${yearSummary}</td>
     </tr>`;
   }).join('');
 }
