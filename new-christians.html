@@ -388,6 +388,7 @@
     const idx = allNC.findIndex(n => n.id === currentNC.id);
     if (idx !== -1) allNC[idx] = { ...currentNC };
     renderList();
+    renderPipelineSection();
     closeEditModal();
   }
 
@@ -496,7 +497,9 @@
       <div style="padding:0 var(--s-5) var(--s-8);border-top:1px solid var(--c-border)">
         <div style="margin-top:var(--s-5);margin-bottom:var(--s-3);font-size:var(--text-sm);font-weight:700;color:var(--c-text-muted);text-transform:uppercase;letter-spacing:0.06em">From New People Pipeline</div>
         <div class="stack">
-          ${allPipelineNPs.map(np => `
+          ${allPipelineNPs.map(np => {
+            const nc = allNC.find(n => n.name.trim().toLowerCase() === np.name.trim().toLowerCase());
+            return `
             <div class="nc-card" onclick="openPipelineCard('${np.id}')">
               <div class="nc-card__header">
                 <div>
@@ -508,8 +511,15 @@
                 </div>
                 <span class="badge badge--warning">Pipeline</span>
               </div>
-            </div>
-          `).join('')}
+              <div class="nc-steps">
+                <span class="nc-step ${nc?.baptism_done      ? 'done' : 'pending'}">Baptised</span>
+                <span class="nc-step ${nc?.bible_given       ? 'done' : 'pending'}">Bible</span>
+                <span class="nc-step ${nc?.fresh_start_started   ? 'done' : 'pending'}">FS started</span>
+                <span class="nc-step ${nc?.fresh_start_completed ? 'done' : 'pending'}">FS complete</span>
+                <span class="nc-step ${nc?.hs_baptised           ? 'done' : 'pending'}">HS Baptised</span>
+              </div>
+            </div>`;
+          }).join('')}
         </div>
       </div>
     `;
@@ -534,6 +544,7 @@
       nc = data;
       allNC.unshift(nc);
       renderList();
+      renderPipelineSection();
     }
     openEditModal(nc);
   }
