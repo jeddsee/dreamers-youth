@@ -887,10 +887,14 @@ h4 { font-size: var(--text-base); font-weight: 600; }
   gap: var(--s-3);
   margin-bottom: var(--s-6);
 }
+.stat-card-grid--8 { grid-template-columns: repeat(8, 1fr); }
+.stat-card-grid--5 { grid-template-columns: repeat(5, 1fr); }
 .stat-card-grid--4 { grid-template-columns: repeat(4, 1fr); }
 .stat-card-grid--3 { grid-template-columns: repeat(3, 1fr); }
 
 @media (max-width: 900px) {
+  .stat-card-grid--8 { grid-template-columns: repeat(4, 1fr); }
+  .stat-card-grid--5 { grid-template-columns: repeat(3, 1fr); }
   .stat-card-grid--4,
   .stat-card-grid--3 { grid-template-columns: repeat(2, 1fr); }
 }
