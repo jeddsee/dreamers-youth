@@ -161,6 +161,21 @@
     .np-check { display: flex; align-items: center; gap: var(--s-1); font-size: var(--text-xs); cursor: pointer; }
     .np-check input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--c-primary); }
 
+    /* ── Youth notes ── */
+    .youth-notes-list { width: 100%; display: flex; flex-direction: column; gap: var(--s-2); }
+    .youth-note-item {
+      background: var(--c-bg);
+      border: 1px solid var(--c-border);
+      border-radius: var(--r-md);
+      padding: var(--s-3);
+      font-size: var(--text-sm);
+    }
+    .youth-note-item__meta {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: var(--text-xs); color: var(--c-text-muted); margin-bottom: var(--s-1);
+    }
+    .youth-note-item__actions { display: flex; gap: var(--s-2); margin-top: var(--s-2); }
+
     /* ── NP Comments ── */
     .np-card__comments { border-top: 1px solid var(--c-border); margin-top: var(--s-3); padding-top: var(--s-3); }
     .np-comment__latest { margin-bottom: var(--s-2); }
@@ -618,13 +633,12 @@
           </select>
         </div>
       </div>
-      <div class="care-field" style="align-items:flex-start">
-        <span class="care-field__label">Pastoral notes</span>
+      <div class="care-field" style="align-items:flex-start;flex-direction:column;gap:0">
+        <span class="care-field__label" style="margin-bottom:var(--s-3)">Pastoral notes</span>
+        <div id="notes-list-${youth.id}" class="youth-notes-list"></div>
+        <textarea id="notes-input-${youth.id}" class="textarea" style="margin-top:var(--s-2)" rows="2" placeholder="Add a note…"></textarea>
+        <button class="btn btn--primary btn--sm" style="margin-top:var(--s-2)" onclick="saveYouthNote('${youth.id}')">Add note</button>
       </div>
-      <textarea class="textarea" style="margin-top:var(--s-2)" rows="2"
-        placeholder="Any notes…"
-        onblur="saveCare('${youth.id}', 'pastoral_notes', this.value)"
-      >${escHtml(youth.pastoral_notes || '')}</textarea>
       <div style="margin-top:var(--s-3);text-align:right">
         <span id="save-indicator-${youth.id}" class="text-xs text-muted hidden">Saved ✓</span>
       </div>
@@ -637,6 +651,8 @@
     const open   = !detail.classList.contains('hidden');
     detail.classList.toggle('hidden', open);
     row.classList.toggle('expanded', !open);
+    // Load notes the first time the card is expanded
+    if (!open && !youthNotesCache[id]) loadYouthNotes(id);
   }
 
   async function saveCare(youthId, field, value, linkedDateId) {
@@ -672,6 +688,95 @@
       indicator.classList.remove('hidden');
       setTimeout(() => indicator.classList.add('hidden'), 2000);
     }
+  }
+
+  // ── Youth notes ─────────────────────────────────────────────────────────────
+  const youthNotesCache = {}; // youth_id → array of note objects
+
+  async function loadYouthNotes(youthId) {
+    const { data } = await db.from('youth_notes')
+      .select('id, note, created_at, updated_at, leader_id, leaders(name)')
+      .eq('youth_id', youthId)
+      .order('created_at', { ascending: false });
+    youthNotesCache[youthId] = data ?? [];
+    renderYouthNotes(youthId);
+  }
+
+  function relTs(iso) {
+    if (!iso) return '';
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1)  return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24)  return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+  }
+
+  function renderYouthNotes(youthId) {
+    const list = document.getElementById(`notes-list-${youthId}`);
+    if (!list) return;
+    const notes = youthNotesCache[youthId] ?? [];
+    if (!notes.length) { list.innerHTML = '<span class="text-xs text-muted">No notes yet.</span>'; return; }
+    list.innerHTML = notes.map(n => `
+      <div class="youth-note-item" id="ynote-${n.id}">
+        <div class="youth-note-item__meta">
+          <strong>${escHtml(n.leaders?.name || 'You')}</strong>
+          <span>${relTs(n.created_at)}</span>
+        </div>
+        <div id="ynote-text-${n.id}">${escHtml(n.note)}</div>
+        <div class="youth-note-item__actions">
+          <button class="btn btn--ghost btn--sm" onclick="startEditYouthNote('${youthId}','${n.id}')">Edit</button>
+          <button class="btn btn--danger btn--sm" onclick="deleteYouthNote('${youthId}','${n.id}')">Delete</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  async function saveYouthNote(youthId) {
+    const input = document.getElementById(`notes-input-${youthId}`);
+    const text = input?.value.trim();
+    if (!text) return;
+    const { data, error } = await db.from('youth_notes')
+      .insert({ youth_id: youthId, leader_id: identity.leader_id, note: text })
+      .select('id, note, created_at, updated_at, leader_id, leaders(name)')
+      .single();
+    if (error) { alert('Could not save note.'); return; }
+    input.value = '';
+    youthNotesCache[youthId] = [data, ...(youthNotesCache[youthId] ?? [])];
+    renderYouthNotes(youthId);
+  }
+
+  function startEditYouthNote(youthId, noteId) {
+    const notes = youthNotesCache[youthId] ?? [];
+    const n = notes.find(x => x.id === noteId);
+    if (!n) return;
+    const textEl = document.getElementById(`ynote-text-${noteId}`);
+    const item   = document.getElementById(`ynote-${noteId}`);
+    textEl.innerHTML = `<textarea id="ynote-edit-${noteId}" class="textarea" rows="2">${escHtml(n.note)}</textarea>`;
+    item.querySelector('.youth-note-item__actions').innerHTML = `
+      <button class="btn btn--primary btn--sm" onclick="submitEditYouthNote('${youthId}','${noteId}')">Save</button>
+      <button class="btn btn--ghost btn--sm" onclick="renderYouthNotes('${youthId}')">Cancel</button>
+    `;
+  }
+
+  async function submitEditYouthNote(youthId, noteId) {
+    const text = document.getElementById(`ynote-edit-${noteId}`)?.value.trim();
+    if (!text) return;
+    const { error } = await db.from('youth_notes').update({ note: text, updated_at: new Date().toISOString() }).eq('id', noteId);
+    if (error) { alert('Could not update note.'); return; }
+    const notes = youthNotesCache[youthId] ?? [];
+    const idx = notes.findIndex(x => x.id === noteId);
+    if (idx !== -1) notes[idx].note = text;
+    renderYouthNotes(youthId);
+  }
+
+  async function deleteYouthNote(youthId, noteId) {
+    if (!confirm('Delete this note?')) return;
+    const { error } = await db.from('youth_notes').delete().eq('id', noteId);
+    if (error) { alert('Could not delete note.'); return; }
+    youthNotesCache[youthId] = (youthNotesCache[youthId] ?? []).filter(x => x.id !== noteId);
+    renderYouthNotes(youthId);
   }
 
   // ── Weekly entry ────────────────────────────────────────────────────────────
