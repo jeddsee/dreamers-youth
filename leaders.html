@@ -191,6 +191,7 @@
           <thead>
             <tr>
               <th>Leader</th>
+              <th>Year Level</th>
               <th>Youth</th>
             </tr>
           </thead>
@@ -414,7 +415,7 @@ async function init() {
   document.getElementById('rv-year').value = new Date().getFullYear();
 
   const [leadersRes, youthRes] = await Promise.all([
-    db.from('leaders').select('id, name, role').eq('campus_id', identity.campus_id).eq('active', true).order('name'),
+    db.from('leaders').select('id, name, role, year_level, gender').eq('campus_id', identity.campus_id).eq('active', true).order('name'),
     db.from('youth_roster').select('id, name, leader_id, year_level, gender, category, water_baptised, hs_baptised, serving, active, created_at').eq('campus_id', identity.campus_id),
   ]);
   allLeaders = leadersRes.data ?? [];
@@ -461,7 +462,7 @@ function renderTeamTable() {
   const leaders = allLeaders.filter(l => l.role === 'leader');
 
   if (!leaders.length) {
-    tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:var(--c-text-muted);padding:var(--s-6)">No leaders set up yet.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--c-text-muted);padding:var(--s-6)">No leaders set up yet.</td></tr>';
     return;
   }
 
@@ -480,7 +481,7 @@ function renderTeamTable() {
   }).filter(({ filtered }) => !filtersActive || filtered.length > 0);
 
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="2" style="text-align:center;color:var(--c-text-muted);padding:var(--s-6)">No leaders match this filter.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:var(--c-text-muted);padding:var(--s-6)">No leaders match this filter.</td></tr>`;
     return;
   }
 
@@ -488,6 +489,7 @@ function renderTeamTable() {
 
     return `<tr>
       <td class="fw-semibold">${escHtml(l.name)}</td>
+      <td>${escHtml(l.year_level || '—')}</td>
       <td class="fw-semibold">${filtered.length}</td>
     </tr>`;
   }).join('');
@@ -533,9 +535,21 @@ function renderRoster() {
     : allRoleLeaders;
   const matchedIds = new Set(matchedLeaders.map(l => l.id));
 
-  let youth = allYouth.filter(y => y.active && matchedIds.has(y.leader_id));
-  if (rosterYearFilter.size > 0) youth = youth.filter(y => rosterYearFilter.has(y.year_level));
-  if (rosterGenderFilter !== 'all') youth = youth.filter(y => y.gender === rosterGenderFilter);
+  // Filter by leader's own year_level / gender (not youth's)
+  let validLeaderIds = matchedIds;
+  if (rosterYearFilter.size > 0) {
+    validLeaderIds = new Set([...validLeaderIds].filter(id => {
+      const l = allLeaders.find(x => x.id === id);
+      return rosterYearFilter.has(l?.year_level);
+    }));
+  }
+  if (rosterGenderFilter !== 'all') {
+    validLeaderIds = new Set([...validLeaderIds].filter(id => {
+      const l = allLeaders.find(x => x.id === id);
+      return l?.gender === rosterGenderFilter;
+    }));
+  }
+  let youth = allYouth.filter(y => y.active && validLeaderIds.has(y.leader_id));
 
   if (!youth.length) {
     el.innerHTML = '<div style="padding:var(--s-6);text-align:center;color:var(--c-text-muted);font-size:var(--text-sm)">No youth match these filters.</div>';
@@ -564,13 +578,16 @@ function renderRoster() {
         <button class="btn btn--sm btn--ghost" onclick="openAddYouthModal('${escHtml(lid)}','${escHtml(ln).replace(/'/g,"\\'")}')">+ Add youth</button>
       </div>
       <table class="leaders-table" style="min-width:0">
-        <thead><tr><th>Name</th><th>Year</th><th>Gender</th><th>Category</th></tr></thead>
+        <thead><tr><th>Name</th><th>Year</th><th>Gender</th><th>Category</th><th style="text-align:center">Water Bap.</th><th style="text-align:center">HS Bap.</th><th style="text-align:center">Serving</th></tr></thead>
         <tbody>${ys.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')).map(y => `
           <tr>
             <td class="fw-medium">${escHtml(y.name ?? '—')}</td>
             <td>${escHtml(y.year_level || '—')}</td>
             <td>${escHtml(y.gender || '—')}</td>
             <td>${y.category ? `<span class="badge ${catBadge[y.category] ?? 'badge--neutral'}">${y.category}</span>` : '—'}</td>
+            <td class="${y.water_baptised ? 'check-yes' : 'check-no'}" style="text-align:center">${y.water_baptised ? '✓' : '—'}</td>
+            <td class="${y.hs_baptised   ? 'check-yes' : 'check-no'}" style="text-align:center">${y.hs_baptised   ? '✓' : '—'}</td>
+            <td class="${y.serving       ? 'check-yes' : 'check-no'}" style="text-align:center">${y.serving       ? '✓' : '—'}</td>
           </tr>`).join('')}
         </tbody>
       </table>
