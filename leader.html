@@ -217,6 +217,20 @@
       padding: var(--s-4) var(--s-5);
       z-index: 10;
     }
+    .nc-step {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: var(--r-full);
+      border: 1px solid var(--c-border-dark);
+      font-size: var(--text-xs);
+      font-weight: 600;
+      color: var(--c-text-muted);
+    }
+    .nc-step--done {
+      background: #00a86b22;
+      border-color: #00a86b55;
+      color: #00a86b;
+    }
     body { background: #0d0d0d; }
   </style>
 </head>
@@ -239,6 +253,10 @@
       <button class="sidebar-nav-item" data-nav="new-people">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="3"/><path d="M1 13c0-2.8 2.2-5 5-5h0c2.8 0 5 2.2 5 5"/><line x1="12" y1="5" x2="15" y2="5"/><line x1="13.5" y1="3.5" x2="13.5" y2="6.5"/></svg>
         New People <span id="np-badge" class="badge hidden" style="font-size:10px;padding:1px 5px;margin-left:2px"></span>
+      </button>
+      <button class="sidebar-nav-item" data-nav="new-christians">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2L9.5 6h4.5l-3.6 2.6 1.4 4.4L8 10.5 4.2 13l1.4-4.4L2 6h4.5z"/></svg>
+        New Christians
       </button>
     </div>
 
@@ -271,7 +289,6 @@
     <section id="section-roster">
       <div id="roster-loading" class="loading-overlay"><div class="spinner"></div> Loading roster…</div>
       <div id="roster-empty" class="empty-state hidden">
-        <div class="empty-state__icon">📋</div>
         <h3>No youth on your roster yet</h3>
         <p>Your pastor will add youth to your roster.</p>
       </div>
@@ -295,7 +312,6 @@
       </div>
       <div id="weekly-loading" class="loading-overlay"><div class="spinner"></div> Loading…</div>
       <div id="weekly-empty" class="empty-state hidden">
-        <div class="empty-state__icon">📋</div>
         <p>No youth on your roster yet.</p>
       </div>
       <div id="weekly-list" class="card card--flush hidden"></div>
@@ -315,11 +331,24 @@
       </div>
       <div id="np-loading" class="loading-overlay"><div class="spinner"></div> Loading…</div>
       <div id="np-empty" class="empty-state hidden">
-        <div class="empty-state__icon">🤝</div>
         <h3>No new people assigned yet</h3>
         <p>New people you're following up will appear here.</p>
       </div>
       <div id="np-list" class="stack hidden" style="padding:0 var(--s-5) var(--s-5)"></div>
+    </section>
+
+    <!-- ── NEW CHRISTIANS ───────────────────────────────────────────────── -->
+    <section id="section-new-christians" class="hidden">
+      <div style="padding:var(--s-5)">
+        <h2 style="font-size:var(--text-lg);margin-bottom:var(--s-4)">My New Christians</h2>
+        <div id="nc-error" class="error-banner hidden" style="margin-bottom:var(--s-4)"></div>
+      </div>
+      <div id="nc-loading" class="loading-overlay"><div class="spinner"></div> Loading…</div>
+      <div id="nc-empty" class="empty-state hidden">
+        <h3>No new Christians yet</h3>
+        <p>New Christians assigned to you will appear here.</p>
+      </div>
+      <div id="nc-list" class="stack hidden" style="padding:0 var(--s-5) var(--s-5)"></div>
     </section>
 
     <!-- ── TERM REVIEW ────────────────────────────────────────────────────── -->
@@ -438,6 +467,7 @@
     ]);
     loadWeeklyEntry(currentEntryDate);
     loadNewPeople();
+    loadNewChristians();
   }
 
   // ── Sidebar nav ─────────────────────────────────────────────────────────────
@@ -1004,6 +1034,51 @@
     closeAddNPModal();
     await loadNewPeople();
     switchTab('new-people');
+  }
+
+  // ── New Christians ──────────────────────────────────────────────────────────
+  async function loadNewChristians() {
+    const { data, error } = await db.from('new_christians')
+      .select('id, name, decision_date, decision_type, baptism_done, baptism_date, bible_given, fresh_start_started, fresh_start_completed')
+      .eq('leader_id', identity.leader_id)
+      .eq('archived', false)
+      .order('decision_date', { ascending: false });
+
+    document.getElementById('nc-loading').classList.add('hidden');
+
+    if (error) {
+      document.getElementById('nc-error').textContent = error.message;
+      document.getElementById('nc-error').classList.remove('hidden');
+      return;
+    }
+
+    const ncs = data ?? [];
+    if (!ncs.length) {
+      document.getElementById('nc-empty').classList.remove('hidden');
+      return;
+    }
+
+    const list = document.getElementById('nc-list');
+    const decisionLabel = t => ({ first_time: 'First Time', rededication: 'Rededication', water_baptism: 'Water Baptism' }[t] ?? t ?? '—');
+    const step = (done, label) => `<span class="nc-step ${done ? 'nc-step--done' : ''}">${label}</span>`;
+
+    list.innerHTML = ncs.map(nc => `
+      <div class="np-card">
+        <div class="np-card__header">
+          <div>
+            <div class="np-card__name">${escHtml(nc.name)}</div>
+            <div class="np-card__meta">${decisionLabel(nc.decision_type)}${nc.decision_date ? ' · ' + formatDate(nc.decision_date) : ''}</div>
+          </div>
+        </div>
+        <div class="np-card__visits" style="flex-wrap:wrap;gap:6px">
+          ${step(nc.baptism_done, 'Baptism')}
+          ${step(nc.bible_given, 'Bible Given')}
+          ${step(nc.fresh_start_started, 'Fresh Start Started')}
+          ${step(nc.fresh_start_completed, 'Fresh Start Completed')}
+        </div>
+      </div>
+    `).join('');
+    list.classList.remove('hidden');
   }
 
   // ── Term Review ─────────────────────────────────────────────────────────────
