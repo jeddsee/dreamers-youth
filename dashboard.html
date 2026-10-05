@@ -249,6 +249,10 @@
           <div class="entry-section-label">Week details</div>
           <div class="form-grid form-grid--2">
             <div class="form-group">
+              <label class="entry-field-label">Year</label>
+              <input id="ws-year" type="number" min="2020" max="2035" class="input" onchange="onTermWeekChange()">
+            </div>
+            <div class="form-group">
               <label class="entry-field-label">Term</label>
               <select id="ws-term" class="select" onchange="onTermWeekChange()">
                 <option value="T1">Term 1</option>
@@ -612,10 +616,12 @@
     snapCampusId = identity.campus_id;
     document.getElementById('sidebar-user').textContent = identity.leader_name;
 
-    // Auto-detect current term and set week 1
+    // Auto-detect current term/year and set week 1
     const termKey = currentTermKey();
     const termSelect = document.getElementById('ws-term');
     if (termSelect) termSelect.value = termKey;
+    const yearEl = document.getElementById('ws-year');
+    if (yearEl) yearEl.value = new Date().getFullYear();
     const initDate = termWeekToDate(termKey, 1);
     document.getElementById('ws-date').value = initDate;
 
@@ -839,7 +845,7 @@
 
   // Map term key + week number → approximate entry_date based on campus youth night DOW
   function termWeekToDate(termKey, weekNum) {
-    const year = new Date().getFullYear();
+    const year = parseInt(document.getElementById('ws-year')?.value) || new Date().getFullYear();
     const starts = { T1: `${year}-02-03`, T2: `${year}-04-22`, T3: `${year}-07-14`, T4: `${year}-10-06` };
     const start = new Date(starts[termKey] || starts['T1']);
     start.setDate(start.getDate() + (weekNum - 1) * 7);
@@ -931,7 +937,7 @@
     const payload = {
       campus_id:            identity.campus_id,
       entry_date:           date,
-      term:                 `${term} ${new Date().getFullYear()}`,
+      term:                 `${term} ${parseInt(document.getElementById('ws-year')?.value) || new Date().getFullYear()}`,
       week_number:          weekNum,
       no_youth_night:       noNight,
       total_in_department:  int('ws-total-dept'),
