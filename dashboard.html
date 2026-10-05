@@ -1484,15 +1484,13 @@
 
   // ── QR Code ────────────────────────────────────────────────────────────────
   function generateQR() {
+    const urlEl    = document.getElementById('qr-url');
+    const canvasEl = document.getElementById('qr-canvas');
+    if (!urlEl || !canvasEl) return;
     const campusSlug = identity.campus_name.toLowerCase().replace(/\s+/g, '');
     const url = `${window.location.origin}/register.html?campus=${campusSlug}`;
-    document.getElementById('qr-url').textContent = url;
-    new QRious({
-      element: document.getElementById('qr-canvas'),
-      value:   url,
-      size:    180,
-      foreground: '#0000ff',
-    });
+    urlEl.textContent = url;
+    new QRious({ element: canvasEl, value: url, size: 180, foreground: '#0000ff' });
   }
 
   function downloadQR() {
