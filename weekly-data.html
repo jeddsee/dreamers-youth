@@ -286,6 +286,8 @@
     </div>
 
     <div class="sidebar-bottom">
+      <span class="sidebar-bottom__label">Campus</span>
+      <div class="sidebar-campus-switcher" id="sidebar-campus-switcher"></div>
       <div class="sidebar-bottom__sub" id="sidebar-user">—</div>
       <button class="sidebar-logout" onclick="DY.clearIdentity(); window.location.href='/'">Sign out</button>
     </div>
@@ -408,6 +410,24 @@
       wdCampus = identity.campus_id;
     }
 
+    // Sidebar campus switcher
+    const switcher = document.getElementById('sidebar-campus-switcher');
+    if (switcher) {
+      const allBtn = document.createElement('button');
+      allBtn.className = 'campus-switcher-btn campus-switcher-btn--all' + (wdCampus === 'all' ? ' active' : '');
+      allBtn.textContent = 'All Campuses';
+      allBtn.onclick = () => setSidebarCampus('all');
+      switcher.appendChild(allBtn);
+      allCampuses.forEach(c => {
+        const btn = document.createElement('button');
+        btn.className = 'campus-switcher-btn' + (wdCampus === c.id ? ' active' : '');
+        btn.textContent = c.name;
+        btn.dataset.campusId = c.id;
+        btn.onclick = () => setSidebarCampus(c.id);
+        switcher.appendChild(btn);
+      });
+    }
+
     const yearSel = document.getElementById('wd-year');
     const curr = new Date().getFullYear();
     for (let y = curr + 1; y >= curr - 3; y--) {
@@ -426,6 +446,18 @@
     wdCampus = document.getElementById('wd-campus').value;
     wdYear   = parseInt(document.getElementById('wd-year').value);
     wdTerm   = document.getElementById('wd-term').value;
+    loadWeeklyData();
+  }
+
+  function setSidebarCampus(id) {
+    wdCampus = id;
+    const campusSel = document.getElementById('wd-campus');
+    if (campusSel) campusSel.value = id;
+    document.querySelectorAll('#sidebar-campus-switcher .campus-switcher-btn').forEach(btn => {
+      btn.classList.toggle('active',
+        id === 'all' ? btn.classList.contains('campus-switcher-btn--all') : btn.dataset.campusId === id
+      );
+    });
     loadWeeklyData();
   }
 

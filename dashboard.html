@@ -849,7 +849,7 @@
       <span class="section-badge section-badge--dark">Attendance</span>
       <div class="ycomp-grid mb-5">
         ${card('Avg Attendance', avg(colA('attendance')), avg(colB('attendance')))}
-        ${card('Weeks of Data',  statsA.length,           statsB.length)}
+        ${card('Total Attendance', sum(colA('attendance')), sum(colB('attendance')))}
       </div>
 
       <span class="section-badge section-badge--red">New People</span>
