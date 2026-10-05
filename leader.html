@@ -249,7 +249,7 @@
       <span class="sidebar-section__label">Overview</span>
       <button class="sidebar-nav-item active" data-nav="roster">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M2 8h8M2 12h10"/></svg>
-        Roster
+        Listing
       </button>
       <button class="sidebar-nav-item" data-nav="new-people">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="3"/><path d="M1 13c0-2.8 2.2-5 5-5h0c2.8 0 5 2.2 5 5"/><line x1="12" y1="5" x2="15" y2="5"/><line x1="13.5" y1="3.5" x2="13.5" y2="6.5"/></svg>
@@ -536,11 +536,6 @@
           <div class="youth-row__meta">
             ${absent ? '<span class="absence-flag">⚠️ 3+ weeks absent</span>' : ''}
             <span class="badge badge--${youth.category}">${capitalize(youth.category)}</span>
-            <div class="care-icons">
-              <span class="care-icon ${youth.water_baptised ? 'active' : ''}" title="Water baptism">💧</span>
-              <span class="care-icon ${youth.hs_baptised   ? 'active' : ''}" title="HS baptism">🔥</span>
-              <span class="care-icon ${youth.serving       ? 'active' : ''}" title="Serving">🙌</span>
-            </div>
           </div>
           <span class="youth-row__chevron">▾</span>
         </div>
@@ -555,7 +550,6 @@
   function renderCareSheet(youth) {
     return `
       <div class="care-field">
-        <span class="care-field__icon">💧</span>
         <span class="care-field__label">Water baptism</span>
         <div class="care-field__controls">
           <label class="toggle-switch">
@@ -570,7 +564,6 @@
         </div>
       </div>
       <div class="care-field">
-        <span class="care-field__icon">🔥</span>
         <span class="care-field__label">HS baptism</span>
         <div class="care-field__controls">
           <label class="toggle-switch">
@@ -585,7 +578,6 @@
         </div>
       </div>
       <div class="care-field">
-        <span class="care-field__icon">🙌</span>
         <span class="care-field__label">Serving</span>
         <div class="care-field__controls">
           <label class="toggle-switch">
@@ -600,7 +592,6 @@
         </div>
       </div>
       <div class="care-field">
-        <span class="care-field__icon">🏷️</span>
         <span class="care-field__label">Category</span>
         <div class="care-field__controls">
           <select class="select" id="${youth.id}-cat" style="max-width:150px"
@@ -613,7 +604,6 @@
         </div>
       </div>
       <div class="care-field" style="align-items:flex-start">
-        <span class="care-field__icon" style="margin-top:4px">📝</span>
         <span class="care-field__label">Pastoral notes</span>
       </div>
       <textarea class="textarea" style="margin-top:var(--s-2)" rows="2"
