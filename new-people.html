@@ -417,7 +417,10 @@
       </div>
 
       <div class="modal__footer" style="justify-content:space-between">
-        <button class="btn btn--danger btn--sm" id="archive-btn" onclick="archiveCurrentNP()">Archive</button>
+        <div style="display:flex;gap:var(--s-2)">
+          <button class="btn btn--danger btn--sm" id="archive-btn" onclick="archiveCurrentNP()">Archive</button>
+          <button class="btn btn--danger btn--sm" id="delete-btn" onclick="deleteCurrentNP()" style="opacity:0.75">Delete</button>
+        </div>
         <div style="display:flex;gap:var(--s-3)">
           <button class="btn btn--ghost" onclick="closeDetailModal()">Cancel</button>
           <button class="btn btn--primary" id="save-btn" onclick="saveCurrentNP()">Save</button>
@@ -576,7 +579,10 @@
   }
 
   function renderTable(filter) {
-    let rows = filter === 'all' ? allNP : allNP.filter(np => np.status === filter);
+    const excluded = new Set(['activated', 'archived']);
+    let rows = filter === 'all'
+      ? allNP.filter(np => !excluded.has(np.status))
+      : allNP.filter(np => np.status === filter);
 
     // Ready: only show people needing a leader assigned
     if (filter === 'ready_to_activate') rows = rows.filter(np => !np.leader_id);
@@ -788,6 +794,19 @@
     currentNP.status = 'archived';
     const idx = allNP.findIndex(n => n.id === currentNP.id);
     if (idx !== -1) allNP[idx].status = 'archived';
+    renderTable(currentFilter);
+    closeDetailModal();
+  }
+
+  async function deleteCurrentNP() {
+    if (!currentNP) return;
+    if (!confirm(`Permanently delete ${currentNP.name}? This cannot be undone.`)) return;
+    const btn = document.getElementById('delete-btn');
+    setLoading(btn, true);
+    const { error } = await db.from('new_people').delete().eq('id', currentNP.id);
+    setLoading(btn, false);
+    if (error) { showError('Delete failed.', 'detail-error'); return; }
+    allNP = allNP.filter(n => n.id !== currentNP.id);
     renderTable(currentFilter);
     closeDetailModal();
   }
