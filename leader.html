@@ -180,6 +180,7 @@
     .np-comment__form textarea:focus { outline: 2px solid var(--c-primary); border-color: transparent; }
     .np-comment__actions { display: flex; justify-content: space-between; align-items: center; margin-top: var(--s-2); }
     .np-comment__hist-btn { background: none; border: none; padding: 0; font-size: var(--text-xs); color: var(--c-primary); cursor: pointer; text-decoration: underline; }
+    .np-comment__hist-edit-area { width: 100%; min-height: 60px; padding: var(--s-2); font-size: var(--text-sm); border: 1px solid var(--c-border); border-radius: var(--r-sm); margin-bottom: var(--s-1); background: var(--c-surface); color: var(--c-text); box-sizing: border-box; resize: vertical; }
 
     /* ── Term review ── */
     .term-stats-grid {
@@ -955,11 +956,56 @@
     const histEl = document.getElementById(`npc-hist-${npId}`);
     const comments = npComments[npId] ?? [];
     histEl.innerHTML = comments.map(c => `
-      <div class="np-comment__hist-item">
+      <div class="np-comment__hist-item" id="npc-cmt-${c.id}">
         <p>${escHtml(c.comment)}</p>
-        <span class="np-comment__ts">${formatDate(c.created_at)}, ${new Date(c.created_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}</span>
+        <div style="display:flex;align-items:center;gap:var(--s-3);margin-top:2px">
+          <span class="np-comment__ts">${formatDate(c.created_at)}, ${new Date(c.created_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}</span>
+          <button class="np-comment__hist-btn" onclick="startEditComment('${c.id}','${npId}')">Edit</button>
+          <button class="np-comment__hist-btn" style="color:#e53e3e" onclick="deleteNPComment('${c.id}','${npId}')">Delete</button>
+        </div>
       </div>
     `).join('');
+  }
+
+  function startEditComment(commentId, npId) {
+    const itemEl = document.getElementById(`npc-cmt-${commentId}`);
+    if (!itemEl) return;
+    const comment = (npComments[npId] ?? []).find(c => c.id === commentId);
+    if (!comment) return;
+    itemEl.innerHTML = `
+      <textarea class="np-comment__hist-edit-area" id="npc-edit-${commentId}">${escHtml(comment.comment)}</textarea>
+      <div style="display:flex;gap:var(--s-2)">
+        <button class="btn btn--sm btn--primary" onclick="saveEditComment('${commentId}','${npId}')">Save</button>
+        <button class="btn btn--sm btn--ghost" onclick="renderNPCommentHistory('${npId}')">Cancel</button>
+      </div>
+    `;
+    document.getElementById(`npc-edit-${commentId}`)?.focus();
+  }
+
+  async function saveEditComment(commentId, npId) {
+    const textarea = document.getElementById(`npc-edit-${commentId}`);
+    if (!textarea) return;
+    const newText = textarea.value.trim();
+    if (!newText) return;
+    textarea.disabled = true;
+    const { error } = await db.from('np_comments').update({ comment: newText }).eq('id', commentId);
+    textarea.disabled = false;
+    if (!error) {
+      const idx = (npComments[npId] ?? []).findIndex(c => c.id === commentId);
+      if (idx !== -1) npComments[npId][idx].comment = newText;
+      renderNPCommentHistory(npId);
+      renderNPComments(npId);
+    }
+  }
+
+  async function deleteNPComment(commentId, npId) {
+    if (!confirm('Delete this comment?')) return;
+    const { error } = await db.from('np_comments').delete().eq('id', commentId);
+    if (!error) {
+      npComments[npId] = (npComments[npId] ?? []).filter(c => c.id !== commentId);
+      renderNPCommentHistory(npId);
+      renderNPComments(npId);
+    }
   }
 
   function relativeTime(iso) {
