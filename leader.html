@@ -1083,6 +1083,8 @@
   }
 
   // ── New Christians ──────────────────────────────────────────────────────────
+  const ncComments = {};
+
   async function loadNewChristians() {
     const { data, error } = await db.from('new_christians')
       .select('id, name, decision_date, decision_type, baptism_done, baptism_date, bible_given, fresh_start_started, fresh_start_completed')
@@ -1104,6 +1106,18 @@
       return;
     }
 
+    // Load comments for all NCs
+    if (ncs.length) {
+      const { data: cmtData } = await db.from('nc_comments')
+        .select('*')
+        .in('nc_id', ncs.map(n => n.id))
+        .order('created_at', { ascending: false });
+      (cmtData ?? []).forEach(c => {
+        if (!ncComments[c.nc_id]) ncComments[c.nc_id] = [];
+        ncComments[c.nc_id].push(c);
+      });
+    }
+
     const list = document.getElementById('nc-list');
     const decisionLabel = t => ({ first_time: 'First Time', rededication: 'Rededication', water_baptism: 'Water Baptism' }[t] ?? t ?? '—');
     const step = (done, label) => `<span class="nc-step ${done ? 'nc-step--done' : ''}">${label}</span>`;
@@ -1122,9 +1136,133 @@
           ${step(nc.fresh_start_started, 'Fresh Start Started')}
           ${step(nc.fresh_start_completed, 'Fresh Start Completed')}
         </div>
+        <div class="np-card__comments" id="ncc-${nc.id}">
+          <div class="np-comment__latest hidden"></div>
+          <div class="np-comment__history hidden" id="ncc-hist-${nc.id}"></div>
+          <div class="np-comment__form">
+            <textarea id="ncc-input-${nc.id}" placeholder="Add a comment…" rows="2"></textarea>
+            <div class="np-comment__actions">
+              <button class="np-comment__hist-btn hidden" data-nc-hist-btn="${nc.id}"
+                onclick="toggleNCCommentHistory('${nc.id}')">History</button>
+              <button class="btn btn--sm btn--primary" onclick="saveNCComment('${nc.id}')">Save</button>
+            </div>
+          </div>
+        </div>
       </div>
     `).join('');
     list.classList.remove('hidden');
+    ncs.forEach(nc => renderNCComments(nc.id));
+  }
+
+  function renderNCComments(ncId) {
+    const section = document.getElementById(`ncc-${ncId}`);
+    if (!section) return;
+    const comments = ncComments[ncId] ?? [];
+    const latest = comments[0];
+    const latestEl = section.querySelector('.np-comment__latest');
+    if (latest) {
+      latestEl.innerHTML = `<p>${escHtml(latest.comment)}</p><span class="np-comment__ts">Last saved ${relativeTime(latest.created_at)}</span>`;
+      latestEl.classList.remove('hidden');
+    } else {
+      latestEl.classList.add('hidden');
+    }
+    const histBtn = section.querySelector('[data-nc-hist-btn]');
+    if (histBtn) {
+      histBtn.textContent = comments.length === 1 ? 'History (1)' : `History (${comments.length})`;
+      histBtn.classList.toggle('hidden', comments.length === 0);
+    }
+  }
+
+  function renderNCCommentHistory(ncId) {
+    const histEl = document.getElementById(`ncc-hist-${ncId}`);
+    const comments = ncComments[ncId] ?? [];
+    histEl.innerHTML = comments.map(c => `
+      <div class="np-comment__hist-item" id="ncc-cmt-${c.id}">
+        <p>${escHtml(c.comment)}</p>
+        <div style="display:flex;align-items:center;gap:var(--s-3);margin-top:2px">
+          <span class="np-comment__ts">${formatDate(c.created_at)}, ${new Date(c.created_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}</span>
+          <button class="np-comment__hist-btn" onclick="startEditNCComment('${c.id}','${ncId}')">Edit</button>
+          <button class="np-comment__hist-btn" style="color:#e53e3e" onclick="deleteNCComment('${c.id}','${ncId}')">Delete</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function toggleNCCommentHistory(ncId) {
+    const histEl = document.getElementById(`ncc-hist-${ncId}`);
+    const btn = document.querySelector(`[data-nc-hist-btn="${ncId}"]`);
+    const open = histEl.classList.contains('hidden');
+    if (open) {
+      renderNCCommentHistory(ncId);
+      histEl.classList.remove('hidden');
+      btn.textContent = 'Hide history';
+    } else {
+      histEl.classList.add('hidden');
+      const count = (ncComments[ncId] ?? []).length;
+      btn.textContent = `History (${count})`;
+    }
+  }
+
+  async function saveNCComment(ncId) {
+    const input = document.getElementById(`ncc-input-${ncId}`);
+    const comment = input.value.trim();
+    if (!comment) return;
+    const section = document.getElementById(`ncc-${ncId}`);
+    const btn = section.querySelector('.btn--primary');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    const { data, error } = await db.from('nc_comments')
+      .insert({ nc_id: ncId, leader_id: identity.leader_id, comment })
+      .select().single();
+    if (!error && data) {
+      if (!ncComments[ncId]) ncComments[ncId] = [];
+      ncComments[ncId].unshift(data);
+      input.value = '';
+      renderNCComments(ncId);
+      const histEl = document.getElementById(`ncc-hist-${ncId}`);
+      if (histEl && !histEl.classList.contains('hidden')) renderNCCommentHistory(ncId);
+    }
+    btn.disabled = false; btn.textContent = 'Save';
+  }
+
+  function startEditNCComment(commentId, ncId) {
+    const itemEl = document.getElementById(`ncc-cmt-${commentId}`);
+    if (!itemEl) return;
+    const comment = (ncComments[ncId] ?? []).find(c => c.id === commentId);
+    if (!comment) return;
+    itemEl.innerHTML = `
+      <textarea class="np-comment__hist-edit-area" id="ncc-edit-${commentId}">${escHtml(comment.comment)}</textarea>
+      <div style="display:flex;gap:var(--s-2)">
+        <button class="btn btn--sm btn--primary" onclick="saveEditNCComment('${commentId}','${ncId}')">Save</button>
+        <button class="btn btn--sm btn--ghost" onclick="renderNCCommentHistory('${ncId}')">Cancel</button>
+      </div>
+    `;
+    document.getElementById(`ncc-edit-${commentId}`)?.focus();
+  }
+
+  async function saveEditNCComment(commentId, ncId) {
+    const textarea = document.getElementById(`ncc-edit-${commentId}`);
+    if (!textarea) return;
+    const newText = textarea.value.trim();
+    if (!newText) return;
+    textarea.disabled = true;
+    const { error } = await db.from('nc_comments').update({ comment: newText }).eq('id', commentId);
+    textarea.disabled = false;
+    if (!error) {
+      const idx = (ncComments[ncId] ?? []).findIndex(c => c.id === commentId);
+      if (idx !== -1) ncComments[ncId][idx].comment = newText;
+      renderNCCommentHistory(ncId);
+      renderNCComments(ncId);
+    }
+  }
+
+  async function deleteNCComment(commentId, ncId) {
+    if (!confirm('Delete this comment?')) return;
+    const { error } = await db.from('nc_comments').delete().eq('id', commentId);
+    if (!error) {
+      ncComments[ncId] = (ncComments[ncId] ?? []).filter(c => c.id !== commentId);
+      renderNCCommentHistory(ncId);
+      renderNCComments(ncId);
+    }
   }
 
   // ── Term Review ─────────────────────────────────────────────────────────────
