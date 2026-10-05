@@ -1390,7 +1390,8 @@
     // Pre-populate the youth night dropdown from the campus record
     const { data: campus } = await db.from('campuses')
       .select('youth_night_dow').eq('id', identity.campus_id).single();
-    if (campus) document.getElementById('campus-dow-select').value = campus.youth_night_dow ?? 5;
+    const dowEl = document.getElementById('campus-dow-select');
+    if (campus && dowEl) dowEl.value = campus.youth_night_dow ?? 5;
 
     const lRes = await db.from('leaders').select('id, name, role, year_level, gender, active').eq('campus_id', identity.campus_id).order('name');
     leaders = lRes.data ?? [];
