@@ -310,6 +310,22 @@
           No youth night this week — entry suppressed.
         </div>
         <div id="weekly-error" class="error-banner hidden" style="margin-bottom:var(--s-4)"></div>
+
+        <!-- Attendance totals -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s-3);margin-bottom:var(--s-4)">
+          <div class="form-group" style="margin:0">
+            <label class="entry-field-label" style="font-size:var(--text-xs);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--c-text-muted);display:block;margin-bottom:var(--s-1)">Youth att.</label>
+            <input id="le-youth-att" type="number" min="0" class="input" placeholder="0" autocomplete="off">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="entry-field-label" style="font-size:var(--text-xs);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--c-text-muted);display:block;margin-bottom:var(--s-1)">Sunday att.</label>
+            <input id="le-sunday-att" type="number" min="0" class="input" placeholder="0" autocomplete="off">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="entry-field-label" style="font-size:var(--text-xs);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--c-text-muted);display:block;margin-bottom:var(--s-1)">Connect att.</label>
+            <input id="le-connect-att" type="number" min="0" class="input" placeholder="0" autocomplete="off">
+          </div>
+        </div>
       </div>
       <div id="weekly-loading" class="loading-overlay"><div class="spinner"></div> Loading…</div>
       <div id="weekly-empty" class="empty-state hidden">
@@ -678,7 +694,7 @@
         .eq('entry_date', date)
         .maybeSingle(),
       db.from('leader_entries')
-        .select('attendance_listing')
+        .select('attendance_listing, youth_attendance, sunday_attendance, connect_attendance')
         .eq('leader_id', identity.leader_id)
         .eq('entry_date', date)
         .maybeSingle(),
@@ -686,7 +702,10 @@
 
     document.getElementById('weekly-loading').classList.add('hidden');
 
+    const clearAtt = () => ['le-youth-att','le-sunday-att','le-connect-att'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+
     if (statsRes.data?.no_youth_night) {
+      clearAtt();
       document.getElementById('no-youth-night-msg').classList.remove('hidden');
       return;
     }
@@ -696,8 +715,14 @@
       return;
     }
 
-    const existing = entryRes.data?.attendance_listing ?? [];
+    const entry = entryRes.data ?? {};
+    const existing = entry.attendance_listing ?? [];
     if (existing.length) document.getElementById('entry-saved-badge').classList.remove('hidden');
+
+    const setNum = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
+    setNum('le-youth-att',   entry.youth_attendance);
+    setNum('le-sunday-att',  entry.sunday_attendance);
+    setNum('le-connect-att', entry.connect_attendance);
 
     renderWeeklyList(existing);
   }
@@ -758,12 +783,16 @@
     });
 
     const term = termFromDate(currentEntryDate);
+    const intVal = id => { const v = parseInt(document.getElementById(id)?.value); return isNaN(v) ? null : v; };
     const { error } = await db.from('leader_entries').upsert({
       leader_id:          identity.leader_id,
       campus_id:          identity.campus_id,
       entry_date:         currentEntryDate,
       term,
       attendance_listing: listing,
+      youth_attendance:   intVal('le-youth-att'),
+      sunday_attendance:  intVal('le-sunday-att'),
+      connect_attendance: intVal('le-connect-att'),
     }, { onConflict: 'leader_id,entry_date' });
 
     setLoading(btn, false);
