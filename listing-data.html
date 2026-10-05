@@ -656,6 +656,7 @@
     if (rawVal !== '' && isNaN(val)) return;
 
     input.disabled = true;
+    input.style.outline = '';
     const { error } = await db.from('leader_entries').upsert({
       leader_id:  leaderId,
       campus_id:  ldCampus,
@@ -665,7 +666,12 @@
     }, { onConflict: 'leader_id,entry_date' });
     input.disabled = false;
 
-    if (!error) {
+    if (error) {
+      input.style.outline = '2px solid #e53e3e';
+      console.error('Save failed:', error.message);
+    } else {
+      input.style.outline = '2px solid #38a169';
+      setTimeout(() => { input.style.outline = ''; }, 1000);
       const idx = allEntries.findIndex(e => e.leader_id === leaderId && e.entry_date === entryDate);
       if (idx !== -1) allEntries[idx][field] = val;
       else allEntries.push({ leader_id: leaderId, campus_id: ldCampus, entry_date: entryDate, term, [field]: val });
@@ -745,7 +751,17 @@
         }
         displayDates = known.slice(0, weekCount);
       } else {
-        displayDates = [];
+        // No dates at all — generate weekly placeholders ending at the most recent Friday
+        const anchor = new Date();
+        const daysToFriday = (anchor.getDay() + 7 - 5) % 7;
+        anchor.setDate(anchor.getDate() - daysToFriday);
+        const dates = [];
+        for (let i = weekCount - 1; i >= 0; i--) {
+          const d = new Date(anchor);
+          d.setDate(anchor.getDate() - i * 7);
+          dates.push(formatDateInput(d));
+        }
+        displayDates = dates;
       }
     }
     const emptyWeekCount = Math.max(0, weekCount - displayDates.length);
