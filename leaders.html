@@ -475,6 +475,8 @@ function renderTeamTable() {
 
   const filtersActive = genderFilter !== 'all' || yearFilter.size > 0;
 
+  const yrNum = yl => { const n = parseInt((yl || '').replace('Year ', '')); return isNaN(n) ? 99 : n; };
+
   const rows = leaders.map(l => {
     const youth = allYouth.filter(y => y.leader_id === l.id && y.active);
 
@@ -485,7 +487,14 @@ function renderTeamTable() {
     });
 
     return { l, youth, filtered };
-  }).filter(({ filtered }) => !filtersActive || filtered.length > 0);
+  }).filter(({ filtered }) => !filtersActive || filtered.length > 0)
+    .sort((a, b) => {
+      const yd = yrNum(a.l.year_level) - yrNum(b.l.year_level);
+      if (yd !== 0) return yd;
+      const ga = a.l.gender || '', gb = b.l.gender || '';
+      if (ga !== gb) return ga < gb ? -1 : 1;
+      return (a.l.name || '').localeCompare(b.l.name || '');
+    });
 
   if (!rows.length) {
     tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:var(--c-text-muted);padding:var(--s-6)">No leaders match this filter.</td></tr>`;
