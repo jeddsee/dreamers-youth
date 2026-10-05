@@ -313,6 +313,10 @@
           <div class="entry-section-label">Connect &amp; Sunday</div>
           <div class="form-grid form-grid--2">
             <div class="form-group">
+              <label class="entry-field-label">Connect group attendance</label>
+              <input id="ws-connect" type="number" min="0" max="999" value="0" class="input" autocomplete="off">
+            </div>
+            <div class="form-group">
               <label class="entry-field-label">Sunday AM attendance</label>
               <input id="ws-sunday" type="number" min="0" max="11" value="0" class="input" autocomplete="off">
             </div>
@@ -917,6 +921,7 @@
     set('ws-fresh',      d.fresh_start);
     set('ws-water-bap',  d.water_baptisms);
     set('ws-hs-bap',     d.hs_baptisms);
+    set('ws-connect',    d.connect_attendance);
     set('ws-sunday',     d.sunday_attendance);
     set('ws-saints',     d.saints_attendance);
     set('ws-schools',    d.schools_visited);
@@ -928,7 +933,7 @@
 
   function clearWSForm() {
     ['ws-total-dept','ws-sal-first','ws-sal-reded','ws-bibles',
-     'ws-fresh','ws-water-bap','ws-hs-bap','ws-sunday','ws-saints','ws-schools'].forEach(id => {
+     'ws-fresh','ws-water-bap','ws-hs-bap','ws-connect','ws-sunday','ws-saints','ws-schools'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = 0;
     });
@@ -958,6 +963,11 @@
     const term    = document.getElementById('ws-term').value;
     const weekNum = parseInt(document.getElementById('ws-week').value) || 1;
     const noNight = document.getElementById('ws-no-night').checked;
+
+    const { count: leaderCount } = await db.from('leaders')
+      .select('*', { count: 'exact', head: true })
+      .eq('campus_id', identity.campus_id).eq('active', true);
+
     const payload = {
       campus_id:            identity.campus_id,
       entry_date:           date,
@@ -965,12 +975,14 @@
       week_number:          weekNum,
       no_youth_night:       noNight,
       total_in_department:  int('ws-total-dept'),
+      leaders_count:        leaderCount ?? null,
       salvations_first:     noNight ? null : int('ws-sal-first'),
       salvations_rededs:    noNight ? null : int('ws-sal-reded'),
       bibles_given:         int('ws-bibles'),
       fresh_start:          int('ws-fresh'),
       water_baptisms:       int('ws-water-bap'),
       hs_baptisms:          int('ws-hs-bap'),
+      connect_attendance:   int('ws-connect'),
       sunday_attendance:    int('ws-sunday'),
       saints_attendance:    int('ws-saints'),
       schools_visited:      int('ws-schools'),

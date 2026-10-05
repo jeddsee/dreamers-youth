@@ -133,9 +133,7 @@
     }
     .col-label { width: 210px; }
     .col-week  { width: 72px; }
-    .col-total { width: 72px; }
-    .col-prev  { width: 82px; }
-    .col-grow  { width: 92px; }
+    .col-total { width: 80px; }
 
     .wd-table thead tr { border-bottom: 1.5px solid var(--wd-border); }
     .wd-table thead th {
@@ -162,8 +160,6 @@
     .th-week.no-night .wk-num { color: var(--wd-text-faint); }
     .th-week.no-night .wk-sub { color: #D97706; }
     .th-total { background: var(--wd-total-bg) !important; font-weight: 700; color: var(--wd-text); }
-    .th-prev  { background: var(--wd-total-bg) !important; }
-    .th-grow  { background: var(--wd-total-bg) !important; }
 
     .wd-table tr.section-row td {
       background: var(--wd-section-bg);
@@ -203,18 +199,15 @@
     .td-week .cell-val.empty { color: var(--wd-text-faint); }
     .td-week.no-night .cell-val { color: var(--wd-text-faint); text-align: center; }
 
-    .td-total, .td-prev, .td-grow {
+    .td-total {
       background: var(--wd-total-bg);
       text-align: right; padding: 0 12px;
       font-variant-numeric: tabular-nums;
+      font-size: 13px; font-weight: 700; color: var(--wd-text);
     }
-    .td-total { font-size: 13px; font-weight: 700; color: var(--wd-text); }
     .td-total.dash { font-weight: 400; color: var(--wd-text-faint); }
     .td-total.zero { color: var(--wd-text-faint); font-weight: 400; }
-    .td-prev { font-size: 13px; color: var(--wd-text-faint); }
-    .td-grow { font-size: 13px; color: var(--wd-text-faint); }
-    .td-grow.pos { color: #059669; font-weight: 600; }
-    .td-grow.neg { color: #DC2626; font-weight: 600; }
+    .td-total.avg  { font-style: italic; }
 
     /* ─── Loading / empty ─── */
     .wd-status { padding: 48px; text-align: center; color: var(--c-text-muted); font-size: var(--text-sm); }
@@ -235,18 +228,14 @@
       .th-label, .td-label { display: none !important; }
       .col-label { display: none !important; }
       .col-week  { width: 50px !important; }
-      .col-total { width: 52px !important; }
-      .col-prev  { width: 58px !important; }
-      .col-grow  { width: 66px !important; }
+      .col-total { width: 60px !important; }
       .wd-table tr.data-row td { height: 24px !important; }
       .wd-table tr.section-row td { padding: 4px 8px 3px 12px !important; font-size: 8px !important; background: #EDEDF4 !important; }
       .wd-table thead th { font-size: 9px !important; padding: 6px 6px 5px !important; background: #FFFFFF !important; }
-      .th-total, .th-prev, .th-grow { background: #F4F4FA !important; }
+      .th-total { background: #F4F4FA !important; }
       .wk-num { font-size: 9px !important; }
       .td-week .cell-val { font-size: 9px !important; height: 24px !important; line-height: 24px !important; padding: 0 6px !important; }
-      .td-total, .td-prev, .td-grow { background: #F4F4FA !important; padding: 0 6px !important; font-size: 9px !important; }
-      .td-grow.pos { color: #059669 !important; }
-      .td-grow.neg { color: #DC2626 !important; }
+      .td-total { background: #F4F4FA !important; padding: 0 6px !important; font-size: 9px !important; }
     }
   </style>
 </head>
@@ -352,21 +341,25 @@
   let wdCampus = 'all';
   let wdTerm   = 'all';
   let wdStats     = [];
-  let wdPrevStats = [];
   let allCampuses = [];
 
-  // ─── Row definitions (key = Supabase column, or computed:true) ───
+  // ─── Row definitions ───
+  // avg:true     → summary column shows average (not sum)
+  // noTotal:true → summary column shows — (no meaningful aggregate)
+  // computed:true, kind → special render logic
   const SECTIONS = [
     { key: 'attendance', label: 'ATTENDANCE', rows: [
-      { key: 'total_in_department', label: 'Total in department' },
-      { key: 'attendance',          label: 'Youth attendance'    },
-      { key: 'connect_attendance',  label: 'Connect attendance'  },
+      { key: 'total_in_department', label: 'Total in department', noTotal: true },
+      { key: 'leaders_count',       label: 'Total leaders',       avg: true },
+      { key: 'attendance',          label: 'Youth attendance',    avg: true },
+      { key: 'connect_attendance',  label: 'Connect group att.',  avg: true },
     ]},
     { key: 'new_people', label: 'NEW PEOPLE', rows: [
-      { key: 'first_timers',  label: '1st time NP'       },
-      { key: 'second_timers', label: '2nd time NP'        },
-      { key: 'third_timers',  label: 'NP retained (3rd)'  },
-      { key: 'retention',     label: 'Retention rate', computed: true },
+      { key: 'total_np',      label: 'Total NP',         computed: true, kind: 'total_np'  },
+      { key: 'first_timers',  label: '1st time NP' },
+      { key: 'second_timers', label: '2nd time NP' },
+      { key: 'third_timers',  label: 'NP retained (3rd)' },
+      { key: 'retention',     label: 'Retention rate',   computed: true, kind: 'retention' },
     ]},
     { key: 'life', label: 'LIFE METRICS', rows: [
       { key: 'salvations_first',  label: '1st time NC'    },
@@ -377,14 +370,14 @@
       { key: 'hs_baptisms',       label: 'HS baptisms'    },
     ]},
     { key: 'connect', label: 'CONNECT & SUNDAY', rows: [
-      { key: 'sunday_attendance', label: 'Sunday'          },
-      { key: 'saints_attendance', label: 'Saints'          },
+      { key: 'sunday_attendance', label: 'Sunday',         avg: true },
+      { key: 'saints_attendance', label: 'Saints',         avg: true },
       { key: 'schools_visited',   label: 'Schools visited' },
     ]},
   ];
 
   const NUMERIC_FIELDS = [
-    'total_in_department','attendance','connect_attendance',
+    'total_in_department','leaders_count','attendance','connect_attendance',
     'first_timers','second_timers','third_timers',
     'salvations_first','salvations_rededs','bibles_given','fresh_start',
     'water_baptisms','hs_baptisms','sunday_attendance','saints_attendance','schools_visited'
@@ -438,12 +431,7 @@
     if (wdCampus !== 'all') q = q.eq('campus_id', wdCampus);
     const { data: curr } = await q;
 
-    let q2 = db.from('weekly_stats').select('*').like('term', `%${wdYear - 1}%`);
-    if (wdCampus !== 'all') q2 = q2.eq('campus_id', wdCampus);
-    const { data: prev } = await q2;
-
-    wdStats     = curr ?? [];
-    wdPrevStats = prev ?? [];
+    wdStats = curr ?? [];
 
     renderAllTerms();
   }
@@ -476,6 +464,18 @@
     return t;
   }
 
+  // Average a field across week data array, skipping no-night weeks
+  function avgField(weekDataArr, field) {
+    let sum = 0, count = 0;
+    for (const wd of weekDataArr) {
+      if (wd && !wd.no_youth_night && wd[field] != null) {
+        sum += Number(wd[field]);
+        count++;
+      }
+    }
+    return count > 0 ? Math.round(sum / count) : null;
+  }
+
   // ─── Week count in localStorage ───
   function getWeekCount(termNum) {
     try {
@@ -494,8 +494,6 @@
   // ─── Render all visible terms ───
   function renderAllTerms() {
     const terms = wdTerm === 'all' ? [1, 2, 3, 4] : [parseInt(wdTerm)];
-    const hasNPData = wdStats.some(e => e.first_timers != null) || wdPrevStats.some(e => e.first_timers != null);
-
     const container = document.getElementById('wd-terms');
     container.innerHTML = '';
 
@@ -510,36 +508,31 @@
       el.id = 'term-block-' + t;
       el.className = 'term-block';
       container.appendChild(el);
-      renderTermInto(el, t, hasNPData);
+      renderTermInto(el, t);
     });
   }
 
   function renderTerm(termNum) {
     const el = document.getElementById('term-block-' + termNum);
     if (!el) return;
-    const hasNPData = wdStats.some(e => e.first_timers != null) || wdPrevStats.some(e => e.first_timers != null);
-    renderTermInto(el, termNum, hasNPData);
+    renderTermInto(el, termNum);
   }
 
   // ─── Render a single term block ───
-  function renderTermInto(el, termNum, hasNPData) {
+  function renderTermInto(el, termNum) {
     const weekCount = getWeekCount(termNum);
 
     // Build per-week aggregated data
-    const weekData = [], prevWeekData = [];
+    const weekData = [];
     for (let w = 1; w <= weekCount; w++) {
       weekData.push(getWeekAgg(wdStats, termNum, w));
-      prevWeekData.push(getWeekAgg(wdPrevStats, termNum, w));
     }
     const weeksWithData = weekData.filter(w => w !== null).length;
-
-    // Hide NEW PEOPLE section if no NP data at all
-    const visibleSections = hasNPData ? SECTIONS : SECTIONS.filter(s => s.key !== 'new_people');
 
     // ── Build column group ──
     const colsHtml = '<col class="col-label">' +
       Array.from({length: weekCount}, () => '<col class="col-week">').join('') +
-      '<col class="col-total"><col class="col-prev"><col class="col-grow">';
+      '<col class="col-total">';
 
     // ── Build thead ──
     const wkHeaders = Array.from({length: weekCount}, (_, i) => {
@@ -554,17 +547,15 @@
     const thead = `<thead><tr>
       <th class="th-label">Metric</th>
       ${wkHeaders}
-      <th class="th-total">${wdYear}</th>
-      <th class="th-prev">${wdYear - 1}</th>
-      <th class="th-grow">Growth</th>
+      <th class="th-total">Total / Avg</th>
     </tr></thead>`;
 
     // ── Build tbody ──
     let altIdx = 0;
     let tbodyRows = '';
 
-    visibleSections.forEach(section => {
-      const colspan = weekCount + 4;
+    SECTIONS.forEach(section => {
+      const colspan = weekCount + 2;
       tbodyRows += `<tr class="section-row"><td colspan="${colspan}">${section.label}</td></tr>`;
 
       section.rows.forEach(row => {
@@ -572,40 +563,87 @@
         const rowCls = 'data-row' + (isAlt ? ' row-alt' : '');
 
         if (row.computed) {
-          // Retention rate
-          const ft = sumField(weekData, 'first_timers');
-          const tt = sumField(weekData, 'third_timers');
-          const pft = sumField(prevWeekData, 'first_timers');
-          const ptt = sumField(prevWeekData, 'third_timers');
-          const totalStr = (ft != null && ft > 0) ? Math.round((tt ?? 0) / ft * 100) + '%' : '—';
-          const prevStr  = (pft != null && pft > 0) ? Math.round((ptt ?? 0) / pft * 100) + '%' : '—';
+          let summaryStr = '—', summaryCls = ' dash';
+          let wkCells = '';
 
-          const wkCells = Array.from({length: weekCount}, (_, i) => {
-            const wd = weekData[i];
-            if (!wd) return '<td class="td-week"><span class="cell-val empty"></span></td>';
-            if (wd.no_youth_night) return '<td class="td-week no-night"><span class="cell-val">—</span></td>';
-            const f = wd.first_timers, t2 = wd.third_timers;
-            const val = (f != null && f > 0) ? Math.round((t2 ?? 0) / f * 100) + '%' : null;
-            return `<td class="td-week"><span class="cell-val${val == null ? ' empty' : ''}">${val ?? ''}</span></td>`;
-          }).join('');
+          if (row.kind === 'retention') {
+            const ft = sumField(weekData, 'first_timers');
+            const tt = sumField(weekData, 'third_timers');
+            summaryStr = (ft != null && ft > 0) ? Math.round((tt ?? 0) / ft * 100) + '%' : '—';
+            summaryCls = summaryStr === '—' ? ' dash' : '';
+            wkCells = Array.from({length: weekCount}, (_, i) => {
+              const wd = weekData[i];
+              if (!wd) return '<td class="td-week"><span class="cell-val empty"></span></td>';
+              if (wd.no_youth_night) return '<td class="td-week no-night"><span class="cell-val">—</span></td>';
+              const f = wd.first_timers, t2 = wd.third_timers;
+              const val = (f != null && f > 0) ? Math.round((t2 ?? 0) / f * 100) + '%' : null;
+              return `<td class="td-week"><span class="cell-val${val == null ? ' empty' : ''}">${val ?? ''}</span></td>`;
+            }).join('');
+
+          } else if (row.kind === 'total_np') {
+            // Per week: sum of 1st+2nd+3rd timers
+            const wkNP = weekData.map(wd => {
+              if (!wd) return null;
+              const a = wd.first_timers, b = wd.second_timers, c = wd.third_timers;
+              if (a == null && b == null && c == null) return { ...wd, _total_np: null };
+              return { ...wd, _total_np: (a ?? 0) + (b ?? 0) + (c ?? 0) };
+            });
+            const totalNP = sumField(wkNP, '_total_np');
+            summaryStr = totalNP != null ? String(totalNP) : '—';
+            summaryCls = totalNP == null ? ' dash' : totalNP === 0 ? ' zero' : '';
+            wkCells = wkNP.map(wd => {
+              if (!wd) return '<td class="td-week"><span class="cell-val empty"></span></td>';
+              if (wd.no_youth_night) return '<td class="td-week no-night"><span class="cell-val">—</span></td>';
+              const val = wd._total_np;
+              return `<td class="td-week"><span class="cell-val${val == null ? ' empty' : ''}">${val ?? ''}</span></td>`;
+            }).join('');
+          }
 
           tbodyRows += `<tr class="${rowCls}">
             <td class="td-label">${row.label}</td>
             ${wkCells}
-            <td class="td-total${totalStr === '—' ? ' dash' : ''}">${totalStr}</td>
-            <td class="td-prev">${prevStr}</td>
-            <td class="td-grow">—</td>
+            <td class="td-total${summaryCls}">${summaryStr}</td>
           </tr>`;
           return;
         }
 
-        // Normal row
-        const total     = sumField(weekData, row.key);
-        const prevTotal = sumField(prevWeekData, row.key);
-        const growNum   = (total != null && prevTotal != null) ? (total - prevTotal) : null;
-        const growStr   = growNum == null ? '—' : (growNum >= 0 ? '+' + growNum : String(growNum));
-        const growCls   = growNum == null ? '' : (growNum > 0 ? ' pos' : growNum < 0 ? ' neg' : '');
+        if (row.noTotal) {
+          // No aggregate — show — in summary column
+          const wkCells = Array.from({length: weekCount}, (_, i) => {
+            const wd = weekData[i];
+            if (!wd) return '<td class="td-week"><span class="cell-val empty"></span></td>';
+            if (wd.no_youth_night) return '<td class="td-week no-night"><span class="cell-val">—</span></td>';
+            const val = wd[row.key];
+            return `<td class="td-week"><span class="cell-val${val == null ? ' empty' : ''}">${val ?? ''}</span></td>`;
+          }).join('');
+          tbodyRows += `<tr class="${rowCls}">
+            <td class="td-label">${row.label}</td>
+            ${wkCells}
+            <td class="td-total dash">—</td>
+          </tr>`;
+          return;
+        }
 
+        if (row.avg) {
+          // Average in summary column
+          const avgVal = avgField(weekData, row.key);
+          const wkCells = Array.from({length: weekCount}, (_, i) => {
+            const wd = weekData[i];
+            if (!wd) return '<td class="td-week"><span class="cell-val empty"></span></td>';
+            if (wd.no_youth_night) return '<td class="td-week no-night"><span class="cell-val">—</span></td>';
+            const val = wd[row.key];
+            return `<td class="td-week"><span class="cell-val${val == null ? ' empty' : ''}">${val ?? ''}</span></td>`;
+          }).join('');
+          tbodyRows += `<tr class="${rowCls}">
+            <td class="td-label">${row.label}</td>
+            ${wkCells}
+            <td class="td-total avg${avgVal == null ? ' dash' : avgVal === 0 ? ' zero' : ''}">${avgVal ?? '—'}</td>
+          </tr>`;
+          return;
+        }
+
+        // Default: sum in summary column
+        const total = sumField(weekData, row.key);
         const wkCells = Array.from({length: weekCount}, (_, i) => {
           const wd = weekData[i];
           if (!wd) return '<td class="td-week"><span class="cell-val empty"></span></td>';
@@ -613,13 +651,10 @@
           const val = wd[row.key];
           return `<td class="td-week"><span class="cell-val${val == null ? ' empty' : ''}">${val ?? ''}</span></td>`;
         }).join('');
-
         tbodyRows += `<tr class="${rowCls}">
           <td class="td-label">${row.label}</td>
           ${wkCells}
           <td class="td-total${total == null ? ' dash' : total === 0 ? ' zero' : ''}">${total ?? '—'}</td>
-          <td class="td-prev">${prevTotal ?? '—'}</td>
-          <td class="td-grow${growCls}">${growStr}</td>
         </tr>`;
       });
     });
