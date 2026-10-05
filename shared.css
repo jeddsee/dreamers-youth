@@ -640,7 +640,7 @@ h4 { font-size: var(--text-base); font-weight: 600; }
 }
 
 .sidebar {
-  width: 168px;
+  width: 200px;
   flex-shrink: 0;
   background: #0d0d0d;
   color: #fff;
@@ -650,6 +650,8 @@ h4 { font-size: var(--text-base); font-weight: 600; }
   top: 0;
   height: 100vh;
   overflow-y: auto;
+  overflow-x: hidden;
+  transition: width 0.2s ease;
 }
 
 .sidebar__logo {
@@ -657,6 +659,7 @@ h4 { font-size: var(--text-base); font-weight: 600; }
   display: flex;
   align-items: center;
   gap: var(--s-3);
+  flex-shrink: 0;
 }
 .sidebar__logo-img {
   width: 68px;
@@ -664,7 +667,53 @@ h4 { font-size: var(--text-base); font-weight: 600; }
   display: block;
   margin: -8px -4px -4px;
   mix-blend-mode: screen;
+  flex-shrink: 0;
 }
+.sidebar-toggle {
+  margin-left: auto;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.5);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background var(--transition), color var(--transition);
+}
+.sidebar-toggle:hover { background: rgba(255,255,255,0.16); color: #fff; }
+.sidebar-toggle svg { transition: transform 0.2s ease; transform: rotate(180deg); }
+
+/* ── Collapsed state ───────────────────────────────────────────────────────── */
+.sidebar--collapsed { width: 56px; }
+.sidebar--collapsed .sidebar__logo {
+  padding: var(--s-4) 0;
+  justify-content: center;
+}
+.sidebar--collapsed .sidebar__logo-img { display: none; }
+.sidebar--collapsed .sidebar-toggle { margin-left: 0; }
+.sidebar--collapsed .sidebar-toggle svg { transform: rotate(0deg); }
+.sidebar--collapsed .sidebar-section {
+  padding: var(--s-3) var(--s-2) var(--s-1);
+}
+.sidebar--collapsed .sidebar-section__label { display: none; }
+.sidebar--collapsed .sidebar-nav-item {
+  justify-content: center;
+  gap: 0;
+  padding: 8px 0;
+  font-size: 0;
+}
+.sidebar--collapsed .sidebar-nav-item svg {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+}
+.sidebar--collapsed .sidebar-bottom { display: none; }
+.sidebar--collapsed .sidebar-campus-switcher { display: none; }
 
 .sidebar-section {
   padding: var(--s-5) var(--s-3) var(--s-2);

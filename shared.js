@@ -201,6 +201,22 @@ const planningCentre = {
   async getServices(/* campusId, from, to */) { return []; },
 };
 
+// ── Sidebar collapse ──────────────────────────────────────────────────────────
+function initSidebar() {
+  const sidebar = document.querySelector('.sidebar');
+  if (!sidebar) return;
+  if (localStorage.getItem('dy_sidebar_collapsed') === '1') {
+    sidebar.classList.add('sidebar--collapsed');
+  }
+}
+
+function toggleSidebar() {
+  const sidebar = document.querySelector('.sidebar');
+  if (!sidebar) return;
+  const collapsed = sidebar.classList.toggle('sidebar--collapsed');
+  try { localStorage.setItem('dy_sidebar_collapsed', collapsed ? '1' : '0'); } catch {}
+}
+
 // ── Global export ─────────────────────────────────────────────────────────────
 window.DY = {
   db: supaDb,
@@ -210,4 +226,5 @@ window.DY = {
   checkDuplicateNP, activateNewPerson,
   computeAttendanceStats, hasAbsenceFlag,
   planningCentre,
+  initSidebar, toggleSidebar,
 };
