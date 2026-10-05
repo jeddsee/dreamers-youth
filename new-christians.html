@@ -421,9 +421,7 @@
     const sel = document.getElementById('a-selected');
     sel.textContent = `Selected: ${youth.name}`;
     sel.classList.remove('hidden');
-    // Pre-assign leader
-    const leader = leaders.find(l => l.id === youth.leader_id);
-    if (leader) document.getElementById('a-leader').value = leader.id;
+    if (youth.leader_id) document.getElementById('a-leader').value = youth.leader_id;
   }
 
   async function submitAdd() {

@@ -167,14 +167,13 @@
         </div>
         <div class="pill-row" id="year-pills">
           <span class="pill-row-label">Year Level</span>
-          <button class="pill active" onclick="setFilter('year','all',this)">All</button>
-          <button class="pill" onclick="setFilter('year','Year 7',this)">7</button>
-          <button class="pill" onclick="setFilter('year','Year 8',this)">8</button>
-          <button class="pill" onclick="setFilter('year','Year 9',this)">9</button>
-          <button class="pill" onclick="setFilter('year','Year 10',this)">10</button>
-          <button class="pill" onclick="setFilter('year','Year 11',this)">11</button>
-          <button class="pill" onclick="setFilter('year','Year 12',this)">12</button>
-          <button class="pill" onclick="setFilter('year','Other / Left school',this)">Other</button>
+          <button class="pill active" data-year="all" onclick="setFilter('year','all',this)">All</button>
+          <button class="pill" data-year="Year 7" onclick="setFilter('year','Year 7',this)">7</button>
+          <button class="pill" data-year="Year 8" onclick="setFilter('year','Year 8',this)">8</button>
+          <button class="pill" data-year="Year 9" onclick="setFilter('year','Year 9',this)">9</button>
+          <button class="pill" data-year="Year 10" onclick="setFilter('year','Year 10',this)">10</button>
+          <button class="pill" data-year="Year 11" onclick="setFilter('year','Year 11',this)">11</button>
+          <button class="pill" data-year="Year 12" onclick="setFilter('year','Year 12',this)">12</button>
         </div>
       </div>
 
@@ -196,8 +195,11 @@
 
       <hr class="section-rule">
 
-      <!-- ══ SECTION 2: YOUTH ROSTER ═══════════════════════════════════════════ -->
-      <h2 style="font-size:var(--text-2xl);font-weight:800;letter-spacing:-0.02em;margin-bottom:var(--s-5)">Youth Roster</h2>
+      <!-- ══ SECTION 2: LEADER LISTINGS ════════════════════════════════════════ -->
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--s-3);margin-bottom:var(--s-5)">
+        <h2 style="font-size:var(--text-2xl);font-weight:800;letter-spacing:-0.02em;margin:0">Leader Listings</h2>
+        <button id="export-roster-btn" class="btn btn--secondary btn--sm hidden" onclick="exportRoster()">Export CSV</button>
+      </div>
 
       <div style="display:flex;flex-wrap:wrap;gap:var(--s-5);align-items:flex-start;margin-bottom:var(--s-5)">
         <div class="form-group" style="flex:1;min-width:200px;max-width:300px;margin:0">
@@ -207,13 +209,13 @@
         <div>
           <div class="pill-row" id="roster-year-pills">
             <span class="pill-row-label">Year Level</span>
-            <button class="pill active" onclick="setRosterFilter('year','all',this)">All</button>
-            <button class="pill" onclick="setRosterFilter('year','Year 7',this)">7</button>
-            <button class="pill" onclick="setRosterFilter('year','Year 8',this)">8</button>
-            <button class="pill" onclick="setRosterFilter('year','Year 9',this)">9</button>
-            <button class="pill" onclick="setRosterFilter('year','Year 10',this)">10</button>
-            <button class="pill" onclick="setRosterFilter('year','Year 11',this)">11</button>
-            <button class="pill" onclick="setRosterFilter('year','Year 12',this)">12</button>
+            <button class="pill active" data-year="all" onclick="setRosterFilter('year','all',this)">All</button>
+            <button class="pill" data-year="Year 7" onclick="setRosterFilter('year','Year 7',this)">7</button>
+            <button class="pill" data-year="Year 8" onclick="setRosterFilter('year','Year 8',this)">8</button>
+            <button class="pill" data-year="Year 9" onclick="setRosterFilter('year','Year 9',this)">9</button>
+            <button class="pill" data-year="Year 10" onclick="setRosterFilter('year','Year 10',this)">10</button>
+            <button class="pill" data-year="Year 11" onclick="setRosterFilter('year','Year 11',this)">11</button>
+            <button class="pill" data-year="Year 12" onclick="setRosterFilter('year','Year 12',this)">12</button>
           </div>
           <div class="pill-row" id="roster-gender-pills">
             <span class="pill-row-label">Gender</span>
@@ -306,7 +308,9 @@
 
         <!-- New people in period -->
         <span class="section-badge section-badge--red">New People in Period</span>
-        <div class="card card--flush mb-6" id="rv-new-people"></div>
+        <div class="card card--flush mb-5" id="rv-new-people"></div>
+
+        <button class="btn btn--secondary" onclick="exportReview()">Export PDF</button>
 
       </div><!-- /rv-output -->
 
@@ -320,8 +324,9 @@
 const { db } = DY;
 
 let identity, allLeaders = [], allYouth = [];
-let genderFilter = 'all', yearFilter = 'all';
-let rosterYearFilter = 'all', rosterGenderFilter = 'all';
+let genderFilter = 'all', yearFilter = new Set();
+let rosterYearFilter = new Set(), rosterGenderFilter = 'all';
+let lastRosterData = [], lastRosterLeaderMap = {};
 
 function escHtml(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -378,11 +383,19 @@ function setFilter(type, value, btn) {
   if (type === 'gender') {
     genderFilter = value;
     document.querySelectorAll('#gender-pills .pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
   } else {
-    yearFilter = value;
-    document.querySelectorAll('#year-pills .pill').forEach(b => b.classList.remove('active'));
+    if (value === 'all') {
+      yearFilter.clear();
+    } else {
+      if (yearFilter.has(value)) yearFilter.delete(value);
+      else yearFilter.add(value);
+    }
+    document.querySelectorAll('#year-pills .pill').forEach(b => {
+      const v = b.dataset.year;
+      b.classList.toggle('active', v === 'all' ? yearFilter.size === 0 : yearFilter.has(v));
+    });
   }
-  btn.classList.add('active');
   renderTeamTable();
 }
 
@@ -395,14 +408,14 @@ function renderTeamTable() {
     return;
   }
 
-  const filtersActive = genderFilter !== 'all' || yearFilter !== 'all';
+  const filtersActive = genderFilter !== 'all' || yearFilter.size > 0;
 
   const rows = leaders.map(l => {
     const youth = allYouth.filter(y => y.leader_id === l.id && y.active);
 
     const filtered = youth.filter(y => {
       if (genderFilter !== 'all' && y.gender !== genderFilter) return false;
-      if (yearFilter   !== 'all' && y.year_level !== yearFilter) return false;
+      if (yearFilter.size > 0 && !yearFilter.has(y.year_level)) return false;
       return true;
     });
 
@@ -448,22 +461,33 @@ function renderTeamTable() {
 // ── Youth Roster ──────────────────────────────────────────────────────────────
 function setRosterFilter(type, value, btn) {
   if (type === 'year') {
-    rosterYearFilter = value;
-    document.querySelectorAll('#roster-year-pills .pill').forEach(b => b.classList.remove('active'));
+    if (value === 'all') {
+      rosterYearFilter.clear();
+    } else {
+      if (rosterYearFilter.has(value)) rosterYearFilter.delete(value);
+      else rosterYearFilter.add(value);
+    }
+    document.querySelectorAll('#roster-year-pills .pill').forEach(b => {
+      const v = b.dataset.year;
+      b.classList.toggle('active', v === 'all' ? rosterYearFilter.size === 0 : rosterYearFilter.has(v));
+    });
   } else {
     rosterGenderFilter = value;
     document.querySelectorAll('#roster-gender-pills .pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
   }
-  btn.classList.add('active');
   renderRoster();
 }
 
 function renderRoster() {
   const search = (document.getElementById('roster-search')?.value ?? '').trim().toLowerCase();
   const el     = document.getElementById('roster-results');
-  const hasFilter = search || rosterYearFilter !== 'all' || rosterGenderFilter !== 'all';
+  const hasFilter = search || rosterYearFilter.size > 0 || rosterGenderFilter !== 'all';
+
+  document.getElementById('export-roster-btn').classList.toggle('hidden', !hasFilter);
 
   if (!hasFilter) {
+    lastRosterData = [];
     el.innerHTML = '<div style="padding:var(--s-6);text-align:center;color:var(--c-text-muted);font-size:var(--text-sm)">Search for a leader or choose a year level / gender to view youth.</div>';
     return;
   }
@@ -475,7 +499,7 @@ function renderRoster() {
   const matchedIds = new Set(matchedLeaders.map(l => l.id));
 
   let youth = allYouth.filter(y => y.active && matchedIds.has(y.leader_id));
-  if (rosterYearFilter   !== 'all') youth = youth.filter(y => y.year_level === rosterYearFilter);
+  if (rosterYearFilter.size > 0) youth = youth.filter(y => rosterYearFilter.has(y.year_level));
   if (rosterGenderFilter !== 'all') youth = youth.filter(y => y.gender === rosterGenderFilter);
 
   if (!youth.length) {
@@ -485,6 +509,9 @@ function renderRoster() {
 
   const leaderName = id => allLeaders.find(l => l.id === id)?.name ?? 'Unassigned';
   const catBadge   = { contributor: 'badge--contributor', connected: 'badge--connected', community: 'badge--community' };
+
+  lastRosterData = youth;
+  lastRosterLeaderMap = Object.fromEntries(allLeaders.map(l => [l.id, l.name]));
 
   const groups = {};
   youth.forEach(y => {
@@ -642,6 +669,58 @@ async function generateReport() {
 
   document.getElementById('rv-loading').classList.add('hidden');
   document.getElementById('rv-output').classList.remove('hidden');
+}
+
+// ── Exports ────────────────────────────────────────────────────────────────────
+function exportRoster() {
+  if (!lastRosterData.length) return;
+  const lName = id => lastRosterLeaderMap[id] ?? 'Unassigned';
+  const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const headers = ['Leader', 'Name', 'Year Level', 'Gender', 'Category'];
+  const rows = lastRosterData
+    .sort((a, b) => (lName(a.leader_id) + a.name).localeCompare(lName(b.leader_id) + b.name))
+    .map(y => [lName(y.leader_id), y.name, y.year_level, y.gender, y.category]);
+  const csv = [headers, ...rows].map(r => r.map(q).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = 'leader-listings.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function exportReview() {
+  const output = document.getElementById('rv-output');
+  if (!output || output.classList.contains('hidden')) return;
+  const leaderSel = document.getElementById('rv-leader');
+  const leaderName = leaderSel.options[leaderSel.selectedIndex]?.text ?? '';
+  const from = document.getElementById('rv-from').value;
+  const to   = document.getElementById('rv-to').value;
+
+  const win = window.open('', '_blank');
+  win.document.write(`<!doctype html><html><head><meta charset="UTF-8">
+    <title>Leader Review — ${leaderName}</title>
+    <style>
+      body { font-family: system-ui, sans-serif; color: #111; padding: 32px; max-width: 900px; margin: 0 auto; }
+      h1 { font-size: 22px; margin: 0 0 4px; }
+      .sub { color: #666; font-size: 13px; margin-bottom: 24px; }
+      .section { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #888; margin: 24px 0 8px; }
+      .cards { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; }
+      .card { border: 1px solid #ddd; border-radius: 8px; padding: 12px 16px; min-width: 110px; }
+      .card-label { font-size: 11px; color: #666; margin-bottom: 4px; }
+      .card-val { font-size: 22px; font-weight: 700; }
+      table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 8px; }
+      th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #888; border-bottom: 2px solid #ddd; padding: 6px 8px; }
+      td { padding: 6px 8px; border-bottom: 1px solid #eee; }
+      .np-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; font-size: 13px; }
+      @media print { body { padding: 16px; } }
+    </style>
+  </head><body>
+    <h1>Leader Review — ${escHtml(leaderName)}</h1>
+    <div class="sub">${escHtml(from)} to ${escHtml(to)}</div>
+    ${output.innerHTML}
+    <script>window.onload=()=>window.print();<\/script>
+  </body></html>`);
+  win.document.close();
 }
 
 init();
