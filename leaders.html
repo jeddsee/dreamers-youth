@@ -323,6 +323,57 @@
   </div><!-- /main-content -->
 </div><!-- /app-layout -->
 
+<!-- ── Add Youth to Leader Modal ────────────────────────────────────────────── -->
+<div class="modal-backdrop" id="add-youth-modal">
+  <div class="modal">
+    <div class="modal__header">
+      <h3>Add youth — <span id="ay-leader-name" style="font-weight:400;opacity:0.7"></span></h3>
+      <button class="modal__close" onclick="closeAddYouthModal()">✕</button>
+    </div>
+    <div class="modal__body">
+      <input type="hidden" id="ay-leader-id">
+      <div class="stack">
+        <div class="form-group">
+          <label>Name <span class="required">*</span></label>
+          <input id="ay-name" type="text" class="input" placeholder="Full name">
+        </div>
+        <div class="form-grid form-grid--2">
+          <div class="form-group">
+            <label>Year level</label>
+            <select id="ay-year" class="select">
+              <option value="">Select…</option>
+              <option>Year 7</option><option>Year 8</option><option>Year 9</option>
+              <option>Year 10</option><option>Year 11</option><option>Year 12</option>
+              <option>Other / Left school</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Gender</label>
+            <select id="ay-gender" class="select">
+              <option value="">Select…</option>
+              <option>Male</option><option>Female</option><option>Prefer not to say</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select id="ay-category" class="select">
+            <option value="">None</option>
+            <option value="contributor">Contributor</option>
+            <option value="connected">Connected</option>
+            <option value="community">Community</option>
+          </select>
+        </div>
+      </div>
+      <div id="ay-error" class="error-banner hidden mt-3"></div>
+    </div>
+    <div class="modal__footer">
+      <button class="btn btn--ghost" onclick="closeAddYouthModal()">Cancel</button>
+      <button class="btn btn--primary" id="ay-save-btn" onclick="submitAddYouth()">Add</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.50.0/dist/umd/supabase.min.js"></script>
 <script src="shared.js"></script>
 <script>
@@ -499,15 +550,18 @@ function renderRoster() {
 
   const groups = {};
   youth.forEach(y => {
-    const ln = leaderName(y.leader_id);
-    if (!groups[ln]) groups[ln] = [];
-    groups[ln].push(y);
+    const lid = y.leader_id;
+    if (!groups[lid]) groups[lid] = { name: leaderName(lid), ys: [] };
+    groups[lid].ys.push(y);
   });
 
-  el.innerHTML = Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0])).map(([ln, ys]) => `
+  el.innerHTML = Object.entries(groups)
+    .sort((a, b) => a[1].name.localeCompare(b[1].name))
+    .map(([lid, { name: ln, ys }]) => `
     <div class="card card--flush mb-4">
-      <div style="padding:var(--s-3) var(--s-5);border-bottom:1px solid var(--c-border);font-weight:600;font-size:var(--text-sm)">
-        ${escHtml(ln)} <span class="text-muted" style="font-weight:400">(${ys.length})</span>
+      <div style="padding:var(--s-3) var(--s-5);border-bottom:1px solid var(--c-border);font-weight:600;font-size:var(--text-sm);display:flex;align-items:center;justify-content:space-between;gap:var(--s-3)">
+        <span>${escHtml(ln)} <span class="text-muted" style="font-weight:400">(${ys.length})</span></span>
+        <button class="btn btn--sm btn--ghost" onclick="openAddYouthModal('${escHtml(lid)}','${escHtml(ln).replace(/'/g,"\\'")}')">+ Add youth</button>
       </div>
       <table class="leaders-table" style="min-width:0">
         <thead><tr><th>Name</th><th>Year</th><th>Gender</th><th>Category</th></tr></thead>
@@ -705,6 +759,44 @@ function exportReview() {
     <script>window.onload=()=>window.print();<\/script>
   </body></html>`);
   win.document.close();
+}
+
+// ── Add Youth to Leader ───────────────────────────────────────────────────────
+function openAddYouthModal(leaderId, leaderName) {
+  document.getElementById('ay-leader-id').value = leaderId;
+  document.getElementById('ay-leader-name').textContent = leaderName;
+  document.getElementById('ay-name').value = '';
+  document.getElementById('ay-year').value = '';
+  document.getElementById('ay-gender').value = '';
+  document.getElementById('ay-category').value = '';
+  hideError('ay-error');
+  document.getElementById('add-youth-modal').classList.add('open');
+}
+
+function closeAddYouthModal() {
+  document.getElementById('add-youth-modal').classList.remove('open');
+}
+
+async function submitAddYouth() {
+  const name = document.getElementById('ay-name').value.trim();
+  if (!name) { showError('Name required.', 'ay-error'); return; }
+  const leaderId = document.getElementById('ay-leader-id').value;
+  const btn = document.getElementById('ay-save-btn');
+  setLoading(btn, true);
+  const payload = { campus_id: identity.campus_id, leader_id: leaderId || null, name, active: true };
+  const year = document.getElementById('ay-year').value;
+  const gender = document.getElementById('ay-gender').value;
+  const category = document.getElementById('ay-category').value;
+  if (year) payload.year_level = year;
+  if (gender) payload.gender = gender;
+  if (category) payload.category = category;
+  const { data, error } = await db.from('youth_roster').insert(payload).select().single();
+  setLoading(btn, false);
+  if (error) { showError('Could not add youth.', 'ay-error'); return; }
+  allYouth.push(data);
+  closeAddYouthModal();
+  renderRoster();
+  renderTeamTable();
 }
 
 init();
