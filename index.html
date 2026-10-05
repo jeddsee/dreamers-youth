@@ -24,10 +24,10 @@
       position: fixed;
       top: 50%; left: 50%;
       transform: translate(-50%, -50%);
-      width: 700px; height: 600px;
+      width: 800px; height: 700px;
       background: radial-gradient(ellipse at center,
-        rgba(255,53,0,0.55) 0%,
-        rgba(255,53,0,0.22) 45%,
+        rgba(255,70,0,0.7) 0%,
+        rgba(255,53,0,0.32) 45%,
         transparent 70%);
       filter: blur(80px);
       pointer-events: none;
@@ -35,24 +35,34 @@
     }
     .login-wrap > * { position: relative; z-index: 1; }
 
+    /* Logo sits above the card — screen blend drops the black background */
+    .login-logo-img {
+      width: 200px;
+      height: auto;
+      display: block;
+      margin: 0 auto var(--s-2);
+      mix-blend-mode: screen;
+    }
+
     .login-card {
       background:
-        linear-gradient(160deg, rgba(255,255,255,0.13) 0%, rgba(255,255,255,0) 50%),
-        rgba(255, 53, 0, 0.18);
+        linear-gradient(155deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.04) 45%, rgba(255,53,0,0.06) 100%),
+        rgba(255, 65, 0, 0.28);
       border-radius: var(--r-lg);
       padding: var(--s-5) var(--s-6) var(--s-6);
       width: 100%;
       max-width: 400px;
-      backdrop-filter: blur(40px) saturate(180%);
-      -webkit-backdrop-filter: blur(40px) saturate(180%);
-      border: 1px solid rgba(255,255,255,0.22);
+      backdrop-filter: blur(48px) saturate(200%) brightness(1.1);
+      -webkit-backdrop-filter: blur(48px) saturate(200%) brightness(1.1);
+      border: 1px solid rgba(255,255,255,0.30);
       box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.38),
-        inset 0 -1px 0 rgba(255,53,0,0.3),
-        inset 1px 0 0 rgba(255,255,255,0.12),
-        inset -1px 0 0 rgba(255,255,255,0.08),
-        0 24px 60px rgba(0,0,0,0.65),
-        0 8px 32px rgba(255,53,0,0.4);
+        inset 0 1.5px 0 rgba(255,255,255,0.50),
+        inset 0 -1px 0 rgba(255,80,0,0.35),
+        inset 1px 0 0 rgba(255,255,255,0.16),
+        inset -1px 0 0 rgba(255,255,255,0.10),
+        0 24px 64px rgba(0,0,0,0.55),
+        0 6px 24px rgba(255,65,0,0.5),
+        0 0 80px rgba(255,53,0,0.2);
       overflow: visible;
     }
 
@@ -72,13 +82,6 @@
     .login-logo {
       text-align: center;
       margin-bottom: var(--s-4);
-    }
-    .login-logo img {
-      width: 340px;
-      height: auto;
-      display: block;
-      margin: -52px auto -16px;
-      mix-blend-mode: screen;
     }
     .login-logo__name {
       font-size: var(--text-2xl);
@@ -174,9 +177,9 @@
 </head>
 <body>
   <div class="login-wrap">
+    <img src="dy-logo-white.png" class="login-logo-img" alt="Dreamers Youth">
     <div class="login-card">
       <div class="login-logo">
-        <img src="dy-logo-white.png" alt="Dreamers Youth">
         <div class="login-logo__name">Dreamers Youth</div>
         <div class="login-logo__sub">Pastoral Management System</div>
       </div>
