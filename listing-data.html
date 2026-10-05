@@ -588,7 +588,7 @@
     if (!nonNull.length) return null;
     return nonNull.reduce((s,v) => s+v, 0);
   }
-  function fmtAvg(v) { return v == null ? '—' : v.toFixed(1); }
+  function fmtAvg(v) { return v == null ? '—' : String(Math.round(v)); }
   function fmtSum(v) { return v == null ? '—' : String(v); }
   function fmtVal(v) { return v == null ? '' : String(v); }
   function cellCls(v) { return v == null ? ' empty' : ''; }
@@ -757,7 +757,7 @@
     // ── colgroup ──
     let colsHtml = '<col class="col-label">';
     for (let i = 0; i < weekCount; i++) colsHtml += '<col class="col-week">';
-    colsHtml += '<col class="col-total"><col class="col-total">';
+    colsHtml += '<col class="col-total">';
 
     // ── thead ──
     let wkHeaders = '';
@@ -771,12 +771,11 @@
       <th class="th-label">Leader / Metric</th>
       ${wkHeaders}
       <th class="th-total">Avg</th>
-      <th class="th-total">Total</th>
     </tr></thead>`;
 
     // ── tbody ──
     let tbodyRows = '';
-    const colspan = weekCount + 3;
+    const colspan = weekCount + 2;
 
     // ─ Summary section ─
     tbodyRows += `<tr class="section-row"><td colspan="${colspan}">SUMMARY — ALL LEADERS</td></tr>`;
@@ -791,7 +790,6 @@
       tbodyRows += `<tr class="data-row">
         <td class="td-label">Expected Attendance</td>
         ${wkCells}
-        <td class="td-total">${avgStr}</td>
         <td class="td-total">${avgStr}</td>
       </tr>`;
     }
@@ -818,7 +816,6 @@
         <td class="td-label">Youth Attendance</td>
         ${wkCells}${emptyCells}
         <td class="td-total avg${a == null ? ' dash' : ''}">${fmtAvg(a)}</td>
-        <td class="td-total${t == null ? ' dash' : ''}">${fmtSum(t)}</td>
       </tr>`;
     }
 
@@ -843,7 +840,6 @@
         <td class="td-label">Sunday</td>
         ${wkCells}${emptyCells}
         <td class="td-total avg${a == null ? ' dash' : ''}">${fmtAvg(a)}</td>
-        <td class="td-total${t == null ? ' dash' : ''}">${fmtSum(t)}</td>
       </tr>`;
     }
 
@@ -868,7 +864,6 @@
         <td class="td-label">Connect Groups</td>
         ${wkCells}${emptyCells}
         <td class="td-total avg${a == null ? ' dash' : ''}">${fmtAvg(a)}</td>
-        <td class="td-total${t == null ? ' dash' : ''}">${fmtSum(t)}</td>
       </tr>`;
     }
 
@@ -886,7 +881,6 @@
         tbodyRows += `<tr class="data-row">
           <td class="td-label indent">Expected att.</td>
           ${wkCells}
-          <td class="td-total">${exp || '—'}</td>
           <td class="td-total">${exp || '—'}</td>
         </tr>`;
       }
@@ -918,7 +912,6 @@
           <td class="td-label indent">Youth</td>
           ${wkCells}${emptyCells}
           <td class="td-total avg${a == null ? ' dash' : ''}">${fmtAvg(a)}</td>
-          <td class="td-total${t == null ? ' dash' : ''}">${fmtSum(t)}</td>
         </tr>`;
       }
 
@@ -949,7 +942,6 @@
           <td class="td-label indent">Sunday</td>
           ${wkCells}${emptyCells}
           <td class="td-total avg${a == null ? ' dash' : ''}">${fmtAvg(a)}</td>
-          <td class="td-total${t == null ? ' dash' : ''}">${fmtSum(t)}</td>
         </tr>`;
       }
 
@@ -980,7 +972,6 @@
           <td class="td-label indent">Connect groups</td>
           ${wkCells}${emptyCells}
           <td class="td-total avg${a == null ? ' dash' : ''}">${fmtAvg(a)}</td>
-          <td class="td-total${t == null ? ' dash' : ''}">${fmtSum(t)}</td>
         </tr>`;
       }
     });
