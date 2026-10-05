@@ -553,6 +553,24 @@
               <option value="pastor">Pastor</option>
             </select>
           </div>
+          <div class="form-grid form-grid--2">
+            <div class="form-group">
+              <label>Year level</label>
+              <select id="al-year" class="select">
+                <option value="">Select…</option>
+                <option>Year 7</option><option>Year 8</option><option>Year 9</option>
+                <option>Year 10</option><option>Year 11</option><option>Year 12</option>
+                <option>Other / Left school</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Gender</label>
+              <select id="al-gender" class="select">
+                <option value="">Select…</option>
+                <option>Male</option><option>Female</option><option>Prefer not to say</option>
+              </select>
+            </div>
+          </div>
         </div>
       </div>
       <div class="modal__footer">
@@ -1463,16 +1481,23 @@
     if (!name) { alert('Name required.'); return; }
     const btn = document.getElementById('al-save-btn');
     setLoading(btn, true);
-    const { data, error } = await db.from('leaders').insert({
+    const yearVal   = document.getElementById('al-year').value;
+    const genderVal = document.getElementById('al-gender').value;
+    const payload = {
       campus_id: identity.campus_id,
       name,
       role: document.getElementById('al-role').value,
-    }).select().single();
+    };
+    if (yearVal)   payload.year_level = yearVal;
+    if (genderVal) payload.gender     = genderVal;
+    const { data, error } = await db.from('leaders').insert(payload).select().single();
     setLoading(btn, false);
     if (error) { alert('Could not add.'); return; }
     leaders.push(data);
     closeAddLeaderModal();
-    document.getElementById('al-name').value = '';
+    document.getElementById('al-name').value   = '';
+    document.getElementById('al-year').value   = '';
+    document.getElementById('al-gender').value = '';
     renderLeadersList();
   }
 
