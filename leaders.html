@@ -296,7 +296,7 @@
         <div class="stat-card-grid mb-5" id="rv-att-cards"></div>
 
         <!-- Roster breakdown -->
-        <span class="section-badge section-badge--dark">Roster</span>
+        <span class="section-badge section-badge--dark">Listing</span>
         <div class="stat-card-grid stat-card-grid--4 mb-5" id="rv-roster-cards"></div>
 
         <!-- Youth listing -->
@@ -309,9 +309,6 @@
                 <th>Year</th>
                 <th>Gender</th>
                 <th>Category</th>
-                <th>Water Bap.</th>
-                <th>HS Bap.</th>
-                <th>Serving</th>
                 <th>New in period</th>
               </tr>
             </thead>
@@ -595,16 +592,13 @@ function renderRoster() {
         <button class="btn btn--sm btn--ghost" onclick="openAddYouthModal('${escHtml(lid)}','${escHtml(ln).replace(/'/g,"\\'")}')">+ Add youth</button>
       </div>
       <table class="leaders-table" style="min-width:0">
-        <thead><tr><th>Name</th><th>Year</th><th>Gender</th><th>Category</th><th style="text-align:center">Water Bap.</th><th style="text-align:center">HS Bap.</th><th style="text-align:center">Serving</th></tr></thead>
+        <thead><tr><th>Name</th><th>Year</th><th>Gender</th><th>Category</th></tr></thead>
         <tbody>${ys.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')).map(y => `
           <tr>
             <td class="fw-medium">${escHtml(y.name ?? '—')}</td>
             <td>${escHtml(y.year_level || '—')}</td>
             <td>${escHtml(y.gender || '—')}</td>
             <td>${y.category ? `<span class="badge ${catBadge[y.category] ?? 'badge--neutral'}">${y.category}</span>` : '—'}</td>
-            <td class="${y.water_baptised ? 'check-yes' : 'check-no'}" style="text-align:center">${y.water_baptised ? '✓' : '—'}</td>
-            <td class="${y.hs_baptised   ? 'check-yes' : 'check-no'}" style="text-align:center">${y.hs_baptised   ? '✓' : '—'}</td>
-            <td class="${y.serving       ? 'check-yes' : 'check-no'}" style="text-align:center">${y.serving       ? '✓' : '—'}</td>
           </tr>`).join('')}
         </tbody>
       </table>
@@ -713,13 +707,10 @@ async function generateReport() {
           <td>${y.year_level || '—'}</td>
           <td>${y.gender || '—'}</td>
           <td>${y.category ? `<span class="badge ${catBadge[y.category] ?? 'badge--neutral'}">${y.category}</span>` : '—'}</td>
-          <td class="${y.water_baptised ? 'check-yes' : 'check-no'}" style="text-align:center">${y.water_baptised ? '✓' : '—'}</td>
-          <td class="${y.hs_baptised   ? 'check-yes' : 'check-no'}" style="text-align:center">${y.hs_baptised   ? '✓' : '—'}</td>
-          <td class="${y.serving       ? 'check-yes' : 'check-no'}" style="text-align:center">${y.serving       ? '✓' : '—'}</td>
           <td style="text-align:center">${isNew ? '<span class="badge badge--success">New</span>' : '—'}</td>
         </tr>`;
       }).join('')
-    : '<tr><td colspan="8" style="text-align:center;color:var(--c-text-muted);padding:var(--s-5)">No active youth on this leader\'s roster</td></tr>';
+    : '<tr><td colspan="5" style="text-align:center;color:var(--c-text-muted);padding:var(--s-5)">No active youth on this leader\'s listing</td></tr>';
 
   // New people in period
   const npEl = document.getElementById('rv-new-people');
