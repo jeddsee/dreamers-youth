@@ -565,24 +565,25 @@ function renderRoster() {
       return l?.gender === rosterGenderFilter;
     }));
   }
-  let youth = allYouth.filter(y => y.active && validLeaderIds.has(y.leader_id));
-
-  if (!youth.length) {
-    el.innerHTML = '<div style="padding:var(--s-6);text-align:center;color:var(--c-text-muted);font-size:var(--text-sm)">No youth match these filters.</div>';
+  if (!validLeaderIds.size) {
+    el.innerHTML = '<div style="padding:var(--s-6);text-align:center;color:var(--c-text-muted);font-size:var(--text-sm)">No leaders match these filters.</div>';
     return;
   }
 
-  const leaderName = id => allLeaders.find(l => l.id === id)?.name ?? 'Unassigned';
-  const catBadge   = { contributor: 'badge--contributor', connected: 'badge--connected', community: 'badge--community' };
+  const youth = allYouth.filter(y => y.active && validLeaderIds.has(y.leader_id));
+  const catBadge = { contributor: 'badge--contributor', connected: 'badge--connected', community: 'badge--community' };
 
   lastRosterData = youth;
   lastRosterLeaderMap = Object.fromEntries(allLeaders.map(l => [l.id, l.name]));
 
+  // Build groups from matched leaders first so leaders with 0 youth still appear
   const groups = {};
+  for (const id of validLeaderIds) {
+    const l = allLeaders.find(x => x.id === id);
+    if (l) groups[id] = { name: l.name, ys: [] };
+  }
   youth.forEach(y => {
-    const lid = y.leader_id;
-    if (!groups[lid]) groups[lid] = { name: leaderName(lid), ys: [] };
-    groups[lid].ys.push(y);
+    if (groups[y.leader_id]) groups[y.leader_id].ys.push(y);
   });
 
   el.innerHTML = Object.entries(groups)
