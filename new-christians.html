@@ -99,7 +99,7 @@
 
   <div id="loading" class="loading-overlay"><div class="spinner"></div> Loading…</div>
   <div id="empty-state" class="empty-state hidden">
-    <div class="empty-state__icon">✝️</div>
+    <div class="empty-state__icon"></div>
     <h3>No new Christian records</h3>
     <p>Add NC records for youth who made decisions outside the new people pipeline.</p>
   </div>
@@ -186,6 +186,7 @@
         <button class="modal__close" onclick="closeAddModal()">✕</button>
       </div>
       <div class="modal__body">
+        <div id="add-error" class="error-banner hidden" style="margin-bottom:var(--s-4)"></div>
         <div class="stack">
           <div class="form-group">
             <label>Youth roster member <span class="required">*</span></label>
@@ -389,6 +390,7 @@
 
   function openAddModal() {
     selectedYouth = null;
+    document.getElementById('add-error').classList.add('hidden');
     document.getElementById('a-search').value = '';
     document.getElementById('a-results').innerHTML = '';
     document.getElementById('a-results').classList.add('hidden');
@@ -436,10 +438,12 @@
   }
 
   async function submitAdd() {
-    if (!selectedYouth) { alert('Please select a youth roster member.'); return; }
+    const errEl = document.getElementById('add-error');
+    errEl.classList.add('hidden');
+    if (!selectedYouth) { errEl.textContent = 'Please select a youth roster member.'; errEl.classList.remove('hidden'); return; }
     const btn = document.getElementById('add-save-btn');
     setLoading(btn, true);
-    const { data, error } = await db.from('new_christians').insert({
+    const { error } = await db.from('new_christians').insert({
       campus_id:      identity.campus_id,
       leader_id:      document.getElementById('a-leader').value || null,
       youth_roster_id: selectedYouth.id,
@@ -447,12 +451,16 @@
       decision_date:  document.getElementById('a-date').value || null,
       decision_type:  document.getElementById('a-type').value || null,
       notes:          document.getElementById('a-notes').value.trim() || null,
-    }).select().single();
+    });
     setLoading(btn, false);
-    if (error) { alert('Could not add. Try again.'); return; }
-    allNC.unshift(data);
-    renderList();
+    if (error) {
+      console.error('NC insert error:', error);
+      errEl.textContent = error.message || 'Could not add. Try again.';
+      errEl.classList.remove('hidden');
+      return;
+    }
     closeAddModal();
+    await loadNC();
   }
 
   function escHtml(s) {
