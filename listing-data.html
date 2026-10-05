@@ -333,6 +333,13 @@
         Leaders
       </a>
     </div>
+    <div class="sidebar-section">
+      <span class="sidebar-section__label">Admin</span>
+      <a class="sidebar-nav-item" href="settings.html">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M11.54 4.46l-1.41 1.41M4.46 11.54l-1.41 1.41"/></svg>
+        Settings
+      </a>
+    </div>
 
     <div class="sidebar-bottom">
       <span class="sidebar-bottom__label">Campus</span>
@@ -412,6 +419,7 @@
   let allLeaders = [];
   let rosterCount = {};   // leaderId → count of active youth
   let allEntries  = [];   // leader_entries rows
+  let termSettingsMap = {}; // termNum → term_settings row
 
   // ─── Init ───
   async function init() {
@@ -512,7 +520,7 @@
   async function loadData() {
     document.getElementById('ld-terms').innerHTML = '<div class="wd-status">Loading…</div>';
 
-    const [leaderRes, rosterRes, entryRes] = await Promise.all([
+    const [leaderRes, rosterRes, entryRes, tsRes] = await Promise.all([
       db.from('leaders')
         .select('id, name, year_level, gender')
         .eq('campus_id', ldCampus)
@@ -527,6 +535,10 @@
         .select('id, leader_id, term, entry_date, attendance_listing, sunday_attendance, connect_attendance, youth_attendance')
         .eq('campus_id', ldCampus)
         .like('term', `%${ldYear}%`),
+      db.from('term_settings')
+        .select('*')
+        .eq('year', ldYear)
+        .or(`campus_id.eq.${ldCampus},campus_id.is.null`),
     ]);
 
     allLeaders = leaderRes.data ?? [];
@@ -537,6 +549,15 @@
     }
 
     allEntries = entryRes.data ?? [];
+
+    // Build term_settings map: prefer campus-specific over null
+    termSettingsMap = {};
+    for (const row of (tsRes.data ?? [])) {
+      const t = row.term_number;
+      if (!termSettingsMap[t] || termSettingsMap[t].campus_id === null) {
+        termSettingsMap[t] = row;
+      }
+    }
 
     renderAll();
   }
@@ -702,15 +723,21 @@
   }
 
   function renderTermInto(el, termNum, filteredLeaders, lookup) {
-    const weekCount = getWeekCount(termNum);
     const termKey   = 'T' + termNum + ' ' + ldYear;
 
-    // Dates with actual data, sorted ascending
-    const allTermDates = getTermDates(termKey);
-    const displayDates = allTermDates.slice(0, weekCount);
-
-    // Weeks beyond available data (empty columns)
-    const emptyWeekCount = Math.max(0, weekCount - displayDates.length);
+    // Use term_settings if configured, otherwise fall back to DB-scanned dates
+    const tsRow = termSettingsMap[termNum];
+    let weekCount, displayDates, emptyWeekCount;
+    if (tsRow) {
+      displayDates  = DY.termWeekDates(tsRow.first_date, tsRow.num_weeks);
+      weekCount     = tsRow.num_weeks;
+      emptyWeekCount = 0;
+    } else {
+      weekCount     = getWeekCount(termNum);
+      const allTermDates = getTermDates(termKey);
+      displayDates  = allTermDates.slice(0, weekCount);
+      emptyWeekCount = Math.max(0, weekCount - displayDates.length);
+    }
 
     const weeksWithData = displayDates.filter(date =>
       filteredLeaders.some(l => lookup[termKey]?.[date]?.[l.id])
@@ -928,14 +955,17 @@
     });
 
     // ── Assemble ──
+    const weekControlsHtml = tsRow
+      ? `<span class="term-meta" style="font-style:italic">term dates configured</span>`
+      : `<div class="week-controls">
+          <button class="wk-btn" onclick="adjustWeeks(${termNum}, -1)" ${weekCount <= 1 ? 'disabled' : ''}>−</button>
+          <button class="wk-btn" onclick="adjustWeeks(${termNum}, +1)" ${weekCount >= 20 ? 'disabled' : ''}>+</button>
+        </div>`;
     el.innerHTML = `
       <div class="term-header">
         <span class="term-name">TERM ${termNum} ${ldYear}</span>
         <span class="term-meta">${weekCount} weeks · ${weeksWithData} with data</span>
-        <div class="week-controls">
-          <button class="wk-btn" onclick="adjustWeeks(${termNum}, -1)" ${weekCount <= 1 ? 'disabled' : ''}>−</button>
-          <button class="wk-btn" onclick="adjustWeeks(${termNum}, +1)" ${weekCount >= 20 ? 'disabled' : ''}>+</button>
-        </div>
+        ${weekControlsHtml}
       </div>
       <div class="table-wrap">
         <table class="wd-table">

@@ -194,6 +194,18 @@ function hasAbsenceFlag(youthId, entries) {
   return false;
 }
 
+// Returns array of YYYY-MM-DD strings for the given term_settings row
+function termWeekDates(firstDate, numWeeks) {
+  const dates = [];
+  const base = new Date(firstDate + 'T00:00:00');
+  for (let i = 0; i < numWeeks; i++) {
+    const d = new Date(base);
+    d.setDate(d.getDate() + i * 7);
+    dates.push(formatDateInput(d));
+  }
+  return dates;
+}
+
 // ── Planning Centre (V2 hook) ─────────────────────────────────────────────────
 // Replace these stubs with real PCO API calls when V2 integration is enabled.
 const planningCentre = {
@@ -225,6 +237,7 @@ window.DY = {
   showError, hideError, setLoading,
   checkDuplicateNP, activateNewPerson,
   computeAttendanceStats, hasAbsenceFlag,
+  termWeekDates,
   planningCentre,
   initSidebar, toggleSidebar,
 };
