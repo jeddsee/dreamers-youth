@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Listing Data — Dreamers Youth</title>
+  <link rel="stylesheet" href="shared.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.50.0/dist/umd/supabase.min.js"></script>
+  <script src="shared.js"></script>
+  <style>
+    body { background: #0d0d0d; }
+
+    /* ─── CSS vars (same as weekly-data) ─── */
+    :root {
+      --wd-blue: #1500E8;
+      --wd-blue-dim: rgba(21,0,232,0.07);
+      --wd-surface: #FFFFFF;
+      --wd-border: #E2E2EA;
+      --wd-text: #111118;
+      --wd-text-muted: #65657A;
+      --wd-text-faint: #ABABC0;
+      --wd-alt-row: #F8F8FB;
+      --wd-section-bg: #EDEDF4;
+      --wd-section-text: #8888A0;
+      --wd-total-bg: #F4F4FA;
+      --wd-shadow: rgba(0,0,20,0.06);
+      --wd-leader-bg: #E8E8F8;
+      --wd-leader-text: #3030A0;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --wd-surface: #141420;
+        --wd-border: #252535;
+        --wd-text: #EEEEF8;
+        --wd-text-muted: #8888A8;
+        --wd-text-faint: #55556A;
+        --wd-alt-row: #111120;
+        --wd-section-bg: #1A1A28;
+        --wd-section-text: #6868A0;
+        --wd-total-bg: #161626;
+        --wd-shadow: rgba(0,0,0,0.3);
+        --wd-leader-bg: #1E1E38;
+        --wd-leader-text: #8888CC;
+      }
+    }
+    :root[data-theme="dark"] {
+      --wd-surface: #141420;
+      --wd-border: #252535;
+      --wd-text: #EEEEF8;
+      --wd-text-muted: #8888A8;
+      --wd-text-faint: #55556A;
+      --wd-alt-row: #111120;
+      --wd-section-bg: #1A1A28;
+      --wd-section-text: #6868A0;
+      --wd-total-bg: #161626;
+      --wd-shadow: rgba(0,0,0,0.3);
+      --wd-leader-bg: #1E1E38;
+      --wd-leader-text: #8888CC;
+    }
+
+    /* ─── Filter bar ─── */
+    .wd-filter-bar {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--s-4);
+      flex-wrap: wrap;
+      margin-bottom: var(--s-6);
+    }
+    .wd-filter-group { display: flex; flex-direction: column; gap: 6px; }
+    .wd-filter-label {
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--c-text-muted);
+    }
+    .wd-select {
+      height: 38px;
+      padding: 0 var(--s-3);
+      border: 1px solid var(--c-border);
+      border-radius: var(--r-md);
+      background: var(--c-surface);
+      color: var(--c-text);
+      font-size: var(--text-sm);
+      cursor: pointer;
+      min-width: 110px;
+    }
+
+    /* ─── Pills ─── */
+    .pill-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .pill {
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1.5px solid var(--c-border);
+      background: transparent;
+      color: var(--c-text-muted);
+      font-size: 12px; font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.1s, color 0.1s, border-color 0.1s;
+    }
+    .pill.active {
+      background: var(--wd-blue);
+      border-color: var(--wd-blue);
+      color: #fff;
+    }
+
+    /* ─── Term blocks ─── */
+    .term-block {
+      background: var(--wd-surface);
+      border: 1px solid var(--wd-border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .term-header {
+      background: var(--wd-blue);
+      color: #fff;
+      height: 46px;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      user-select: none;
+    }
+    .term-name { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; flex: 1; }
+    .term-meta { font-size: 11px; font-weight: 500; opacity: 0.6; margin-right: 6px; }
+    .week-controls { display: flex; align-items: center; gap: 7px; }
+    .wk-btn {
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255,255,255,0.35);
+      background: transparent; color: #fff;
+      font-size: 18px; line-height: 1;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.12s, border-color 0.12s;
+      padding: 0; padding-bottom: 1px;
+    }
+    .wk-btn:hover:not(:disabled) { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.7); }
+    .wk-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+
+    /* ─── Table ─── */
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .wd-table {
+      border-collapse: collapse;
+      width: max-content;
+      min-width: 100%;
+      font-size: 13px;
+    }
+    .td-label, .th-label {
+      position: sticky; left: 0; z-index: 2;
+    }
+    .td-label::after, .th-label::after {
+      content: '';
+      position: absolute;
+      top: 0; right: -5px; bottom: 0; width: 5px;
+      background: linear-gradient(to right, var(--wd-shadow), transparent);
+      pointer-events: none;
+    }
+    .col-label { width: 220px; }
+    .col-week  { width: 72px; }
+    .col-total { width: 80px; }
+
+    .wd-table thead tr { border-bottom: 1.5px solid var(--wd-border); }
+    .wd-table thead th {
+      padding: 9px 10px 8px;
+      font-size: 11px; font-weight: 600;
+      color: var(--wd-text-muted);
+      text-align: right; white-space: nowrap;
+      vertical-align: bottom;
+      background: var(--wd-surface);
+      letter-spacing: 0.01em;
+    }
+    .th-label {
+      text-align: left !important;
+      font-size: 11px; font-weight: 700;
+      color: var(--wd-text);
+      background: var(--wd-surface);
+      padding-left: 16px; z-index: 3;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+    .wk-num { display: block; font-size: 11px; font-weight: 600; color: var(--wd-text); letter-spacing: 0.01em; }
+    .th-total { background: var(--wd-total-bg) !important; font-weight: 700; color: var(--wd-text); }
+
+    /* Section row (summary / leader header) */
+    .wd-table tr.section-row td {
+      background: var(--wd-section-bg);
+      padding: 7px 10px 6px 16px;
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 0.1em;
+      color: var(--wd-section-text);
+      text-transform: uppercase;
+      border-top: 1px solid var(--wd-border);
+    }
+    .wd-table tr.leader-row td {
+      background: var(--wd-leader-bg);
+      padding: 7px 10px 6px 16px;
+      font-size: 11px; font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--wd-leader-text);
+      border-top: 2px solid var(--wd-border);
+    }
+    .wd-table tr.data-row { border-bottom: 1px solid var(--wd-border); }
+    .wd-table tr.data-row:last-child { border-bottom: none; }
+    .wd-table tr.data-row td { height: 36px; vertical-align: middle; font-variant-numeric: tabular-nums; }
+
+    .td-label {
+      background: var(--wd-surface);
+      padding: 0 14px 0 16px;
+      font-size: 13px; font-weight: 400;
+      color: var(--wd-text);
+      white-space: nowrap;
+      position: relative;
+    }
+    .td-label.indent { padding-left: 28px; }
+    .wd-table tr.row-alt .td-label { background: var(--wd-alt-row); }
+
+    .td-week {
+      text-align: right; padding: 0;
+      background: var(--wd-surface); position: relative;
+    }
+    .wd-table tr.row-alt .td-week { background: var(--wd-alt-row); }
+
+    .td-week .cell-val {
+      display: block; text-align: right;
+      padding: 0 10px; height: 36px; line-height: 36px;
+      font-size: 13px; color: var(--wd-text); white-space: nowrap;
+    }
+    .td-week .cell-val.empty { color: var(--wd-text-faint); }
+
+    .td-total {
+      background: var(--wd-total-bg);
+      text-align: right; padding: 0 12px;
+      font-variant-numeric: tabular-nums;
+      font-size: 13px; font-weight: 700; color: var(--wd-text);
+    }
+    .td-total.dash { font-weight: 400; color: var(--wd-text-faint); }
+    .td-total.zero { color: var(--wd-text-faint); font-weight: 400; }
+    .td-total.avg  { font-style: italic; }
+
+    .wd-status { padding: 48px; text-align: center; color: var(--c-text-muted); font-size: var(--text-sm); }
+
+    /* ─── Print ─── */
+    @media print {
+      @page { size: A4 landscape; margin: 10mm; }
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      .sidebar { display: none !important; }
+      .main-content { margin-left: 0 !important; width: 100% !important; }
+      .wd-filter-bar, .btn, button, .snap-header-actions { display: none !important; }
+      .app-layout { display: block; }
+      .week-controls { display: none !important; }
+      .term-block { border-radius: 5px !important; margin-bottom: 6mm !important; break-inside: avoid; page-break-inside: avoid; overflow: visible !important; }
+      .term-header { height: 32px !important; background: #1500E8 !important; border-radius: 5px 5px 0 0 !important; }
+      .table-wrap { overflow: visible !important; }
+      .wd-table { width: 100% !important; table-layout: fixed !important; }
+      .th-label, .td-label { display: none !important; }
+      .col-label { display: none !important; }
+      .col-week  { width: 50px !important; }
+      .col-total { width: 60px !important; }
+      .wd-table tr.data-row td { height: 24px !important; }
+      .wd-table tr.section-row td, .wd-table tr.leader-row td { padding: 4px 8px 3px 12px !important; font-size: 8px !important; background: #EDEDF4 !important; }
+      .wd-table thead th { font-size: 9px !important; padding: 6px 6px 5px !important; background: #FFFFFF !important; }
+      .th-total { background: #F4F4FA !important; }
+      .wk-num { font-size: 9px !important; }
+      .td-week .cell-val { font-size: 9px !important; height: 24px !important; line-height: 24px !important; padding: 0 6px !important; }
+      .td-total { background: #F4F4FA !important; padding: 0 6px !important; font-size: 9px !important; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar__logo">
+      <img src="dy-logo-white.png" class="sidebar__logo-img" alt="DY">
+    </div>
+
+    <div class="sidebar-section">
+      <span class="sidebar-section__label">Overview</span>
+      <a class="sidebar-nav-item" href="dashboard.html">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+        Dashboard
+      </a>
+      <a class="sidebar-nav-item" href="dashboard.html">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="1,11 5,6 9,9 15,3"/><polyline points="1,14 5,9 9,12 15,6"/></svg>
+        Year comparison
+      </a>
+      <a class="sidebar-nav-item" href="weekly-data.html">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="14" height="4" rx="0.5"/><rect x="1" y="7" width="14" height="4" rx="0.5"/><rect x="1" y="13" width="14" height="2" rx="0.5"/></svg>
+        Weekly data
+      </a>
+      <a class="sidebar-nav-item active" href="listing-data.html">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="10" y2="12"/></svg>
+        Listing data
+      </a>
+    </div>
+
+    <div class="sidebar-section">
+      <span class="sidebar-section__label">People</span>
+      <a class="sidebar-nav-item" href="new-people.html">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="3"/><path d="M1 13c0-2.8 2.2-5 5-5h0c2.8 0 5 2.2 5 5"/><line x1="12" y1="5" x2="15" y2="5"/><line x1="13.5" y1="3.5" x2="13.5" y2="6.5"/></svg>
+        New People
+      </a>
+      <a class="sidebar-nav-item" href="new-christians.html">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2L9.5 6h4.5l-3.6 2.6 1.4 4.4L8 10.5 4.2 13l1.4-4.4L2 6h4.5z"/></svg>
+        New Christians
+      </a>
+      <a class="sidebar-nav-item" href="leaders.html">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5" cy="4" r="2.5"/><circle cx="11" cy="4" r="2.5"/><path d="M1 13c0-2.2 1.8-4 4-4h2"/><path d="M9 9h2c2.2 0 4 1.8 4 4"/><line x1="11" y1="11" x2="11" y2="15"/><line x1="9" y1="13" x2="13" y2="13"/></svg>
+        Leaders
+      </a>
+    </div>
+
+    <div class="sidebar-bottom">
+      <div class="sidebar-bottom__sub" id="sidebar-user">—</div>
+      <button class="sidebar-logout" onclick="DY.clearIdentity(); window.location.href='/'">Sign out</button>
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <div class="main-content">
+    <div class="main-content__body">
+
+      <div class="snap-header">
+        <div>
+          <h1 class="snap-title">Listing data</h1>
+          <div class="snap-subtitle" id="ld-subtitle">Loading…</div>
+        </div>
+        <div class="snap-header-actions">
+          <button class="btn btn--outline btn--sm" onclick="window.print()">Export PDF</button>
+        </div>
+      </div>
+
+      <!-- Filter bar -->
+      <div class="wd-filter-bar">
+        <div class="wd-filter-group">
+          <label class="wd-filter-label">Year</label>
+          <select id="ld-year" class="wd-select" onchange="onYearChange()"></select>
+        </div>
+        <div class="wd-filter-group">
+          <label class="wd-filter-label">Term</label>
+          <div class="pill-row" id="term-pills"></div>
+        </div>
+        <div class="wd-filter-group">
+          <label class="wd-filter-label">Year Level</label>
+          <div class="pill-row" id="year-level-pills">
+            <button class="pill active" data-yl="all" onclick="toggleYearLevel('all',this)">All</button>
+            <button class="pill" data-yl="Year 7" onclick="toggleYearLevel('Year 7',this)">7</button>
+            <button class="pill" data-yl="Year 8" onclick="toggleYearLevel('Year 8',this)">8</button>
+            <button class="pill" data-yl="Year 9" onclick="toggleYearLevel('Year 9',this)">9</button>
+            <button class="pill" data-yl="Year 10" onclick="toggleYearLevel('Year 10',this)">10</button>
+            <button class="pill" data-yl="Year 11" onclick="toggleYearLevel('Year 11',this)">11</button>
+            <button class="pill" data-yl="Year 12" onclick="toggleYearLevel('Year 12',this)">12</button>
+          </div>
+        </div>
+        <div class="wd-filter-group">
+          <label class="wd-filter-label">Gender</label>
+          <div class="pill-row" id="gender-pills">
+            <button class="pill active" data-g="all" onclick="toggleGender('all',this)">All</button>
+            <button class="pill" data-g="Male" onclick="toggleGender('Male',this)">Male</button>
+            <button class="pill" data-g="Female" onclick="toggleGender('Female',this)">Female</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="ld-terms">
+        <div class="wd-status">Loading…</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  const { db } = DY;
+  const identity = requireIdentity('pastor');
+  if (!identity) throw new Error('not authenticated');
+
+  const campusId = identity.campus_id;
+
+  // ─── State ───
+  let ldYear = new Date().getFullYear();
+  let termFilter = new Set();      // empty = show all 4 terms
+  let yearLevelFilter = new Set(); // empty = all year levels
+  let genderFilter = new Set();    // empty = all genders
+
+  let allLeaders = [];
+  let rosterCount = {};   // leaderId → count of active youth
+  let allEntries  = [];   // leader_entries rows for current campus/year/terms
+
+  // ─── Init ───
+  async function init() {
+    document.getElementById('sidebar-user').textContent = identity.leader_name || '—';
+
+    // Year selector
+    const yearSel = document.getElementById('ld-year');
+    const currYear = new Date().getFullYear();
+    for (let y = currYear + 1; y >= currYear - 3; y--) {
+      const opt = document.createElement('option');
+      opt.value = y; opt.textContent = y;
+      if (y === currYear) opt.selected = true;
+      yearSel.appendChild(opt);
+    }
+    ldYear = currYear;
+
+    // Term pills — default to current term
+    const currentTermStr = termFromDate(new Date()); // e.g. "T3 2026"
+    const currentTermNum = parseInt(currentTermStr.replace('T',''));
+    if (!isNaN(currentTermNum)) termFilter.add(currentTermNum);
+
+    const termPillsEl = document.getElementById('term-pills');
+    [1,2,3,4].forEach(t => {
+      const btn = document.createElement('button');
+      btn.className = 'pill' + (termFilter.has(t) ? ' active' : '');
+      btn.dataset.t = t;
+      btn.textContent = 'T' + t;
+      btn.onclick = () => toggleTerm(t, btn);
+      termPillsEl.appendChild(btn);
+    });
+
+    await loadData();
+  }
+
+  // ─── Filter toggles ───
+  function toggleTerm(t, btn) {
+    if (termFilter.has(t)) termFilter.delete(t);
+    else termFilter.add(t);
+    btn.classList.toggle('active', termFilter.has(t));
+    renderAll();
+  }
+
+  function toggleYearLevel(val, btn) {
+    if (val === 'all') {
+      yearLevelFilter.clear();
+    } else {
+      if (yearLevelFilter.has(val)) yearLevelFilter.delete(val);
+      else yearLevelFilter.add(val);
+    }
+    document.querySelectorAll('#year-level-pills .pill').forEach(b => {
+      const v = b.dataset.yl;
+      b.classList.toggle('active', v === 'all' ? yearLevelFilter.size === 0 : yearLevelFilter.has(v));
+    });
+    renderAll();
+  }
+
+  function toggleGender(val, btn) {
+    if (val === 'all') {
+      genderFilter.clear();
+    } else {
+      if (genderFilter.has(val)) genderFilter.delete(val);
+      else genderFilter.add(val);
+    }
+    document.querySelectorAll('#gender-pills .pill').forEach(b => {
+      const v = b.dataset.g;
+      b.classList.toggle('active', v === 'all' ? genderFilter.size === 0 : genderFilter.has(v));
+    });
+    renderAll();
+  }
+
+  function onYearChange() {
+    ldYear = parseInt(document.getElementById('ld-year').value);
+    loadData();
+  }
+
+  // ─── Data loading ───
+  async function loadData() {
+    document.getElementById('ld-terms').innerHTML = '<div class="wd-status">Loading…</div>';
+
+    // Active leaders (role='leader') for this campus
+    const { data: leaderData } = await db
+      .from('leaders')
+      .select('id, name, year_level, gender')
+      .eq('campus_id', campusId)
+      .eq('role', 'leader')
+      .eq('active', true)
+      .order('name');
+    allLeaders = leaderData ?? [];
+
+    // Count active youth per leader from youth_roster
+    const { data: rosterRows } = await db
+      .from('youth_roster')
+      .select('leader_id')
+      .eq('campus_id', campusId)
+      .eq('active', true);
+    rosterCount = {};
+    for (const row of (rosterRows ?? [])) {
+      rosterCount[row.leader_id] = (rosterCount[row.leader_id] ?? 0) + 1;
+    }
+
+    // leader_entries for this campus + year (all terms; we filter in render)
+    const { data: entryData } = await db
+      .from('leader_entries')
+      .select('leader_id, term, week_number, attendance_listing, sunday_attendance, connect_attendance')
+      .eq('campus_id', campusId)
+      .like('term', `%${ldYear}%`);
+    allEntries = entryData ?? [];
+
+    renderAll();
+  }
+
+  // ─── Week count in localStorage ───
+  function getWeekCount(termNum) {
+    try {
+      return Math.max(1, Math.min(20, parseInt(localStorage.getItem('dy_ld_weeks_T' + termNum + '_' + ldYear) || '10')));
+    } catch { return 10; }
+  }
+  function setWeekCount(termNum, n) {
+    try { localStorage.setItem('dy_ld_weeks_T' + termNum + '_' + ldYear, String(Math.max(1, Math.min(20, n)))); }
+    catch {}
+  }
+  function adjustWeeks(termNum, delta) {
+    setWeekCount(termNum, getWeekCount(termNum) + delta);
+    renderTerm(termNum);
+  }
+
+  // ─── Helpers ───
+  function avg(vals) {
+    const nonNull = vals.filter(v => v != null);
+    if (!nonNull.length) return null;
+    return nonNull.reduce((s,v) => s+v, 0) / nonNull.length;
+  }
+  function sum(vals) {
+    const nonNull = vals.filter(v => v != null);
+    if (!nonNull.length) return null;
+    return nonNull.reduce((s,v) => s+v, 0);
+  }
+  function fmtAvg(v) { return v == null ? '—' : v.toFixed(1); }
+  function fmtSum(v) { return v == null ? '—' : String(v); }
+  function fmtVal(v) { return v == null ? '' : String(v); }
+  function cellCls(v) { return v == null ? ' empty' : ''; }
+
+  function leaderLabel(l) {
+    const yr = l.year_level ? l.year_level.replace('Year ', '') : '?';
+    const gen = l.gender === 'Male' ? ' Boys' : l.gender === 'Female' ? ' Girls' : '';
+    return 'Yr ' + yr + gen + ' — ' + l.name;
+  }
+
+  // Sort leaders: by year_level numerically, then gender, then name
+  function sortLeaders(leaders) {
+    const yrNum = yl => {
+      if (!yl) return 99;
+      const n = parseInt(yl.replace('Year ', ''));
+      return isNaN(n) ? 99 : n;
+    };
+    return [...leaders].sort((a, b) => {
+      const yd = yrNum(a.year_level) - yrNum(b.year_level);
+      if (yd !== 0) return yd;
+      if (a.gender && b.gender && a.gender !== b.gender) return a.gender < b.gender ? -1 : 1;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+  }
+
+  // Build entry lookup: termKey → weekNum → leaderId → entry
+  function buildLookup(entries) {
+    const lookup = {};
+    for (const e of entries) {
+      if (!e.term) continue;
+      const tk = e.term; // "T1 2026"
+      if (!lookup[tk]) lookup[tk] = {};
+      if (!lookup[tk][e.week_number]) lookup[tk][e.week_number] = {};
+      lookup[tk][e.week_number][e.leader_id] = e;
+    }
+    return lookup;
+  }
+
+  function youthCount(entry) {
+    if (!entry) return null;
+    const al = entry.attendance_listing;
+    if (!Array.isArray(al)) return null;
+    const count = al.filter(r => r.status === 'yes' || r.status === 'maybe').length;
+    return count;
+  }
+
+  // ─── Render ───
+  function renderAll() {
+    const terms = termFilter.size > 0 ? [...termFilter].sort() : [1,2,3,4];
+
+    // Apply leader filters
+    const filteredLeaders = sortLeaders(allLeaders.filter(l => {
+      if (yearLevelFilter.size > 0 && !yearLevelFilter.has(l.year_level)) return false;
+      if (genderFilter.size > 0 && !genderFilter.has(l.gender)) return false;
+      return true;
+    }));
+
+    const lookup = buildLookup(allEntries);
+
+    const termLabels = terms.map(t => 'T' + t).join(', ');
+    const yearLevelLabel = yearLevelFilter.size > 0 ? [...yearLevelFilter].join(', ') : 'All year levels';
+    const genderLabel = genderFilter.size > 0 ? [...genderFilter].join(', ') : 'All genders';
+    document.getElementById('ld-subtitle').textContent =
+      termLabels + ' · ' + ldYear + ' · ' + yearLevelLabel + ' · ' + genderLabel;
+
+    const container = document.getElementById('ld-terms');
+    container.innerHTML = '';
+
+    if (!filteredLeaders.length) {
+      container.innerHTML = '<div class="wd-status">No leaders match the current filters.</div>';
+      return;
+    }
+
+    terms.forEach(termNum => {
+      const el = document.createElement('div');
+      el.id = 'ld-block-' + termNum;
+      el.className = 'term-block';
+      container.appendChild(el);
+      renderTermInto(el, termNum, filteredLeaders, lookup);
+    });
+  }
+
+  function renderTerm(termNum) {
+    const el = document.getElementById('ld-block-' + termNum);
+    if (!el) return;
+
+    const filteredLeaders = sortLeaders(allLeaders.filter(l => {
+      if (yearLevelFilter.size > 0 && !yearLevelFilter.has(l.year_level)) return false;
+      if (genderFilter.size > 0 && !genderFilter.has(l.gender)) return false;
+      return true;
+    }));
+    const lookup = buildLookup(allEntries);
+    renderTermInto(el, termNum, filteredLeaders, lookup);
+  }
+
+  function renderTermInto(el, termNum, filteredLeaders, lookup) {
+    const weekCount = getWeekCount(termNum);
+    const termKey = 'T' + termNum + ' ' + ldYear;
+
+    // Per-week, per-leader data
+    // weekData[w-1][leaderId] = { youth, sunday, connect } | null
+    const weekData = [];
+    for (let w = 1; w <= weekCount; w++) {
+      const wkMap = {};
+      for (const l of filteredLeaders) {
+        const entry = lookup[termKey]?.[w]?.[l.id] ?? null;
+        if (entry) {
+          wkMap[l.id] = {
+            youth:   youthCount(entry),
+            sunday:  entry.sunday_attendance ?? null,
+            connect: entry.connect_attendance ?? null,
+          };
+        } else {
+          wkMap[l.id] = null;
+        }
+      }
+      weekData.push(wkMap);
+    }
+
+    // Count weeks that have any data
+    const weeksWithData = weekData.filter(wk => Object.values(wk).some(v => v !== null)).length;
+
+    // ── Column group ──
+    let colsHtml = '<col class="col-label">';
+    for (let i = 0; i < weekCount; i++) colsHtml += '<col class="col-week">';
+    colsHtml += '<col class="col-total"><col class="col-total">';
+
+    // ── thead ──
+    let wkHeaders = '';
+    for (let i = 1; i <= weekCount; i++) {
+      wkHeaders += `<th class="th-week"><span class="wk-num">Wk ${i}</span></th>`;
+    }
+    const thead = `<thead><tr>
+      <th class="th-label">Leader / Metric</th>
+      ${wkHeaders}
+      <th class="th-total">Avg</th>
+      <th class="th-total">Total</th>
+    </tr></thead>`;
+
+    // ── tbody ──
+    let tbodyRows = '';
+    const colspan = weekCount + 3;
+
+    // ─ Summary section ─
+    tbodyRows += `<tr class="section-row"><td colspan="${colspan}">SUMMARY — ALL LEADERS</td></tr>`;
+
+    // Summary: Expected Attendance Total (sum of roster counts, static per week)
+    const totalExpected = filteredLeaders.reduce((s, l) => s + (rosterCount[l.id] ?? 0), 0);
+    {
+      const wkCells = Array.from({length: weekCount}, () =>
+        `<td class="td-week"><span class="cell-val">${totalExpected}</span></td>`
+      ).join('');
+      const avgStr = totalExpected > 0 ? String(totalExpected) : '—';
+      const totStr = totalExpected > 0 ? String(totalExpected) : '—';
+      tbodyRows += `<tr class="data-row">
+        <td class="td-label">Expected Attendance</td>
+        ${wkCells}
+        <td class="td-total">${avgStr}</td>
+        <td class="td-total">${totStr}</td>
+      </tr>`;
+    }
+
+    // Summary: Youth Attendance per week (sum across leaders)
+    {
+      const wkVals = weekData.map(wk => {
+        let s = null;
+        for (const l of filteredLeaders) {
+          const d = wk[l.id];
+          if (d && d.youth != null) s = (s ?? 0) + d.youth;
+        }
+        return s;
+      });
+      const wkCells = wkVals.map(v =>
+        `<td class="td-week"><span class="cell-val${cellCls(v)}">${fmtVal(v)}</span></td>`
+      ).join('');
+      const a = avg(wkVals);
+      const t = sum(wkVals);
+      tbodyRows += `<tr class="data-row row-alt">
+        <td class="td-label">Youth Attendance</td>
+        ${wkCells}
+        <td class="td-total avg${a == null ? ' dash' : ''}">${fmtAvg(a)}</td>
+        <td class="td-total${t == null ? ' dash' : ''}">${fmtSum(t)}</td>
+      </tr>`;
+    }
+
+    // Summary: Sunday per week
+    {
+      const wkVals = weekData.map(wk => {
+        let s = null;
+        for (const l of filteredLeaders) {
+          const d = wk[l.id];
+          if (d && d.sunday != null) s = (s ?? 0) + d.sunday;
+        }
+        return s;
+      });
+      const wkCells = wkVals.map(v =>
+        `<td class="td-week"><span class="cell-val${cellCls(v)}">${fmtVal(v)}</span></td>`
+      ).join('');
+      const a = avg(wkVals);
+      const t = sum(wkVals);
+      tbodyRows += `<tr class="data-row">
+        <td class="td-label">Sunday</td>
+        ${wkCells}
+        <td class="td-total avg${a == null ? ' dash' : ''}">${fmtAvg(a)}</td>
+        <td class="td-total${t == null ? ' dash' : ''}">${fmtSum(t)}</td>
+      </tr>`;
+    }
+
+    // Summary: Connect Groups per week
+    {
+      const wkVals = weekData.map(wk => {
+        let s = null;
+        for (const l of filteredLeaders) {
+          const d = wk[l.id];
+          if (d && d.connect != null) s = (s ?? 0) + d.connect;
+        }
+        return s;
+      });
+      const wkCells = wkVals.map(v =>
+        `<td class="td-week"><span class="cell-val${cellCls(v)}">${fmtVal(v)}</span></td>`
+      ).join('');
+      const a = avg(wkVals);
+      const t = sum(wkVals);
+      tbodyRows += `<tr class="data-row row-alt">
+        <td class="td-label">Connect Groups</td>
+        ${wkCells}
+        <td class="td-total avg${a == null ? ' dash' : ''}">${fmtAvg(a)}</td>
+        <td class="td-total${t == null ? ' dash' : ''}">${fmtSum(t)}</td>
+      </tr>`;
+    }
+
+    // ─ Per-leader sections ─
+    filteredLeaders.forEach(leader => {
+      const exp = rosterCount[leader.id] ?? 0;
+      const label = leaderLabel(leader);
+      tbodyRows += `<tr class="leader-row"><td colspan="${colspan}">${label}</td></tr>`;
+
+      // Expected (static)
+      {
+        const wkCells = Array.from({length: weekCount}, () =>
+          `<td class="td-week"><span class="cell-val">${exp}</span></td>`
+        ).join('');
+        tbodyRows += `<tr class="data-row">
+          <td class="td-label indent">Expected att.</td>
+          ${wkCells}
+          <td class="td-total">${exp}</td>
+          <td class="td-total">${exp}</td>
+        </tr>`;
+      }
+
+      // Youth
+      {
+        const wkVals = weekData.map(wk => wk[leader.id]?.youth ?? null);
+        const wkCells = wkVals.map(v =>
+          `<td class="td-week"><span class="cell-val${cellCls(v)}">${fmtVal(v)}</span></td>`
+        ).join('');
+        const a = avg(wkVals);
+        const t = sum(wkVals);
+        tbodyRows += `<tr class="data-row row-alt">
+          <td class="td-label indent">Youth</td>
+          ${wkCells}
+          <td class="td-total avg${a == null ? ' dash' : ''}">${fmtAvg(a)}</td>
+          <td class="td-total${t == null ? ' dash' : ''}">${fmtSum(t)}</td>
+        </tr>`;
+      }
+
+      // Sunday
+      {
+        const wkVals = weekData.map(wk => wk[leader.id]?.sunday ?? null);
+        const wkCells = wkVals.map(v =>
+          `<td class="td-week"><span class="cell-val${cellCls(v)}">${fmtVal(v)}</span></td>`
+        ).join('');
+        const a = avg(wkVals);
+        const t = sum(wkVals);
+        tbodyRows += `<tr class="data-row">
+          <td class="td-label indent">Sunday</td>
+          ${wkCells}
+          <td class="td-total avg${a == null ? ' dash' : ''}">${fmtAvg(a)}</td>
+          <td class="td-total${t == null ? ' dash' : ''}">${fmtSum(t)}</td>
+        </tr>`;
+      }
+
+      // Connect groups
+      {
+        const wkVals = weekData.map(wk => wk[leader.id]?.connect ?? null);
+        const wkCells = wkVals.map(v =>
+          `<td class="td-week"><span class="cell-val${cellCls(v)}">${fmtVal(v)}</span></td>`
+        ).join('');
+        const a = avg(wkVals);
+        const t = sum(wkVals);
+        tbodyRows += `<tr class="data-row row-alt">
+          <td class="td-label indent">Connect groups</td>
+          ${wkCells}
+          <td class="td-total avg${a == null ? ' dash' : ''}">${fmtAvg(a)}</td>
+          <td class="td-total${t == null ? ' dash' : ''}">${fmtSum(t)}</td>
+        </tr>`;
+      }
+    });
+
+    // ── Assemble ──
+    el.innerHTML = `
+      <div class="term-header">
+        <span class="term-name">TERM ${termNum} ${ldYear}</span>
+        <span class="term-meta">${weekCount} weeks · ${weeksWithData} with data</span>
+        <div class="week-controls">
+          <button class="wk-btn" onclick="adjustWeeks(${termNum}, -1)" ${weekCount <= 1 ? 'disabled' : ''}>−</button>
+          <button class="wk-btn" onclick="adjustWeeks(${termNum}, +1)" ${weekCount >= 20 ? 'disabled' : ''}>+</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="wd-table">
+          <colgroup>${colsHtml}</colgroup>
+          ${thead}
+          <tbody>${tbodyRows}</tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  init();
+</script>
+</body>
+</html>
