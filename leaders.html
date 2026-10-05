@@ -592,13 +592,14 @@ function renderRoster() {
         <button class="btn btn--sm btn--ghost" onclick="openAddYouthModal('${escHtml(lid)}','${escHtml(ln).replace(/'/g,"\\'")}')">+ Add youth</button>
       </div>
       <table class="leaders-table" style="min-width:0">
-        <thead><tr><th>Name</th><th>Year</th><th>Gender</th><th>Category</th></tr></thead>
+        <thead><tr><th>Name</th><th>Category</th><th>Water Bap.</th><th>HS Bap.</th><th>Serving</th></tr></thead>
         <tbody>${ys.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')).map(y => `
           <tr>
             <td class="fw-medium">${escHtml(y.name ?? '—')}</td>
-            <td>${escHtml(y.year_level || '—')}</td>
-            <td>${escHtml(y.gender || '—')}</td>
             <td>${y.category ? `<span class="badge ${catBadge[y.category] ?? 'badge--neutral'}">${y.category}</span>` : '—'}</td>
+            <td>${y.water_baptised ? '<span class="check-yes">✓</span>' : '<span class="check-no">—</span>'}</td>
+            <td>${y.hs_baptised   ? '<span class="check-yes">✓</span>' : '<span class="check-no">—</span>'}</td>
+            <td>${y.serving       ? '<span class="check-yes">✓</span>' : '<span class="check-no">—</span>'}</td>
           </tr>`).join('')}
         </tbody>
       </table>

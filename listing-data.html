@@ -728,17 +728,27 @@
 
     // Use term_settings if configured, otherwise fall back to DB-scanned dates
     const tsRow = termSettingsMap[termNum];
-    let weekCount, displayDates, emptyWeekCount;
+    let weekCount, displayDates;
     if (tsRow) {
-      displayDates  = DY.termWeekDates(tsRow.first_date, tsRow.num_weeks);
-      weekCount     = tsRow.num_weeks;
-      emptyWeekCount = 0;
+      displayDates = DY.termWeekDates(tsRow.first_date, tsRow.num_weeks);
+      weekCount    = tsRow.num_weeks;
     } else {
-      weekCount     = getWeekCount(termNum);
+      weekCount = getWeekCount(termNum);
       const allTermDates = getTermDates(termKey);
-      displayDates  = allTermDates.slice(0, weekCount);
-      emptyWeekCount = Math.max(0, weekCount - displayDates.length);
+      // Extend known dates with extrapolated future Fridays if we have at least one anchor
+      if (allTermDates.length > 0) {
+        const known = [...allTermDates];
+        while (known.length < weekCount) {
+          const last = new Date(known[known.length - 1] + 'T00:00:00');
+          last.setDate(last.getDate() + 7);
+          known.push(formatDateInput(last));
+        }
+        displayDates = known.slice(0, weekCount);
+      } else {
+        displayDates = [];
+      }
     }
+    const emptyWeekCount = Math.max(0, weekCount - displayDates.length);
 
     const weeksWithData = displayDates.filter(date =>
       filteredLeaders.some(l => lookup[termKey]?.[date]?.[l.id])
@@ -976,6 +986,13 @@
     });
 
     // ── Assemble ──
+    const noDatesBanner = (!tsRow && displayDates.length === 0)
+      ? `<div style="padding:var(--s-4) var(--s-5);background:rgba(255,180,0,0.12);border-bottom:1px solid rgba(255,180,0,0.25);font-size:12px;color:#b8860b">
+           No entries or term dates found for this term.
+           <a href="settings.html" style="color:inherit;font-weight:700;text-decoration:underline;margin-left:4px">Configure term dates in Settings</a> to enable editing.
+         </div>`
+      : '';
+
     const weekControlsHtml = tsRow
       ? `<span class="term-meta" style="font-style:italic">term dates configured</span>`
       : `<div class="week-controls">
@@ -988,6 +1005,7 @@
         <span class="term-meta">${weekCount} weeks · ${weeksWithData} with data</span>
         ${weekControlsHtml}
       </div>
+      ${noDatesBanner}
       <div class="table-wrap">
         <table class="wd-table">
           <colgroup>${colsHtml}</colgroup>

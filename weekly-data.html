@@ -365,6 +365,7 @@
     { key: 'attendance', label: 'ATTENDANCE', rows: [
       { key: 'total_in_department', label: 'Total in department', noTotal: true },
       { key: 'leaders_count',       label: 'Total leaders',       avg: true },
+      { key: 'ratio',               label: 'Ratio',               computed: true, kind: 'ratio' },
       { key: 'connect_attendance',  label: 'Connect group att.',  avg: true },
     ]},
     { key: 'life', label: 'LIFE METRICS', rows: [
@@ -613,6 +614,31 @@
               if (wd.no_youth_night) return '<td class="td-week no-night"><span class="cell-val">—</span></td>';
               const f = wd.first_timers, t2 = wd.third_timers;
               const val = (f != null && f > 0) ? Math.round((t2 ?? 0) / f * 100) + '%' : null;
+              return `<td class="td-week"><span class="cell-val${val == null ? ' empty' : ''}">${val ?? ''}</span></td>`;
+            }).join('');
+
+          } else if (row.kind === 'ratio') {
+            const fmtRatio = (leaders, att) => {
+              if (leaders == null || att == null || leaders === 0) return null;
+              const r = Math.round(att / leaders);
+              return `1:${r}`;
+            };
+            const wkRatios = weekData.map(wd => {
+              if (!wd || wd.no_youth_night) return wd;
+              return { ...wd, _ratio: fmtRatio(wd.leaders_count, wd.total_in_department) };
+            });
+            const validRatios = wkRatios.filter(w => w && !w.no_youth_night && w._ratio != null);
+            summaryStr = validRatios.length
+              ? fmtRatio(
+                  avgField(weekData.filter(w => w && !w.no_youth_night), 'leaders_count'),
+                  avgField(weekData.filter(w => w && !w.no_youth_night), 'total_in_department')
+                ) ?? '—'
+              : '—';
+            summaryCls = summaryStr === '—' ? ' dash' : '';
+            wkCells = wkRatios.map(wd => {
+              if (!wd) return '<td class="td-week"><span class="cell-val empty"></span></td>';
+              if (wd.no_youth_night) return '<td class="td-week no-night"><span class="cell-val">—</span></td>';
+              const val = wd._ratio;
               return `<td class="td-week"><span class="cell-val${val == null ? ' empty' : ''}">${val ?? ''}</span></td>`;
             }).join('');
 
