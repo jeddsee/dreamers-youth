@@ -480,7 +480,7 @@
 
   async function loadPipelineNPs() {
     const { data } = await db.from('new_people')
-      .select('id, name, decision_date, decision_type, created_at')
+      .select('id, name, decision_date, decision_type, created_at, leader_id')
       .eq('campus_id', identity.campus_id)
       .eq('is_new_christian', true)
       .neq('status', 'archived')
@@ -497,7 +497,7 @@
         <div style="margin-top:var(--s-5);margin-bottom:var(--s-3);font-size:var(--text-sm);font-weight:700;color:var(--c-text-muted);text-transform:uppercase;letter-spacing:0.06em">From New People Pipeline</div>
         <div class="stack">
           ${allPipelineNPs.map(np => `
-            <div class="nc-card" style="cursor:default">
+            <div class="nc-card" onclick="openPipelineCard('${np.id}')">
               <div class="nc-card__header">
                 <div>
                   <div class="nc-card__name">${escHtml(np.name)}</div>
@@ -513,6 +513,29 @@
         </div>
       </div>
     `;
+  }
+
+  async function openPipelineCard(npId) {
+    const np = allPipelineNPs.find(n => n.id === npId);
+    if (!np) return;
+    // Find existing NC record by name match
+    let nc = allNC.find(n => n.name.trim().toLowerCase() === np.name.trim().toLowerCase());
+    if (!nc) {
+      // Auto-create a minimal NC record so we can track their discipleship steps
+      const { data, error } = await db.from('new_christians').insert({
+        campus_id:     identity.campus_id,
+        name:          np.name,
+        decision_date: np.decision_date || null,
+        decision_type: np.decision_type || null,
+        leader_id:     np.leader_id || null,
+        archived:      false,
+      }).select('*').single();
+      if (error) { alert('Could not create NC record.'); return; }
+      nc = data;
+      allNC.unshift(nc);
+      renderList();
+    }
+    openEditModal(nc);
   }
 
   function escHtml(s) {

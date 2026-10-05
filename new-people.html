@@ -924,12 +924,10 @@
             <span>${escHtml(ts)}</span>
           </div>
           <div class="comment-item__text" id="ctext-${c.id}">${escHtml(c.comment)}</div>
-          ${isOwn ? `
-            <div class="comment-item__actions">
-              <button class="btn btn--ghost btn--sm" onclick="startEditDetailComment('${c.id}', ${JSON.stringify(escHtml(c.comment))})">Edit</button>
-              <button class="btn btn--danger btn--sm" onclick="deleteDetailComment('${c.id}')">Delete</button>
-            </div>
-          ` : ''}
+          <div class="comment-item__actions">
+            <button class="btn btn--ghost btn--sm" onclick="startEditDetailComment('${c.id}', ${JSON.stringify(escHtml(c.comment))})">Edit</button>
+            <button class="btn btn--danger btn--sm" onclick="deleteDetailComment('${c.id}')">Delete</button>
+          </div>
         </div>
       `);
     });

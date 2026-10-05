@@ -365,34 +365,25 @@
     { key: 'attendance', label: 'ATTENDANCE', rows: [
       { key: 'total_in_department', label: 'Total in department', noTotal: true },
       { key: 'leaders_count',       label: 'Total leaders',       avg: true },
-      { key: 'attendance',          label: 'Youth attendance',    avg: true },
       { key: 'connect_attendance',  label: 'Connect group att.',  avg: true },
     ]},
-    { key: 'new_people', label: 'NEW PEOPLE', rows: [
-      { key: 'total_np',      label: 'Total NP',         computed: true, kind: 'total_np'  },
-      { key: 'first_timers',  label: '1st time NP' },
-      { key: 'second_timers', label: '2nd time NP' },
-      { key: 'third_timers',  label: 'NP retained (3rd)' },
-      { key: 'retention',     label: 'Retention rate',   computed: true, kind: 'retention' },
-    ]},
     { key: 'life', label: 'LIFE METRICS', rows: [
-      { key: 'salvations_first',  label: '1st time NC'    },
-      { key: 'salvations_rededs', label: 'Rededication'   },
-      { key: 'bibles_given',      label: 'Bibles'         },
-      { key: 'fresh_start',       label: 'Fresh Start'    },
-      { key: 'water_baptisms',    label: 'Water baptisms' },
-      { key: 'hs_baptisms',       label: 'HS baptisms'    },
+      { key: 'salvations_first',  label: 'First-time decisions' },
+      { key: 'salvations_rededs', label: 'Rededications'        },
+      { key: 'bibles_given',      label: 'Bibles given'         },
+      { key: 'fresh_start',       label: 'Fresh Start'          },
+      { key: 'water_baptisms',    label: 'Water baptisms'       },
+      { key: 'hs_baptisms',       label: 'Baptised in HS'       },
     ]},
     { key: 'connect', label: 'CONNECT & SUNDAY', rows: [
-      { key: 'sunday_attendance', label: 'Sunday',         avg: true },
-      { key: 'saints_attendance', label: 'Saints',         avg: true },
+      { key: 'sunday_attendance', label: 'Sunday AM att.',  avg: true },
+      { key: 'saints_attendance', label: 'Saints',          avg: true },
       { key: 'schools_visited',   label: 'Schools visited' },
     ]},
   ];
 
   const NUMERIC_FIELDS = [
-    'total_in_department','leaders_count','attendance','connect_attendance',
-    'first_timers','second_timers','third_timers',
+    'total_in_department','leaders_count','connect_attendance',
     'salvations_first','salvations_rededs','bibles_given','fresh_start',
     'water_baptisms','hs_baptisms','sunday_attendance','saints_attendance','schools_visited'
   ];
