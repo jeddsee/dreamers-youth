@@ -255,6 +255,7 @@
     <button class="filter-btn" data-status="visit_3">Visit 3</button>
     <button class="filter-btn" data-status="activated">Activated</button>
     <button class="filter-btn" data-status="archived">Archived</button>
+    <button class="filter-btn" data-status="unassigned">Unassigned</button>
     <button class="btn btn--primary btn--sm" style="margin-left:auto;flex-shrink:0" onclick="openAddModal()">+ Add</button>
   </div>
 
@@ -713,9 +714,14 @@
 
   function renderTable(filter) {
     const excluded = new Set(['activated', 'archived']);
-    let rows = filter === 'all'
-      ? allNP.filter(np => !excluded.has(np.status))
-      : allNP.filter(np => np.status === filter);
+    let rows;
+    if (filter === 'all') {
+      rows = allNP.filter(np => !excluded.has(np.status));
+    } else if (filter === 'unassigned') {
+      rows = allNP.filter(np => !excluded.has(np.status) && !np.leader_id);
+    } else {
+      rows = allNP.filter(np => np.status === filter);
+    }
 
     // Ready: only show people needing a leader assigned
     if (filter === 'ready_to_activate') rows = rows.filter(np => !np.leader_id);
@@ -732,11 +738,13 @@
 
     if (!rows.length) {
       empty.querySelector('h3').textContent =
-        filter === 'ready_to_activate' ? 'No unassigned people ready to activate' : 'No new people yet';
+        filter === 'ready_to_activate' ? 'No unassigned people ready to activate' :
+        filter === 'unassigned'        ? 'No unassigned new people' :
+        'No new people yet';
       empty.querySelector('p').textContent =
-        filter === 'ready_to_activate'
-          ? 'Everyone in Ready has a leader assigned — great work!'
-          : 'New visitors who self-register or are added manually will appear here.';
+        filter === 'ready_to_activate' ? 'Everyone in Ready has a leader assigned — great work!' :
+        filter === 'unassigned'        ? 'Everyone has a leader assigned.' :
+        'New visitors who self-register or are added manually will appear here.';
       empty.classList.remove('hidden');
       wrap.classList.add('hidden');
       return;

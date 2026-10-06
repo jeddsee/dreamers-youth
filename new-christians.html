@@ -196,6 +196,12 @@
     <button class="btn btn--primary btn--sm" onclick="openAddModal()">+ Add</button>
   </div>
 
+  <!-- Unassigned filter bar -->
+  <div class="filter-bar" id="nc-filter-bar">
+    <button class="filter-btn active" data-nc-assign="all">All</button>
+    <button class="filter-btn" data-nc-assign="unassigned">Unassigned</button>
+  </div>
+
   <!-- Year & Gender sub-filters -->
   <div class="sub-filter-bar">
     <div class="sub-filter-group">
@@ -371,7 +377,7 @@
   const { db } = DY;
 
   let identity, allNC = [], leaders = [], rosterYouth = [], currentNC = null, allPipelineNPs = [],
-      ncCommentsMap = {}, ncYearFilter = new Set(), ncGenderFilter = null;
+      ncCommentsMap = {}, ncYearFilter = new Set(), ncGenderFilter = null, ncAssignFilter = 'all';
 
   async function init() {
     DY.initSidebar();
@@ -384,6 +390,14 @@
   }
 
   function setupNCFilters() {
+    document.querySelectorAll('.filter-btn[data-nc-assign]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn[data-nc-assign]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        ncAssignFilter = btn.dataset.ncAssign;
+        renderList();
+      });
+    });
     document.querySelectorAll('.filter-btn[data-nc-year]').forEach(btn => {
       btn.addEventListener('click', () => {
         const yr = btn.dataset.ncYear;
@@ -517,6 +531,7 @@
 
   function renderList() {
     let rows = allNC;
+    if (ncAssignFilter === 'unassigned') rows = rows.filter(nc => !nc.leader_id);
     if (ncYearFilter.size > 0) rows = rows.filter(nc => ncYearFilter.has(nc.year_level));
     if (ncGenderFilter) rows = rows.filter(nc => nc.gender === ncGenderFilter);
 
