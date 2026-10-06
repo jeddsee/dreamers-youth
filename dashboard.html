@@ -292,14 +292,6 @@
         <div class="entry-section">
           <div class="entry-section-label">Discipleship steps</div>
           <div class="form-grid form-grid--2">
-            <div class="form-group ws-night-field">
-              <label class="entry-field-label">First-time decisions</label>
-              <input id="ws-sal-first" type="number" min="0" max="11" value="0" class="input" autocomplete="off">
-            </div>
-            <div class="form-group ws-night-field">
-              <label class="entry-field-label">Rededications</label>
-              <input id="ws-sal-reded" type="number" min="0" max="11" value="0" class="input" autocomplete="off">
-            </div>
             <div class="form-group">
               <label class="entry-field-label">Bibles given</label>
               <input id="ws-bibles" type="number" min="0" max="11" value="0" class="input" autocomplete="off">
@@ -741,22 +733,26 @@
     let statsQ = db.from('weekly_stats').select('*').order('entry_date', { ascending: true });
     let leQ2   = db.from('leader_entries').select('entry_date, term, campus_id, youth_attendance, connect_attendance, sunday_attendance, week_number');
     let npQ2   = db.from('new_people').select('status, campus_id, created_at').not('status', 'in', '("archived")');
+    let ncQ2   = db.from('new_christians').select('decision_date, decision_type, campus_id').eq('archived', false);
 
     if (isAll) {
       const ids = allCampuses.map(c => c.id);
       statsQ = statsQ.in('campus_id', ids);
       leQ2   = leQ2.in('campus_id', ids);
       npQ2   = npQ2.in('campus_id', ids);
+      ncQ2   = ncQ2.in('campus_id', ids);
     } else {
       statsQ = statsQ.eq('campus_id', campusId);
       leQ2   = leQ2.eq('campus_id', campusId);
       npQ2   = npQ2.eq('campus_id', campusId);
+      ncQ2   = ncQ2.eq('campus_id', campusId);
     }
 
-    const [statsRes2, leRes2, npRes2] = await Promise.all([statsQ, leQ2, npQ2]);
+    const [statsRes2, leRes2, npRes2, ncRes2] = await Promise.all([statsQ, leQ2, npQ2, ncQ2]);
     const rows    = statsRes2.data ?? [];
     const leRows  = leRes2.data ?? [];
     const npRows  = npRes2.data ?? [];
+    const ncRows  = ncRes2.data ?? [];
 
     const partitionStats = (year) => rows.filter(w => {
       if (!w.term || w.no_youth_night) return false;
@@ -785,22 +781,36 @@
       return String(d.getFullYear()) === year;
     });
 
+    const partitionNC = (year) => ncRows.filter(n => {
+      if (!n.decision_date || !n.decision_date.startsWith(year)) return false;
+      if (hasRange) {
+        const termFull = DY.termFromDate(n.decision_date);
+        const t = termFull ? termFull.split(' ')[0] : null;
+        if (!t) return false;
+        const v = twVal(t, 0);
+        if (v < fromVal || v > toVal) return false;
+      }
+      return true;
+    });
+
     const statsA = partitionStats(yearA);
     const statsB = partitionStats(yearB);
     const leA    = partitionLE(yearA);
     const leB    = partitionLE(yearB);
     const npA    = partitionNP(yearA);
     const npB    = partitionNP(yearB);
+    const ncA    = partitionNC(yearA);
+    const ncB    = partitionNC(yearB);
 
     const rangeLabel = hasRange
       ? `${fromTerm}${fromWeek ? ' Wk' + fromWeek : ''} → ${toTerm || ''}${toWeek ? ' Wk' + toWeek : ''}`
       : 'All terms';
 
     document.getElementById('ycomp-loading').classList.add('hidden');
-    renderYearCompResults(statsA, statsB, leA, leB, npA, npB, yearA, yearB, rangeLabel, campusId);
+    renderYearCompResults(statsA, statsB, leA, leB, npA, npB, ncA, ncB, yearA, yearB, rangeLabel, campusId);
   }
 
-  function renderYearCompResults(statsA, statsB, leA, leB, npA, npB, yearA, yearB, rangeLabel, campusId) {
+  function renderYearCompResults(statsA, statsB, leA, leB, npA, npB, ncA, ncB, yearA, yearB, rangeLabel, campusId) {
     // Aggregate leader_entries by date then avg/sum — excludes dates with no data
     const leByDate = (entries, field) => {
       const byDate = {};
@@ -894,8 +904,8 @@
 
       <span class="section-badge section-badge--lime">Discipleship Metrics</span>
       <div class="ycomp-grid mb-5">
-        ${card('First-Time Decisions', sum(colA('salvations_first')),  sum(colB('salvations_first')))}
-        ${card('Rededications',        sum(colA('salvations_rededs')), sum(colB('salvations_rededs')))}
+        ${card('First-Time Decisions', ncA.filter(n => n.decision_type === 'first_time').length,   ncB.filter(n => n.decision_type === 'first_time').length)}
+        ${card('Rededications',        ncA.filter(n => n.decision_type === 'rededication').length, ncB.filter(n => n.decision_type === 'rededication').length)}
         ${card('Bibles Given',         sum(colA('bibles_given')),      sum(colB('bibles_given')))}
         ${card('Fresh Start',          sum(colA('fresh_start')),       sum(colB('fresh_start')))}
         ${card('Water Baptisms',       sum(colA('water_baptisms')),    sum(colB('water_baptisms')))}
@@ -953,8 +963,6 @@
   function fillWSForm(d) {
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? 0; };
     set('ws-total-dept', d.total_in_department);
-    set('ws-sal-first',  d.salvations_first);
-    set('ws-sal-reded',  d.salvations_rededs);
     set('ws-bibles',     d.bibles_given);
     set('ws-fresh',      d.fresh_start);
     set('ws-water-bap',  d.water_baptisms);
@@ -968,7 +976,7 @@
   }
 
   function clearWSForm() {
-    ['ws-total-dept','ws-sal-first','ws-sal-reded','ws-bibles',
+    ['ws-total-dept','ws-bibles',
      'ws-fresh','ws-water-bap','ws-hs-bap','ws-saints','ws-schools'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = 0;
@@ -1012,8 +1020,6 @@
       no_youth_night:       noNight,
       total_in_department:  int('ws-total-dept'),
       leaders_count:        leaderCount ?? null,
-      salvations_first:     noNight ? null : int('ws-sal-first'),
-      salvations_rededs:    noNight ? null : int('ws-sal-reded'),
       bibles_given:         int('ws-bibles'),
       fresh_start:          int('ws-fresh'),
       water_baptisms:       int('ws-water-bap'),
@@ -1294,9 +1300,9 @@
       ? Math.round(roster.filter(y => y.water_baptised).length / roster.length * 100)
       : null;
     document.getElementById('snap-life-cards').innerHTML = [
-      { label: 'New Christians', value: nc,                                                       cls: 'stat-card--fill-lime' },
-      { label: 'First-Time Decisions',   value: sum(col('salvations_first')),                     cls: 'stat-card--lime' },
-      { label: 'Rededications',          value: sum(col('salvations_rededs')),                    cls: 'stat-card--lime' },
+      { label: 'New Christians', value: nc,                                                                                    cls: 'stat-card--fill-lime' },
+      { label: 'First-Time Decisions',   value: filteredNC.filter(n => n.decision_type === 'first_time').length,              cls: 'stat-card--lime' },
+      { label: 'Rededications',          value: filteredNC.filter(n => n.decision_type === 'rededication').length,            cls: 'stat-card--lime' },
       { label: 'Bibles Given',           value: sum(col('bibles_given')),                         cls: 'stat-card--lime' },
       { label: 'Fresh Start',            value: sum(col('fresh_start')),                          cls: 'stat-card--lime' },
       { label: 'Water Baptisms',         value: sum(col('water_baptisms')),                       cls: 'stat-card--lime' },
