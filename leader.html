@@ -249,6 +249,19 @@
     }
     body { background: #0d0d0d; }
 
+    /* Comments overdue banner (NP/NC follow-up) */
+    .comments-overdue-banner {
+      display: flex;
+      align-items: center;
+      gap: var(--s-2);
+      background: #fff8e6;
+      border-bottom: 1.5px solid #cc7700;
+      padding: var(--s-3) var(--s-5);
+      font-size: var(--text-sm);
+      font-weight: 700;
+      color: #7a4700;
+    }
+
     /* Attendance overdue banner */
     .att-overdue-banner {
       display: flex;
@@ -355,6 +368,11 @@
 
   <!-- ── Main ── -->
   <div class="main-content">
+
+  <div id="comments-overdue-banner" class="comments-overdue-banner hidden">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#7a4700" stroke-width="2"><circle cx="8" cy="8" r="7"/><line x1="8" y1="4.5" x2="8" y2="8.5"/><circle cx="8" cy="11" r="0.5" fill="#7a4700"/></svg>
+    <span id="comments-overdue-text">Follow-up comments overdue</span>
+  </div>
 
   <main>
 
@@ -1113,6 +1131,21 @@
     d.setDate(d.getDate() + 4);
     return d;
   }
+  let overdueNPCount = 0;
+  let overdueNCCount = 0;
+
+  function updateCommentsBanner() {
+    const total = overdueNPCount + overdueNCCount;
+    const banner = document.getElementById('comments-overdue-banner');
+    if (!total) { banner.classList.add('hidden'); return; }
+    const parts = [];
+    if (overdueNPCount) parts.push(`${overdueNPCount} NP follow-up${overdueNPCount > 1 ? 's' : ''}`);
+    if (overdueNCCount) parts.push(`${overdueNCCount} NC follow-up${overdueNCCount > 1 ? 's' : ''}`);
+    document.getElementById('comments-overdue-text').textContent =
+      parts.join(' and ') + (total > 1 ? ' comments are' : ' comment is') + ' overdue';
+    banner.classList.remove('hidden');
+  }
+
   function toggleOverdue(sectionId) {
     const listEl  = document.getElementById(sectionId).querySelector('.overdue-list');
     const chevron = document.getElementById(sectionId).querySelector('.overdue-chevron');
@@ -1138,6 +1171,9 @@
         return t >= visitMs && t <= deadlineMs;
       });
     });
+
+    overdueNPCount = overdue.length;
+    updateCommentsBanner();
 
     const section = document.getElementById('overdue-np-section');
     const countEl = document.getElementById('overdue-np-count');
@@ -1171,6 +1207,9 @@
         return t >= visitMs && t <= deadlineMs;
       });
     });
+
+    overdueNCCount = overdue.length;
+    updateCommentsBanner();
 
     const section = document.getElementById('overdue-nc-section');
     const countEl = document.getElementById('overdue-nc-count');
