@@ -293,20 +293,28 @@
           <div class="entry-section-label">Discipleship steps</div>
           <div class="form-grid form-grid--2">
             <div class="form-group">
+              <label class="entry-field-label">First time decisions</label>
+              <input id="ws-first-time" type="number" min="0" max="99" value="0" class="input" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label class="entry-field-label">Rededications</label>
+              <input id="ws-rededs" type="number" min="0" max="99" value="0" class="input" autocomplete="off">
+            </div>
+            <div class="form-group">
               <label class="entry-field-label">Bibles given</label>
-              <input id="ws-bibles" type="number" min="0" max="11" value="0" class="input" autocomplete="off">
+              <input id="ws-bibles" type="number" min="0" max="99" value="0" class="input" autocomplete="off">
             </div>
             <div class="form-group">
               <label class="entry-field-label">Fresh Start course</label>
-              <input id="ws-fresh" type="number" min="0" max="11" value="0" class="input" autocomplete="off">
+              <input id="ws-fresh" type="number" min="0" max="99" value="0" class="input" autocomplete="off">
             </div>
             <div class="form-group">
               <label class="entry-field-label">Water baptisms</label>
-              <input id="ws-water-bap" type="number" min="0" max="11" value="0" class="input" autocomplete="off">
+              <input id="ws-water-bap" type="number" min="0" max="99" value="0" class="input" autocomplete="off">
             </div>
             <div class="form-group">
               <label class="entry-field-label">Baptised in HS</label>
-              <input id="ws-hs-bap" type="number" min="0" max="11" value="0" class="input" autocomplete="off">
+              <input id="ws-hs-bap" type="number" min="0" max="99" value="0" class="input" autocomplete="off">
             </div>
           </div>
         </div>
@@ -963,6 +971,8 @@
   function fillWSForm(d) {
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? 0; };
     set('ws-total-dept', d.total_in_department);
+    set('ws-first-time', d.salvations_first);
+    set('ws-rededs',     d.salvations_rededs);
     set('ws-bibles',     d.bibles_given);
     set('ws-fresh',      d.fresh_start);
     set('ws-water-bap',  d.water_baptisms);
@@ -976,7 +986,7 @@
   }
 
   function clearWSForm() {
-    ['ws-total-dept','ws-bibles',
+    ['ws-total-dept','ws-first-time','ws-rededs','ws-bibles',
      'ws-fresh','ws-water-bap','ws-hs-bap','ws-saints','ws-schools'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = 0;
@@ -1020,6 +1030,8 @@
       no_youth_night:       noNight,
       total_in_department:  int('ws-total-dept'),
       leaders_count:        leaderCount ?? null,
+      salvations_first:     int('ws-first-time'),
+      salvations_rededs:    int('ws-rededs'),
       bibles_given:         int('ws-bibles'),
       fresh_start:          int('ws-fresh'),
       water_baptisms:       int('ws-water-bap'),
@@ -1293,21 +1305,21 @@
       { label: 'Retention Rate', value: `${retention}%`, cls: 'stat-card--fill-red' },
     ].map(c => `<div class="stat-card ${c.cls}"><div class="stat-card__label">${c.label}</div><div class="stat-card__value">${c.value}</div></div>`).join('');
 
-    // Life Metrics
-    const filteredNC  = getFilteredNC();
-    const nc          = filteredNC.filter(n => n.decision_type === 'first_time' || n.decision_type === 'rededication').length;
+    // Life Metrics — driven by weekly_stats entries (pastor's weekly entry)
+    const firstTime   = sum(col('salvations_first'));
+    const rededs      = sum(col('salvations_rededs'));
     const baptisedPct = roster.length
       ? Math.round(roster.filter(y => y.water_baptised).length / roster.length * 100)
       : null;
     document.getElementById('snap-life-cards').innerHTML = [
-      { label: 'New Christians', value: nc,                                                                                    cls: 'stat-card--fill-lime' },
-      { label: 'First-Time Decisions',   value: filteredNC.filter(n => n.decision_type === 'first_time').length,              cls: 'stat-card--lime' },
-      { label: 'Rededications',          value: filteredNC.filter(n => n.decision_type === 'rededication').length,            cls: 'stat-card--lime' },
-      { label: 'Bibles Given',           value: sum(col('bibles_given')),                         cls: 'stat-card--lime' },
-      { label: 'Fresh Start',            value: sum(col('fresh_start')),                          cls: 'stat-card--lime' },
-      { label: 'Water Baptisms',         value: sum(col('water_baptisms')),                       cls: 'stat-card--lime' },
-      { label: '% Youth Baptised',       value: baptisedPct !== null ? `${baptisedPct}%` : '—',  cls: 'stat-card--lime' },
-      { label: 'HS Baptisms',            value: sum(col('hs_baptisms')),                          cls: 'stat-card--lime' },
+      { label: 'New Christians',       value: (firstTime ?? 0) + (rededs ?? 0),               cls: 'stat-card--fill-lime' },
+      { label: 'First-Time Decisions', value: firstTime ?? 0,                                  cls: 'stat-card--lime' },
+      { label: 'Rededications',        value: rededs ?? 0,                                     cls: 'stat-card--lime' },
+      { label: 'Bibles Given',         value: sum(col('bibles_given')),                        cls: 'stat-card--lime' },
+      { label: 'Fresh Start',          value: sum(col('fresh_start')),                         cls: 'stat-card--lime' },
+      { label: 'Water Baptisms',       value: sum(col('water_baptisms')),                      cls: 'stat-card--lime' },
+      { label: '% Youth Baptised',     value: baptisedPct !== null ? `${baptisedPct}%` : '—', cls: 'stat-card--lime' },
+      { label: 'HS Baptisms',          value: sum(col('hs_baptisms')),                         cls: 'stat-card--lime' },
     ].map(c => `<div class="stat-card ${c.cls}"><div class="stat-card__label">${c.label}</div><div class="stat-card__value">${c.value}</div></div>`).join('');
 
     // Discipleship Stages
