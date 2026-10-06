@@ -75,8 +75,9 @@
   --s-8: 2rem;     --s-10: 2.5rem;  --s-12: 3rem;
 
   /* Radius */
-  --r-sm:   0.375rem;
-  --r:      0.5rem;
+  --r-sm:   0.25rem;
+  --r:      0.375rem;
+  --r-md:   0.5rem;
   --r-lg:   0.75rem;
   --r-full: 9999px;
 
@@ -305,11 +306,11 @@ h4 { font-size: var(--text-base); font-weight: 600; }
 }
 .form-group label .required { color: var(--c-danger); margin-left: 2px; }
 
-.input, .select, .textarea {
+.input, .select, .textarea, input[type="date"], input[type="time"] {
   width: 100%;
   padding: 0.625rem var(--s-3);
   border: 1px solid var(--c-border-dark);
-  border-radius: var(--r);
+  border-radius: var(--r-md);
   background: var(--c-surface);
   color: var(--c-text);
   font-size: var(--text-base);
@@ -317,12 +318,18 @@ h4 { font-size: var(--text-base); font-weight: 600; }
   appearance: none;
   -webkit-appearance: none;
 }
-.input:focus, .select:focus, .textarea:focus {
+.input:focus, .select:focus, .textarea:focus,
+input[type="date"]:focus, input[type="time"]:focus {
   outline: none;
   border-color: var(--c-primary);
   box-shadow: 0 0 0 3px rgb(0 0 255 / .15);
 }
 .input::placeholder, .textarea::placeholder { color: var(--c-text-muted); }
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  opacity: 0.45;
+  cursor: pointer;
+}
 
 .select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
@@ -1001,15 +1008,17 @@ h4 { font-size: var(--text-base); font-weight: 600; }
 }
 .snap-date-input {
   font-family: inherit;
-  font-size: var(--text-xs);
-  padding: 3px var(--s-2);
+  font-size: var(--text-sm);
+  height: 36px;
+  padding: 0 var(--s-3);
   border: 1px solid var(--c-border-dark);
   border-radius: var(--r-md);
   background: var(--c-surface);
   color: var(--c-text);
   cursor: pointer;
+  width: auto;
 }
-.snap-date-input:focus { outline: none; border-color: #111; }
+.snap-date-input:focus { outline: none; border-color: var(--c-primary); box-shadow: 0 0 0 3px rgb(0 0 255 / .15); }
 .ycomp-date-input { border-color: #111; border-width: 1.5px; }
 
 .snap-header {
