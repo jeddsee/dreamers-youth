@@ -897,18 +897,31 @@
     const termKey    = 'T' + termNum + ' ' + ldYear;
     const overdueDate = ldYear === new Date().getFullYear() ? getOverdueDate() : null;
 
-    // Use term_settings if configured, otherwise fall back to DB-scanned dates
+    // Build display dates using ACTUAL submission dates as the source of truth.
+    // term_settings provides weekCount and future-week placeholders; it is NOT
+    // used to align columns, because its configured first_date may differ from
+    // the campus's actual youth-night DOW by one or more days.
     const tsRow = termSettingsMap[termNum];
+    const actualDates = getTermDates(termKey); // sorted unique dates with real data
     let weekCount, displayDates;
+
     if (tsRow) {
-      displayDates = DY.termWeekDates(tsRow.first_date, tsRow.num_weeks);
-      weekCount    = tsRow.num_weeks;
+      weekCount = tsRow.num_weeks;
+      if (actualDates.length > 0) {
+        // Actual submissions for past/current weeks + expected dates for future weeks
+        const lastActual   = actualDates[actualDates.length - 1];
+        const expectedDates = DY.termWeekDates(tsRow.first_date, tsRow.num_weeks);
+        const futureExpected = expectedDates.filter(d => d > lastActual);
+        displayDates = [...actualDates, ...futureExpected].slice(0, weekCount);
+      } else {
+        // No submissions yet — show expected dates as placeholder columns
+        displayDates = DY.termWeekDates(tsRow.first_date, tsRow.num_weeks);
+      }
+      weekCount = Math.max(weekCount, displayDates.length);
     } else {
       weekCount = getWeekCount(termNum);
-      const allTermDates = getTermDates(termKey);
-      // Extend known dates with extrapolated future Fridays if we have at least one anchor
-      if (allTermDates.length > 0) {
-        const known = [...allTermDates];
+      if (actualDates.length > 0) {
+        const known = [...actualDates];
         while (known.length < weekCount) {
           const last = new Date(known[known.length - 1] + 'T00:00:00');
           last.setDate(last.getDate() + 7);
@@ -961,17 +974,19 @@
     // ─ Summary section ─
     tbodyRows += `<tr class="section-row"><td colspan="${colspan}">SUMMARY — ALL LEADERS</td></tr>`;
 
-    // Summary: Expected Attendance (static)
+    // Summary: Expected Attendance (static per week)
     const totalExpected = filteredLeaders.reduce((s, l) => s + (rosterCount[l.id] ?? 0), 0);
     {
-      const wkCells = Array.from({length: weekCount}, () =>
+      const displayCells = displayDates.map(() =>
         `<td class="td-week"><span class="cell-val">${totalExpected}</span></td>`
       ).join('');
-      const avgStr = totalExpected > 0 ? String(totalExpected) : '—';
+      const emptyCells = Array.from({length: emptyWeekCount}, () =>
+        `<td class="td-week"><span class="cell-val empty"></span></td>`
+      ).join('');
       tbodyRows += `<tr class="data-row">
         <td class="td-label">Expected Attendance</td>
-        ${wkCells}
-        <td class="td-total">${avgStr}</td>
+        ${displayCells}${emptyCells}
+        <td class="td-total">${totalExpected}</td>
       </tr>`;
     }
 
@@ -1054,15 +1069,18 @@
       const label = leaderLabel(leader);
       tbodyRows += `<tr class="leader-row"><td colspan="${colspan}">${label}</td></tr>`;
 
-      // Expected (static)
+      // Expected (static per week)
       {
-        const wkCells = Array.from({length: weekCount}, () =>
+        const displayCells = displayDates.map(() =>
           `<td class="td-week"><span class="cell-val">${exp}</span></td>`
+        ).join('');
+        const emptyCells = Array.from({length: emptyWeekCount}, () =>
+          `<td class="td-week"><span class="cell-val empty"></span></td>`
         ).join('');
         tbodyRows += `<tr class="data-row">
           <td class="td-label indent">Expected att.</td>
-          ${wkCells}
-          <td class="td-total">${exp || '—'}</td>
+          ${displayCells}${emptyCells}
+          <td class="td-total">${exp}</td>
         </tr>`;
       }
 
