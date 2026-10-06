@@ -266,8 +266,6 @@
     </table>
   </div>
 
-  <div id="pipeline-section"></div>
-
   <!-- ── Edit Modal ──────────────────────────────────────────────────────── -->
   <div class="modal-backdrop" id="edit-modal">
     <div class="modal">
@@ -399,7 +397,7 @@
   <script>
   const { db } = DY;
 
-  let identity, allNC = [], leaders = [], rosterYouth = [], currentNC = null, allPipelineNPs = [],
+  let identity, allNC = [], leaders = [], rosterYouth = [], currentNC = null, npNameSet = new Set(),
       ncCommentsMap = {}, ncYearFilter = new Set(), ncGenderFilter = null, ncAssignFilter = 'all';
 
   async function init() {
@@ -577,8 +575,15 @@
       const decisionLabel = nc.decision_type === 'first_time' ? 'First time'
                           : nc.decision_type === 'rededication' ? 'Rededication' : '—';
       const tr = document.createElement('tr');
+      const isNP = npNameSet.has(nc.name.trim().toLowerCase());
       tr.innerHTML = `
-        <td><strong>${escHtml(nc.name)}</strong><br><span class="text-xs text-muted">${escHtml(nc.year_level || '')} ${escHtml(nc.gender || '')}</span></td>
+        <td>
+          <div style="display:flex;align-items:center;gap:var(--s-2)">
+            <strong>${escHtml(nc.name)}</strong>
+            ${isNP ? '<span class="badge badge--connected" style="font-size:10px;padding:1px 6px">NP</span>' : ''}
+          </div>
+          <span class="text-xs text-muted">${escHtml(nc.year_level || '')} ${escHtml(nc.gender || '')}</span>
+        </td>
         <td class="text-sm">${escHtml(decisionLabel)}</td>
         <td class="text-xs">${nc.decision_date ? formatDate(nc.decision_date) : '—'}</td>
         <td class="text-sm">${escHtml(leader?.name || '—')}</td>
@@ -652,7 +657,6 @@
     const idx = allNC.findIndex(n => n.id === currentNC.id);
     if (idx !== -1) allNC[idx] = { ...currentNC };
     renderList();
-    renderPipelineSection();
     closeEditModal();
   }
 
@@ -745,72 +749,10 @@
 
   async function loadPipelineNPs() {
     const { data } = await db.from('new_people')
-      .select('id, name, decision_date, decision_type, created_at, leader_id')
+      .select('name')
       .eq('campus_id', identity.campus_id)
-      .eq('is_new_christian', true)
-      .neq('status', 'archived')
-      .order('decision_date', { ascending: false });
-    allPipelineNPs = data ?? [];
-    renderPipelineSection();
-  }
-
-  function renderPipelineSection() {
-    const el = document.getElementById('pipeline-section');
-    if (!allPipelineNPs.length) { el.innerHTML = ''; return; }
-    el.innerHTML = `
-      <div style="padding:0 var(--s-5) var(--s-8);border-top:1px solid var(--c-border)">
-        <div style="margin-top:var(--s-5);margin-bottom:var(--s-3);font-size:var(--text-sm);font-weight:700;color:var(--c-text-muted);text-transform:uppercase;letter-spacing:0.06em">From New People Pipeline</div>
-        <div class="stack">
-          ${allPipelineNPs.map(np => {
-            const nc = allNC.find(n => n.name.trim().toLowerCase() === np.name.trim().toLowerCase());
-            return `
-            <div class="nc-card" onclick="openPipelineCard('${np.id}')">
-              <div class="nc-card__header">
-                <div>
-                  <div class="nc-card__name">${escHtml(np.name)}</div>
-                  <div class="nc-card__meta">
-                    ${np.decision_date ? formatDate(np.decision_date) : 'Date unknown'} ·
-                    ${np.decision_type === 'first_time' ? 'First time' : np.decision_type === 'rededication' ? 'Rededication' : '—'}
-                  </div>
-                </div>
-                <span class="badge badge--warning">Pipeline</span>
-              </div>
-              <div class="nc-steps">
-                <span class="nc-step ${nc?.baptism_done      ? 'done' : 'pending'}">Baptised</span>
-                <span class="nc-step ${nc?.bible_given       ? 'done' : 'pending'}">Bible</span>
-                <span class="nc-step ${nc?.fresh_start_started   ? 'done' : 'pending'}">FS started</span>
-                <span class="nc-step ${nc?.fresh_start_completed ? 'done' : 'pending'}">FS complete</span>
-                <span class="nc-step ${nc?.hs_baptised           ? 'done' : 'pending'}">HS Baptised</span>
-              </div>
-            </div>`;
-          }).join('')}
-        </div>
-      </div>
-    `;
-  }
-
-  async function openPipelineCard(npId) {
-    const np = allPipelineNPs.find(n => n.id === npId);
-    if (!np) return;
-    // Find existing NC record by name match
-    let nc = allNC.find(n => n.name.trim().toLowerCase() === np.name.trim().toLowerCase());
-    if (!nc) {
-      // Auto-create a minimal NC record so we can track their discipleship steps
-      const { data, error } = await db.from('new_christians').insert({
-        campus_id:     identity.campus_id,
-        name:          np.name,
-        decision_date: np.decision_date || null,
-        decision_type: np.decision_type || null,
-        leader_id:     np.leader_id || null,
-        archived:      false,
-      }).select('*').single();
-      if (error) { alert('Could not create NC record.'); return; }
-      nc = data;
-      allNC.unshift(nc);
-      renderList();
-      renderPipelineSection();
-    }
-    openEditModal(nc);
+      .neq('status', 'archived');
+    npNameSet = new Set((data ?? []).map(np => np.name.trim().toLowerCase()));
   }
 
   function escHtml(s) {
