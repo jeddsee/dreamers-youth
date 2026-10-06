@@ -402,7 +402,18 @@
           <div>
             <div class="stat-card__label">Total in Department</div>
             <div class="stat-card__value" id="snap-total-dept">—</div>
-            <div class="stat-card__sub">Most recent entry</div>
+          </div>
+          <div>
+            <div class="stat-card__label">Attendance %</div>
+            <div class="stat-card__value" id="snap-att-pct">—</div>
+          </div>
+          <div>
+            <div class="stat-card__label">Total Leaders</div>
+            <div class="stat-card__value" id="snap-leader-count">—</div>
+          </div>
+          <div>
+            <div class="stat-card__label">Youth per Leader</div>
+            <div class="stat-card__value" id="snap-youth-per-leader">—</div>
           </div>
         </div>
 
@@ -1147,8 +1158,16 @@
     const col = key => filteredStats.map(w => w[key] ?? 0);
 
     // Attendance
-    document.getElementById('snap-avg-att').textContent    = avg(col('attendance'));
-    document.getElementById('snap-total-dept').textContent = roster.length;
+    const avgAtt     = avg(col('attendance'));
+    const deptTotal  = roster.length;
+    const leaderCount = leaders.filter(l => l.role === 'leader' && l.active !== false).length;
+    const attPct     = deptTotal > 0 ? Math.round(avgAtt / deptTotal * 100) : 0;
+    const youthPerLeader = leaderCount > 0 ? (avgAtt / leaderCount).toFixed(1) : '—';
+    document.getElementById('snap-avg-att').textContent          = avgAtt;
+    document.getElementById('snap-total-dept').textContent       = deptTotal;
+    document.getElementById('snap-att-pct').textContent          = deptTotal > 0 ? `${attPct}%` : '—';
+    document.getElementById('snap-leader-count').textContent     = leaderCount || '—';
+    document.getElementById('snap-youth-per-leader').textContent = leaderCount > 0 ? youthPerLeader : '—';
 
     // New People — counts from actual new_people records
     const npCount = s => snapNP.filter(n => n.status === s).length;

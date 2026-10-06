@@ -952,8 +952,8 @@ h4 { font-size: var(--text-base); font-weight: 600; }
 
 .stat-hero {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--s-8);
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--s-6);
   background: #0000ff;
   border-radius: var(--r-lg);
   padding: var(--s-6) var(--s-8);
