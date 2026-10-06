@@ -488,6 +488,7 @@
   let rosterCount = {};   // leaderId → count of active youth
   let allEntries  = [];   // leader_entries rows
   let termSettingsMap = {}; // termNum → term_settings row
+  let noNightDates = new Set(); // entry_dates with no_youth_night = true
   let leaderFilter = null;  // selected leader id, or null for all
 
   // ─── Init ───
@@ -673,7 +674,7 @@
   async function loadData() {
     document.getElementById('ld-terms').innerHTML = '<div class="wd-status">Loading…</div>';
 
-    const [leaderRes, rosterRes, entryRes, tsRes] = await Promise.all([
+    const [leaderRes, rosterRes, entryRes, tsRes, wsRes] = await Promise.all([
       db.from('leaders')
         .select('id, name, year_level, gender')
         .eq('campus_id', ldCampus)
@@ -692,6 +693,11 @@
         .select('*')
         .eq('year', ldYear)
         .or(`campus_id.eq.${ldCampus},campus_id.is.null`),
+      db.from('weekly_stats')
+        .select('entry_date')
+        .eq('campus_id', ldCampus)
+        .like('term', `%${ldYear}%`)
+        .eq('no_youth_night', true),
     ]);
 
     allLeaders = leaderRes.data ?? [];
@@ -703,6 +709,8 @@
     }
 
     allEntries = entryRes.data ?? [];
+
+    noNightDates = new Set((wsRes.data ?? []).map(r => r.entry_date).filter(Boolean));
 
     // Build term_settings map: prefer campus-specific over null
     termSettingsMap = {};
@@ -803,14 +811,15 @@
     return [...new Set(allEntries.filter(e => e.term === termKey && e.entry_date).map(e => e.entry_date))].sort();
   }
 
-  // Youth count: prefer manual youth_attendance, fall back to attendance_listing count
+  // Youth count: prefer manual youth_attendance, fall back to attendance_listing count.
+  // Returns null (not 0) when no status has been marked, so unsubmitted weeks show empty.
   function youthCount(entry) {
     if (!entry) return null;
     if (entry.youth_attendance != null) return entry.youth_attendance;
     const al = entry.attendance_listing;
-    if (!Array.isArray(al)) return null;
-    const count = al.filter(r => r.status === 'yes' || r.status === 'maybe').length;
-    return count;
+    if (!Array.isArray(al) || !al.length) return null;
+    if (!al.some(r => r.status === 'yes' || r.status === 'maybe' || r.status === 'no')) return null;
+    return al.filter(r => r.status === 'yes' || r.status === 'maybe').length;
   }
 
   // Expected attendance for a given entry: use the full attendance_listing length (roster
@@ -992,14 +1001,17 @@
 
     // Summary: Expected Attendance (per-week, from each leader's submitted attendance_listing)
     {
-      const wkExpected = displayDates.map(date =>
-        filteredLeaders.reduce((s, l) => {
+      const wkExpected = displayDates.map(date => {
+        if (noNightDates.has(date)) return null;
+        return filteredLeaders.reduce((s, l) => {
           const entry = lookup[termKey]?.[date]?.[l.id] ?? null;
           return s + expectedCount(entry, l.id);
-        }, 0)
-      );
+        }, 0);
+      });
       const displayCells = wkExpected.map(v =>
-        `<td class="td-week"><span class="cell-val">${v}</span></td>`
+        v == null
+          ? `<td class="td-week"><span class="cell-val empty">—</span></td>`
+          : `<td class="td-week"><span class="cell-val">${v}</span></td>`
       ).join('');
       const emptyCells = Array.from({length: emptyWeekCount}, () =>
         `<td class="td-week"><span class="cell-val empty"></span></td>`
@@ -1015,6 +1027,7 @@
     // Summary: Youth Attendance per date
     {
       const wkVals = displayDates.map(date => {
+        if (noNightDates.has(date)) return null;
         let s = null;
         for (const l of filteredLeaders) {
           const entry = lookup[termKey]?.[date]?.[l.id] ?? null;
@@ -1023,11 +1036,14 @@
         }
         return s;
       });
+      const isNoNight = displayDates.map(d => noNightDates.has(d));
       const emptyCells = Array.from({length: emptyWeekCount}, () =>
         `<td class="td-week"><span class="cell-val empty"></span></td>`
       ).join('');
-      const wkCells = wkVals.map(v =>
-        `<td class="td-week"><span class="cell-val${cellCls(v)}">${fmtVal(v)}</span></td>`
+      const wkCells = wkVals.map((v, i) =>
+        isNoNight[i]
+          ? `<td class="td-week"><span class="cell-val empty">—</span></td>`
+          : `<td class="td-week"><span class="cell-val${cellCls(v)}">${fmtVal(v)}</span></td>`
       ).join('');
       const a = avg(wkVals); const t = sum(wkVals);
       tbodyRows += `<tr class="data-row row-alt">
@@ -1040,6 +1056,7 @@
     // Summary: Sunday
     {
       const wkVals = displayDates.map(date => {
+        if (noNightDates.has(date)) return null;
         let s = null;
         for (const l of filteredLeaders) {
           const entry = lookup[termKey]?.[date]?.[l.id] ?? null;
@@ -1064,6 +1081,7 @@
     // Summary: Connect Groups
     {
       const wkVals = displayDates.map(date => {
+        if (noNightDates.has(date)) return null;
         let s = null;
         for (const l of filteredLeaders) {
           const entry = lookup[termKey]?.[date]?.[l.id] ?? null;
@@ -1094,6 +1112,7 @@
       // Expected (per-week from attendance_listing, falls back to roster count)
       {
         const displayCells = displayDates.map(date => {
+          if (noNightDates.has(date)) return `<td class="td-week"><span class="cell-val empty">—</span></td>`;
           const entry = lookup[termKey]?.[date]?.[leader.id] ?? null;
           const v = expectedCount(entry, leader.id);
           return `<td class="td-week"><span class="cell-val">${v}</span></td>`;
@@ -1108,13 +1127,14 @@
         </tr>`;
       }
 
-      // Youth — editable inputs
+      // Youth — editable inputs (dash on no-night dates)
       {
+        const esc = s => String(s).replace(/"/g, '&quot;');
         const wkCells = displayDates.map(date => {
+          if (noNightDates.has(date)) return `<td class="td-week"><span class="cell-val empty">—</span></td>`;
           const entry  = lookup[termKey]?.[date]?.[leader.id] ?? null;
           const val    = entry ? youthCount(entry) : null;
           const valStr = val != null ? String(val) : '';
-          const esc    = s => String(s).replace(/"/g, '&quot;');
           const isOverdue = overdueDate === date && val == null;
           return `<td class="td-week${isOverdue ? ' td-overdue' : ''}"><input type="number" class="cell-input"
             value="${esc(valStr)}"
@@ -1128,6 +1148,7 @@
           `<td class="td-week"><span class="cell-val empty"></span></td>`
         ).join('');
         const wkVals = displayDates.map(date => {
+          if (noNightDates.has(date)) return null;
           const entry = lookup[termKey]?.[date]?.[leader.id] ?? null;
           return entry ? youthCount(entry) : null;
         });
@@ -1143,6 +1164,7 @@
       {
         const esc = s => String(s).replace(/"/g, '&quot;');
         const wkCells = displayDates.map(date => {
+          if (noNightDates.has(date)) return `<td class="td-week"><span class="cell-val empty">—</span></td>`;
           const entry  = lookup[termKey]?.[date]?.[leader.id] ?? null;
           const val    = entry?.sunday_attendance ?? null;
           const valStr = val != null ? String(val) : '';
@@ -1158,6 +1180,7 @@
           `<td class="td-week"><span class="cell-val empty"></span></td>`
         ).join('');
         const wkVals = displayDates.map(date => {
+          if (noNightDates.has(date)) return null;
           const entry = lookup[termKey]?.[date]?.[leader.id] ?? null;
           return entry?.sunday_attendance ?? null;
         });
@@ -1173,6 +1196,7 @@
       {
         const esc = s => String(s).replace(/"/g, '&quot;');
         const wkCells = displayDates.map(date => {
+          if (noNightDates.has(date)) return `<td class="td-week"><span class="cell-val empty">—</span></td>`;
           const entry  = lookup[termKey]?.[date]?.[leader.id] ?? null;
           const val    = entry?.connect_attendance ?? null;
           const valStr = val != null ? String(val) : '';
@@ -1188,6 +1212,7 @@
           `<td class="td-week"><span class="cell-val empty"></span></td>`
         ).join('');
         const wkVals = displayDates.map(date => {
+          if (noNightDates.has(date)) return null;
           const entry = lookup[termKey]?.[date]?.[leader.id] ?? null;
           return entry?.connect_attendance ?? null;
         });
