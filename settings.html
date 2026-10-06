@@ -166,7 +166,10 @@
       </div>
 
       <!-- Existing term settings table -->
-      <h3 style="font-size:var(--text-lg);font-weight:700;margin-bottom:var(--s-4)">Configured terms</h3>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--s-3);margin-bottom:var(--s-4)">
+        <h3 style="font-size:var(--text-lg);font-weight:700;margin:0">Configured terms</h3>
+        <div class="pill-row" id="ts-year-pills" style="flex-shrink:0"></div>
+      </div>
       <div id="ts-empty" class="hidden" style="padding:var(--s-6);text-align:center;color:var(--c-text-muted);font-size:var(--text-sm)">
         No term dates configured yet. Use the form above to add a term.
       </div>
@@ -198,6 +201,7 @@ const { db } = DY;
 let identity;
 let allTermSettings = [];
 let editingId = null;
+let selectedYear = null; // null = all years
 
 function escHtml(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -253,12 +257,39 @@ async function loadTermSettings() {
   renderTable();
 }
 
+function renderYearPills() {
+  const years = [...new Set(allTermSettings.map(r => r.year))].sort((a, b) => b - a);
+  const el = document.getElementById('ts-year-pills');
+  if (years.length <= 1) { el.innerHTML = ''; return; }
+
+  // Default to current year if not yet set
+  if (selectedYear === null || !years.includes(selectedYear)) {
+    selectedYear = years[0];
+  }
+
+  el.innerHTML = years.map(y =>
+    `<button class="pill${selectedYear === y ? ' active' : ''}" onclick="setYearFilter(${y})">${y}</button>`
+  ).join('');
+}
+
+function setYearFilter(year) {
+  selectedYear = year;
+  renderYearPills();
+  renderTable();
+}
+
 function renderTable() {
   const tbody  = document.getElementById('ts-tbody');
   const empty  = document.getElementById('ts-empty');
   const wrap   = document.getElementById('ts-table-wrap');
 
-  if (!allTermSettings.length) {
+  renderYearPills();
+
+  const rows = selectedYear !== null
+    ? allTermSettings.filter(r => r.year === selectedYear)
+    : allTermSettings;
+
+  if (!rows.length) {
     empty.classList.remove('hidden');
     wrap.classList.add('hidden');
     return;
@@ -266,7 +297,7 @@ function renderTable() {
   empty.classList.add('hidden');
   wrap.classList.remove('hidden');
 
-  tbody.innerHTML = allTermSettings.map(row => {
+  tbody.innerHTML = rows.map(row => {
     const dates   = termWeekDates(row.first_date, row.num_weeks);
     const lastDate = dates[dates.length - 1];
     return `<tr>
