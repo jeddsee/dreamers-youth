@@ -553,6 +553,178 @@
     </div>
   </div>
 
+  <!-- ── NP Edit Modal ────────────────────────────────────────────────────── -->
+  <div class="modal-backdrop" id="np-edit-modal">
+    <div class="modal">
+      <div class="modal__header">
+        <h3>Edit new person</h3>
+        <button class="modal__close" onclick="closeNPEditModal()">✕</button>
+      </div>
+      <div class="modal__body">
+        <div id="np-edit-error" class="error-banner hidden" style="margin-bottom:var(--s-4)"></div>
+        <div class="stack">
+          <div class="form-group">
+            <label>Full name</label>
+            <input id="lnpe-name" type="text" class="input">
+          </div>
+          <div class="form-grid form-grid--2">
+            <div class="form-group">
+              <label>Mobile</label>
+              <input id="lnpe-phone" type="tel" class="input" placeholder="04xx xxx xxx">
+            </div>
+            <div class="form-group">
+              <label>School</label>
+              <input id="lnpe-school" type="text" class="input">
+            </div>
+            <div class="form-group">
+              <label>Year level</label>
+              <select id="lnpe-year" class="select">
+                <option value="">Select…</option>
+                <option>Year 7</option><option>Year 8</option><option>Year 9</option>
+                <option>Year 10</option><option>Year 11</option><option>Year 12</option>
+                <option>Other / Left school</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Gender</label>
+              <select id="lnpe-gender" class="select">
+                <option value="">Select…</option>
+                <option>Male</option><option>Female</option><option>Prefer not to say</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Who brought them?</label>
+            <input id="lnpe-friend" type="text" class="input" placeholder="Friend's name">
+          </div>
+          <div class="form-grid form-grid--2">
+            <div class="form-group">
+              <label>Parent / guardian name</label>
+              <input id="lnpe-parent-name" type="text" class="input">
+            </div>
+            <div class="form-group">
+              <label>Parent / guardian phone</label>
+              <input id="lnpe-parent-phone" type="tel" class="input">
+            </div>
+          </div>
+          <div>
+            <label class="text-sm fw-semibold" style="display:block;margin-bottom:var(--s-3)">Visit history</label>
+            <div class="form-grid form-grid--2" style="gap:var(--s-3)">
+              <div class="form-group">
+                <label class="text-sm">Visit 1</label>
+                <input id="lnpe-v1" type="date" class="input">
+              </div>
+              <div class="form-group">
+                <label class="text-sm">Visit 2</label>
+                <input id="lnpe-v2" type="date" class="input">
+              </div>
+              <div class="form-group">
+                <label class="text-sm">Visit 3</label>
+                <input id="lnpe-v3" type="date" class="input">
+              </div>
+              <div class="form-group">
+                <label class="text-sm">Status</label>
+                <select id="lnpe-status" class="select">
+                  <option value="visit_1">Visit 1</option>
+                  <option value="visit_2">Visit 2</option>
+                  <option value="visit_3">Visit 3</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="stack--sm">
+            <label style="display:flex;align-items:center;gap:var(--s-2);cursor:pointer;font-size:var(--text-sm)">
+              <input type="checkbox" id="lnpe-initial-contact" style="accent-color:var(--c-primary);width:18px;height:18px">
+              Initial contact done
+            </label>
+            <label style="display:flex;align-items:center;gap:var(--s-2);cursor:pointer;font-size:var(--text-sm)">
+              <input type="checkbox" id="lnpe-catchup" style="accent-color:var(--c-primary);width:18px;height:18px">
+              Catch-up done
+            </label>
+          </div>
+          <div class="form-group">
+            <label>Notes</label>
+            <textarea id="lnpe-notes" class="textarea" rows="3" placeholder="Any notes…"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost" onclick="closeNPEditModal()">Cancel</button>
+        <button class="btn btn--primary" id="np-edit-save-btn" onclick="saveNPEdit()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── NC Edit Modal ────────────────────────────────────────────────────── -->
+  <div class="modal-backdrop" id="nc-edit-modal">
+    <div class="modal">
+      <div class="modal__header">
+        <h3>Edit new Christian</h3>
+        <button class="modal__close" onclick="closeNCEditModal()">✕</button>
+      </div>
+      <div class="modal__body">
+        <div id="nc-edit-error" class="error-banner hidden" style="margin-bottom:var(--s-4)"></div>
+        <div class="stack">
+          <div class="form-group">
+            <label>Name</label>
+            <input id="lnce-name" type="text" class="input" disabled style="background:var(--c-bg)">
+          </div>
+          <div class="form-grid form-grid--2">
+            <div class="form-group">
+              <label>Decision date</label>
+              <input id="lnce-date" type="date" class="input">
+            </div>
+            <div class="form-group">
+              <label>Decision type</label>
+              <select id="lnce-type" class="select">
+                <option value="">Select…</option>
+                <option value="first_time">First time</option>
+                <option value="rededication">Rededication</option>
+                <option value="water_baptism">Water baptism</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="text-sm fw-semibold" style="display:block;margin-bottom:var(--s-3)">Discipleship steps</label>
+            <div class="stack--sm">
+              <label style="display:flex;align-items:center;gap:var(--s-2);cursor:pointer;font-size:var(--text-sm)">
+                <input type="checkbox" id="lnce-bap" style="accent-color:var(--c-primary);width:18px;height:18px">
+                Water baptised
+              </label>
+              <div style="margin-left:26px">
+                <input id="lnce-bap-date" type="date" class="input" style="max-width:200px">
+              </div>
+              <label style="display:flex;align-items:center;gap:var(--s-2);cursor:pointer;font-size:var(--text-sm)">
+                <input type="checkbox" id="lnce-bible" style="accent-color:var(--c-primary);width:18px;height:18px">
+                Bible given
+              </label>
+              <label style="display:flex;align-items:center;gap:var(--s-2);cursor:pointer;font-size:var(--text-sm)">
+                <input type="checkbox" id="lnce-fs" style="accent-color:var(--c-primary);width:18px;height:18px">
+                Fresh Start started
+              </label>
+              <label style="display:flex;align-items:center;gap:var(--s-2);cursor:pointer;font-size:var(--text-sm)">
+                <input type="checkbox" id="lnce-fsc" style="accent-color:var(--c-primary);width:18px;height:18px">
+                Fresh Start completed
+              </label>
+              <label style="display:flex;align-items:center;gap:var(--s-2);cursor:pointer;font-size:var(--text-sm)">
+                <input type="checkbox" id="lnce-hs-bap" style="accent-color:var(--c-primary);width:18px;height:18px">
+                Baptised in the Holy Spirit
+              </label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Notes</label>
+            <textarea id="lnce-notes" class="textarea" rows="2" placeholder="Any notes…"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost" onclick="closeNCEditModal()">Cancel</button>
+        <button class="btn btn--primary" id="nc-edit-save-btn" onclick="saveNCEdit()">Save</button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.50.0/dist/umd/supabase.min.js"></script>
   <script src="shared.js"></script>
   <script>
@@ -1078,7 +1250,10 @@
             <div class="np-card__name">${escHtml(np.name)}</div>
             <div class="np-card__meta">${[np.school, np.year_level].filter(Boolean).join(' · ')}</div>
           </div>
-          <span class="badge badge--${statusBadge(np.status)}">${statusLabel(np.status)}</span>
+          <div style="display:flex;align-items:center;gap:var(--s-2)">
+            <span class="badge badge--${statusBadge(np.status)}">${statusLabel(np.status)}</span>
+            <button class="btn btn--ghost btn--sm" onclick="openNPEditModal('${np.id}')">Edit</button>
+          </div>
         </div>
         <div class="np-card__visits">
           <span class="visit-dot ${np.visit_1_date ? '' : 'empty'}">Visit 1 ${np.visit_1_date ? formatDate(np.visit_1_date) : '—'}</span>
@@ -1431,10 +1606,11 @@
 
   // ── New Christians ──────────────────────────────────────────────────────────
   const ncComments = {};
+  let newChristians = [];
 
   async function loadNewChristians() {
     const { data, error } = await db.from('new_christians')
-      .select('id, name, decision_date, decision_type, baptism_done, baptism_date, bible_given, fresh_start_started, fresh_start_completed')
+      .select('id, name, decision_date, decision_type, baptism_done, baptism_date, bible_given, fresh_start_started, fresh_start_completed, hs_baptised, notes')
       .eq('leader_id', identity.leader_id)
       .eq('archived', false)
       .order('decision_date', { ascending: false });
@@ -1448,6 +1624,7 @@
     }
 
     const ncs = data ?? [];
+    newChristians = ncs;
     if (!ncs.length) {
       document.getElementById('nc-empty').classList.remove('hidden');
       return;
@@ -1478,6 +1655,7 @@
             <div class="np-card__name">${escHtml(nc.name)}</div>
             <div class="np-card__meta">${decisionLabel(nc.decision_type)}${nc.decision_date ? ' · ' + formatDate(nc.decision_date) : ''}</div>
           </div>
+          <button class="btn btn--ghost btn--sm" onclick="openNCEditModal('${nc.id}')">Edit</button>
         </div>
         <div class="np-card__visits" style="flex-wrap:wrap;gap:6px">
           ${step(nc.baptism_done, 'Baptism')}
@@ -1612,6 +1790,132 @@
       renderNCCommentHistory(ncId);
       renderNCComments(ncId);
     }
+  }
+
+  // ── NP Edit Modal ───────────────────────────────────────────────────────────
+  let editingNPId = null;
+
+  function openNPEditModal(npId) {
+    const np = newPeople.find(n => n.id === npId);
+    if (!np) return;
+    editingNPId = npId;
+    document.getElementById('lnpe-name').value        = np.name ?? '';
+    document.getElementById('lnpe-phone').value       = np.phone ?? '';
+    document.getElementById('lnpe-school').value      = np.school ?? '';
+    document.getElementById('lnpe-year').value        = np.year_level ?? '';
+    document.getElementById('lnpe-gender').value      = np.gender ?? '';
+    document.getElementById('lnpe-friend').value      = np.friend ?? '';
+    document.getElementById('lnpe-parent-name').value = np.parent_name ?? '';
+    document.getElementById('lnpe-parent-phone').value = np.parent_phone ?? '';
+    document.getElementById('lnpe-v1').value          = np.visit_1_date ?? '';
+    document.getElementById('lnpe-v2').value          = np.visit_2_date ?? '';
+    document.getElementById('lnpe-v3').value          = np.visit_3_date ?? '';
+    document.getElementById('lnpe-status').value      = np.status ?? 'visit_1';
+    document.getElementById('lnpe-initial-contact').checked = !!np.initial_contact_done;
+    document.getElementById('lnpe-catchup').checked         = !!np.catchup_done;
+    document.getElementById('lnpe-notes').value       = np.notes ?? '';
+    document.getElementById('np-edit-error').classList.add('hidden');
+    document.getElementById('np-edit-modal').classList.add('open');
+  }
+
+  function closeNPEditModal() {
+    document.getElementById('np-edit-modal').classList.remove('open');
+    editingNPId = null;
+  }
+
+  async function saveNPEdit() {
+    if (!editingNPId) return;
+    const name = document.getElementById('lnpe-name').value.trim();
+    if (!name) {
+      document.getElementById('np-edit-error').textContent = 'Name is required.';
+      document.getElementById('np-edit-error').classList.remove('hidden');
+      return;
+    }
+    const btn = document.getElementById('np-edit-save-btn');
+    setLoading(btn, true);
+    const payload = {
+      name,
+      phone:                document.getElementById('lnpe-phone').value.trim()        || null,
+      school:               document.getElementById('lnpe-school').value.trim()       || null,
+      year_level:           document.getElementById('lnpe-year').value                || null,
+      gender:               document.getElementById('lnpe-gender').value              || null,
+      friend:               document.getElementById('lnpe-friend').value.trim()       || null,
+      parent_name:          document.getElementById('lnpe-parent-name').value.trim()  || null,
+      parent_phone:         document.getElementById('lnpe-parent-phone').value.trim() || null,
+      visit_1_date:         document.getElementById('lnpe-v1').value                  || null,
+      visit_2_date:         document.getElementById('lnpe-v2').value                  || null,
+      visit_3_date:         document.getElementById('lnpe-v3').value                  || null,
+      status:               document.getElementById('lnpe-status').value,
+      initial_contact_done: document.getElementById('lnpe-initial-contact').checked,
+      catchup_done:         document.getElementById('lnpe-catchup').checked,
+      notes:                document.getElementById('lnpe-notes').value.trim()        || null,
+    };
+    const { error } = await db.from('new_people').update(payload).eq('id', editingNPId);
+    setLoading(btn, false);
+    if (error) {
+      document.getElementById('np-edit-error').textContent = 'Save failed. Please try again.';
+      document.getElementById('np-edit-error').classList.remove('hidden');
+      return;
+    }
+    const np = newPeople.find(n => n.id === editingNPId);
+    if (np) Object.assign(np, payload);
+    closeNPEditModal();
+    renderNPList();
+    renderOverdueNPs();
+  }
+
+  // ── NC Edit Modal ───────────────────────────────────────────────────────────
+  let editingNCId = null;
+
+  function openNCEditModal(ncId) {
+    const nc = newChristians.find(n => n.id === ncId);
+    if (!nc) return;
+    editingNCId = ncId;
+    document.getElementById('lnce-name').value     = nc.name ?? '';
+    document.getElementById('lnce-date').value     = nc.decision_date ?? '';
+    document.getElementById('lnce-type').value     = nc.decision_type ?? '';
+    document.getElementById('lnce-bap').checked    = !!nc.baptism_done;
+    document.getElementById('lnce-bap-date').value = nc.baptism_date ?? '';
+    document.getElementById('lnce-bible').checked  = !!nc.bible_given;
+    document.getElementById('lnce-fs').checked     = !!nc.fresh_start_started;
+    document.getElementById('lnce-fsc').checked    = !!nc.fresh_start_completed;
+    document.getElementById('lnce-hs-bap').checked = !!nc.hs_baptised;
+    document.getElementById('lnce-notes').value    = nc.notes ?? '';
+    document.getElementById('nc-edit-error').classList.add('hidden');
+    document.getElementById('nc-edit-modal').classList.add('open');
+  }
+
+  function closeNCEditModal() {
+    document.getElementById('nc-edit-modal').classList.remove('open');
+    editingNCId = null;
+  }
+
+  async function saveNCEdit() {
+    if (!editingNCId) return;
+    const btn = document.getElementById('nc-edit-save-btn');
+    setLoading(btn, true);
+    const payload = {
+      decision_date:          document.getElementById('lnce-date').value     || null,
+      decision_type:          document.getElementById('lnce-type').value     || null,
+      baptism_done:           document.getElementById('lnce-bap').checked,
+      baptism_date:           document.getElementById('lnce-bap-date').value || null,
+      bible_given:            document.getElementById('lnce-bible').checked,
+      fresh_start_started:    document.getElementById('lnce-fs').checked,
+      fresh_start_completed:  document.getElementById('lnce-fsc').checked,
+      hs_baptised:            document.getElementById('lnce-hs-bap').checked,
+      notes:                  document.getElementById('lnce-notes').value.trim() || null,
+    };
+    const { error } = await db.from('new_christians').update(payload).eq('id', editingNCId);
+    setLoading(btn, false);
+    if (error) {
+      document.getElementById('nc-edit-error').textContent = 'Save failed. Please try again.';
+      document.getElementById('nc-edit-error').classList.remove('hidden');
+      return;
+    }
+    const nc = newChristians.find(n => n.id === editingNCId);
+    if (nc) Object.assign(nc, payload);
+    closeNCEditModal();
+    await loadNewChristians();
   }
 
   // ── Term Review ─────────────────────────────────────────────────────────────
