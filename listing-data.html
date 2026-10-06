@@ -808,6 +808,16 @@
     return count;
   }
 
+  // Expected attendance for a given entry: use the full attendance_listing length (roster
+  // submitted for that week), falling back to the static roster count if no entry exists.
+  function expectedCount(entry, leaderId) {
+    if (entry) {
+      const al = entry.attendance_listing;
+      if (Array.isArray(al) && al.length > 0) return al.length;
+    }
+    return rosterCount[leaderId] ?? 0;
+  }
+
   // ─── Generic save for any leader_entries field ───
   async function saveAttendanceField(input, field) {
     const leaderId  = input.dataset.leaderId;
@@ -974,19 +984,25 @@
     // ─ Summary section ─
     tbodyRows += `<tr class="section-row"><td colspan="${colspan}">SUMMARY — ALL LEADERS</td></tr>`;
 
-    // Summary: Expected Attendance (static per week)
-    const totalExpected = filteredLeaders.reduce((s, l) => s + (rosterCount[l.id] ?? 0), 0);
+    // Summary: Expected Attendance (per-week, from each leader's submitted attendance_listing)
     {
-      const displayCells = displayDates.map(() =>
-        `<td class="td-week"><span class="cell-val">${totalExpected}</span></td>`
+      const wkExpected = displayDates.map(date =>
+        filteredLeaders.reduce((s, l) => {
+          const entry = lookup[termKey]?.[date]?.[l.id] ?? null;
+          return s + expectedCount(entry, l.id);
+        }, 0)
+      );
+      const displayCells = wkExpected.map(v =>
+        `<td class="td-week"><span class="cell-val">${v}</span></td>`
       ).join('');
       const emptyCells = Array.from({length: emptyWeekCount}, () =>
         `<td class="td-week"><span class="cell-val empty"></span></td>`
       ).join('');
+      const currentTotal = filteredLeaders.reduce((s, l) => s + (rosterCount[l.id] ?? 0), 0);
       tbodyRows += `<tr class="data-row">
         <td class="td-label">Expected Attendance</td>
         ${displayCells}${emptyCells}
-        <td class="td-total">${totalExpected}</td>
+        <td class="td-total">${currentTotal}</td>
       </tr>`;
     }
 
@@ -1069,11 +1085,13 @@
       const label = leaderLabel(leader);
       tbodyRows += `<tr class="leader-row"><td colspan="${colspan}">${label}</td></tr>`;
 
-      // Expected (static per week)
+      // Expected (per-week from attendance_listing, falls back to roster count)
       {
-        const displayCells = displayDates.map(() =>
-          `<td class="td-week"><span class="cell-val">${exp}</span></td>`
-        ).join('');
+        const displayCells = displayDates.map(date => {
+          const entry = lookup[termKey]?.[date]?.[leader.id] ?? null;
+          const v = expectedCount(entry, leader.id);
+          return `<td class="td-week"><span class="cell-val">${v}</span></td>`;
+        }).join('');
         const emptyCells = Array.from({length: emptyWeekCount}, () =>
           `<td class="td-week"><span class="cell-val empty"></span></td>`
         ).join('');
