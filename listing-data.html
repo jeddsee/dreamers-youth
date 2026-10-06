@@ -929,30 +929,19 @@
     const termKey    = 'T' + termNum + ' ' + ldYear;
     const overdueDate = ldYear === new Date().getFullYear() ? getOverdueDate() : null;
 
-    // Build display dates using ACTUAL submission dates as the source of truth.
-    // term_settings provides weekCount and future-week placeholders; it is NOT
-    // used to align columns, because its configured first_date may differ from
-    // the campus's actual youth-night DOW by one or more days.
     const tsRow = termSettingsMap[termNum];
-    // Include no-night dates so those weeks appear as columns (they have no leader_entries rows)
-    const noNightForTerm = noNightByTerm[termKey] ?? new Set();
-    const actualDates = [...new Set([...getTermDates(termKey), ...noNightForTerm])].sort();
     let weekCount, displayDates;
 
     if (tsRow) {
-      weekCount = tsRow.num_weeks;
-      if (actualDates.length > 0) {
-        // Actual submissions for past/current weeks + expected dates for future weeks
-        const lastActual   = actualDates[actualDates.length - 1];
-        const expectedDates = DY.termWeekDates(tsRow.first_date, tsRow.num_weeks);
-        const futureExpected = expectedDates.filter(d => d > lastActual);
-        displayDates = [...actualDates, ...futureExpected].slice(0, weekCount);
-      } else {
-        // No submissions yet — show expected dates as placeholder columns
-        displayDates = DY.termWeekDates(tsRow.first_date, tsRow.num_weeks);
-      }
-      weekCount = Math.max(weekCount, displayDates.length);
+      // Term is configured — use the configured dates as the single source of truth.
+      // Leader entries are submitted on these exact dates (leader.html uses the same
+      // DY.termWeekDates call), so the lookup will match correctly.
+      displayDates = DY.termWeekDates(tsRow.first_date, tsRow.num_weeks);
+      weekCount    = Math.max(tsRow.num_weeks, displayDates.length);
     } else {
+      // No term config: derive columns from actual submission dates + no-night dates
+      const noNightForTerm = noNightByTerm[termKey] ?? new Set();
+      const actualDates = [...new Set([...getTermDates(termKey), ...noNightForTerm])].sort();
       weekCount = getWeekCount(termNum);
       if (actualDates.length > 0) {
         const known = [...actualDates];
