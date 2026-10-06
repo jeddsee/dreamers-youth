@@ -8,7 +8,7 @@
   <style>
     .reg-wrap {
       min-height: 100vh;
-      background: #beff00;
+      background: #ff3500;
       padding: var(--s-6) var(--s-4);
       display: flex;
       flex-direction: column;
@@ -16,11 +16,11 @@
     }
     .reg-header {
       text-align: center;
-      color: #111;
+      color: #fff;
       margin-bottom: var(--s-6);
     }
     .reg-header__icon { margin-bottom: var(--s-3); display: flex; justify-content: center; }
-    .reg-header__icon img { width: 110px; height: auto; mix-blend-mode: multiply; }
+    .reg-header__icon img { width: 110px; height: auto; mix-blend-mode: screen; }
     .reg-header h1  { font-size: var(--text-2xl); font-weight: 800; margin-bottom: var(--s-1); }
     .reg-header p   { font-size: var(--text-sm); opacity: 0.7; }
 
@@ -61,15 +61,15 @@
       cursor: pointer;
       transition: border-color 0.15s, background 0.15s;
     }
-    .decision-option:hover { border-color: #beff00; background: #f6ffd4; }
+    .decision-option:hover { border-color: #ff3500; background: #fff5f2; }
     .decision-option input[type="radio"] {
-      accent-color: #111;
+      accent-color: #ff3500;
       width: 18px; height: 18px;
       margin-top: 2px;
       flex-shrink: 0;
     }
     .decision-option input[type="radio"]:checked + .decision-option__label { font-weight: 700; }
-    .decision-option:has(input:checked) { border-color: #111; background: #f6ffd4; }
+    .decision-option:has(input:checked) { border-color: #ff3500; background: #fff5f2; }
     .decision-option__label { font-size: var(--text-sm); }
     .decision-option__sub { font-size: var(--text-xs); color: var(--c-text-muted); margin-top: 2px; }
 
@@ -153,7 +153,7 @@
         </div>
 
         <label class="decision-option" style="margin-top:var(--s-2)">
-          <input type="checkbox" id="water-baptism" style="accent-color:#111;width:18px;height:18px;flex-shrink:0;margin-top:2px">
+          <input type="checkbox" id="water-baptism" style="accent-color:#ff3500;width:18px;height:18px;flex-shrink:0;margin-top:2px">
           <div class="decision-option__label">I also want to get water baptised</div>
         </label>
 
