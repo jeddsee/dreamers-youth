@@ -249,6 +249,21 @@
     }
     body { background: #0d0d0d; }
 
+    /* Attendance overdue banner */
+    .att-overdue-banner {
+      display: flex;
+      align-items: center;
+      gap: var(--s-2);
+      background: #fff2ee;
+      border: 1.5px solid #ff3500;
+      border-radius: var(--r-lg);
+      padding: var(--s-3) var(--s-4);
+      font-size: var(--text-sm);
+      font-weight: 700;
+      color: #cc2a00;
+      margin-bottom: var(--s-4);
+    }
+
     /* Overdue comments */
     .overdue-section {
       margin: 0 0 var(--s-4);
@@ -362,6 +377,10 @@
             <input type="date" id="entry-date" class="input">
           </div>
           <div id="entry-saved-badge" class="badge badge--success hidden" style="align-self:flex-end">Saved</div>
+        </div>
+        <div id="att-overdue-banner" class="att-overdue-banner hidden">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#cc2a00" stroke-width="2"><circle cx="8" cy="8" r="7"/><line x1="8" y1="4.5" x2="8" y2="8.5"/><circle cx="8" cy="11" r="0.5" fill="#cc2a00"/></svg>
+          Expected attendance overdue
         </div>
         <div id="no-youth-night-msg" class="error-banner hidden" style="margin-bottom:var(--s-4)">
           No youth night this week — entry suppressed.
@@ -590,12 +609,34 @@
     roster = rosterRes.data ?? [];
     recentEntries = entriesRes.data ?? [];
 
+    checkAttendanceOverdue();
+
     if (!roster.length) {
       document.getElementById('roster-empty').classList.remove('hidden');
       return;
     }
 
     renderRoster();
+  }
+
+  function checkAttendanceOverdue() {
+    const dow = identity.youth_night_dow ?? 5;
+    const now = new Date();
+    const entryDateStr = nextYouthNight(now, dow);
+
+    // Due = the day before youth night at 9pm (Thursday if Friday youth night)
+    const nextNight = new Date(entryDateStr + 'T00:00:00');
+    const due = new Date(nextNight);
+    due.setDate(due.getDate() - 1);
+    due.setHours(21, 0, 0, 0);
+
+    if (now <= due) return; // not yet overdue
+
+    // Check if an entry exists for the current week
+    const submitted = recentEntries.some(e => e.entry_date === entryDateStr);
+    if (!submitted) {
+      document.getElementById('att-overdue-banner').classList.remove('hidden');
+    }
   }
 
   function renderRoster() {
@@ -948,6 +989,8 @@
         .order('entry_date', { ascending: false })
         .limit(5);
       recentEntries = data ?? [];
+      // Hide overdue banner once submitted
+      document.getElementById('att-overdue-banner').classList.add('hidden');
     }
   });
 

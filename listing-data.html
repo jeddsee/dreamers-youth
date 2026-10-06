@@ -259,6 +259,11 @@
     .cell-input:focus { background: var(--wd-blue-dim); }
     .cell-input:disabled { opacity: 0.5; }
 
+    /* Overdue cell: leader hasn't submitted past Thursday 9pm */
+    .td-week.td-overdue .cell-input { color: #cc2a00 !important; font-weight: 700; }
+    .td-week.td-overdue .cell-input::placeholder { color: #ff3500; font-weight: 700; }
+    .td-week.td-overdue { background: #fff5f2 !important; }
+
     .wd-status { padding: 48px; text-align: center; color: var(--c-text-muted); font-size: var(--text-sm); }
 
     /* ─── Print ─── */
@@ -619,6 +624,19 @@
     });
   }
 
+  // Returns the YYYY-MM-DD of the overdue entry date if we're past the Thursday 9pm deadline,
+  // otherwise null. Only relevant for the current year.
+  function getOverdueDate() {
+    const dow = identity.youth_night_dow ?? 5;
+    const now = new Date();
+    const entryDateStr = nextYouthNight(now, dow);
+    const nextNight = new Date(entryDateStr + 'T00:00:00');
+    const due = new Date(nextNight);
+    due.setDate(due.getDate() - 1); // day before youth night
+    due.setHours(21, 0, 0, 0);     // at 9pm
+    return now > due ? entryDateStr : null;
+  }
+
   // Build lookup: termKey → entry_date → leaderId → entry
   function buildLookup(entries) {
     const lookup = {};
@@ -730,7 +748,8 @@
   }
 
   function renderTermInto(el, termNum, filteredLeaders, lookup) {
-    const termKey   = 'T' + termNum + ' ' + ldYear;
+    const termKey    = 'T' + termNum + ' ' + ldYear;
+    const overdueDate = ldYear === new Date().getFullYear() ? getOverdueDate() : null;
 
     // Use term_settings if configured, otherwise fall back to DB-scanned dates
     const tsRow = termSettingsMap[termNum];
@@ -908,13 +927,14 @@
           const val    = entry ? youthCount(entry) : null;
           const valStr = val != null ? String(val) : '';
           const esc    = s => String(s).replace(/"/g, '&quot;');
-          return `<td class="td-week"><input type="number" class="cell-input"
+          const isOverdue = overdueDate === date && val == null;
+          return `<td class="td-week${isOverdue ? ' td-overdue' : ''}"><input type="number" class="cell-input"
             value="${esc(valStr)}"
             data-leader-id="${esc(leader.id)}"
             data-entry-date="${esc(date)}"
             data-term="${esc(termKey)}"
             onchange="saveYouthAttendance(this)"
-            min="0" max="999" placeholder=""></td>`;
+            min="0" max="999" placeholder="${isOverdue ? '!' : ''}"></td>`;
         }).join('');
         const emptyCells = Array.from({length: emptyWeekCount}, () =>
           `<td class="td-week"><span class="cell-val empty"></span></td>`
