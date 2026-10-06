@@ -382,6 +382,75 @@
   </div>
 </div>
 
+<!-- ── Edit Youth Modal ──────────────────────────────────────────────────────── -->
+<div class="modal-backdrop" id="edit-youth-modal">
+  <div class="modal">
+    <div class="modal__header">
+      <h3>Edit youth profile</h3>
+      <button class="modal__close" onclick="closeEditYouthModal()">✕</button>
+    </div>
+    <div class="modal__body">
+      <input type="hidden" id="ey-id">
+      <div class="stack">
+        <div class="form-group">
+          <label>Name <span class="required">*</span></label>
+          <input id="ey-name" type="text" class="input" placeholder="Full name">
+        </div>
+        <div class="form-grid form-grid--2">
+          <div class="form-group">
+            <label>Year level</label>
+            <select id="ey-year" class="select">
+              <option value="">Select…</option>
+              <option>Year 7</option><option>Year 8</option><option>Year 9</option>
+              <option>Year 10</option><option>Year 11</option><option>Year 12</option>
+              <option>Other / Left school</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Gender</label>
+            <select id="ey-gender" class="select">
+              <option value="">Select…</option>
+              <option>Male</option><option>Female</option><option>Prefer not to say</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select id="ey-category" class="select">
+            <option value="">None</option>
+            <option value="contributor">Contributor</option>
+            <option value="connected">Connected</option>
+            <option value="community">Community</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Leader</label>
+          <select id="ey-leader" class="select"></select>
+        </div>
+        <div style="display:flex;gap:var(--s-6)">
+          <label style="display:flex;align-items:center;gap:var(--s-2);font-size:var(--text-sm);cursor:pointer">
+            <input type="checkbox" id="ey-water"> Water baptised
+          </label>
+          <label style="display:flex;align-items:center;gap:var(--s-2);font-size:var(--text-sm);cursor:pointer">
+            <input type="checkbox" id="ey-hs"> HS baptised
+          </label>
+          <label style="display:flex;align-items:center;gap:var(--s-2);font-size:var(--text-sm);cursor:pointer">
+            <input type="checkbox" id="ey-serving"> Serving
+          </label>
+        </div>
+      </div>
+      <div id="ey-error" class="error-banner hidden mt-3"></div>
+    </div>
+    <div class="modal__footer" style="justify-content:space-between">
+      <button class="btn btn--danger btn--sm" onclick="archiveYouth()">Archive</button>
+      <div style="display:flex;gap:var(--s-2)">
+        <button class="btn btn--ghost" onclick="closeEditYouthModal()">Cancel</button>
+        <button class="btn btn--primary" id="ey-save-btn" onclick="submitEditYouth()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ── Add Leader Modal ──────────────────────────────────────────────────────── -->
 <div class="modal-backdrop" id="add-leader-modal">
   <div class="modal">
@@ -668,7 +737,7 @@ function renderRoster() {
         <button class="btn btn--sm btn--ghost" onclick="openAddYouthModal('${escHtml(lid)}','${escHtml(ln).replace(/'/g,"\\'")}')">+ Add youth</button>
       </div>
       <table class="leaders-table" style="min-width:0">
-        <thead><tr><th>Name</th><th>Category</th><th>Water Bap.</th><th>HS Bap.</th><th>Serving</th></tr></thead>
+        <thead><tr><th>Name</th><th>Category</th><th>Water Bap.</th><th>HS Bap.</th><th>Serving</th><th></th></tr></thead>
         <tbody>${ys.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')).map(y => `
           <tr>
             <td class="fw-medium">${escHtml(y.name ?? '—')}</td>
@@ -676,6 +745,7 @@ function renderRoster() {
             <td>${y.water_baptised ? '<span class="check-yes">✓</span>' : '<span class="check-no">—</span>'}</td>
             <td>${y.hs_baptised   ? '<span class="check-yes">✓</span>' : '<span class="check-no">—</span>'}</td>
             <td>${y.serving       ? '<span class="check-yes">✓</span>' : '<span class="check-no">—</span>'}</td>
+            <td><button class="btn btn--ghost btn--sm" onclick="openEditYouthModal('${escHtml(y.id)}')">Edit</button></td>
           </tr>`).join('')}
         </tbody>
       </table>
@@ -861,6 +931,70 @@ function exportReview() {
     <script>window.onload=()=>window.print();<\/script>
   </body></html>`);
   win.document.close();
+}
+
+// ── Edit Youth ────────────────────────────────────────────────────────────────
+function openEditYouthModal(youthId) {
+  const y = allYouth.find(x => x.id === youthId);
+  if (!y) return;
+  document.getElementById('ey-id').value       = y.id;
+  document.getElementById('ey-name').value     = y.name ?? '';
+  document.getElementById('ey-year').value     = y.year_level ?? '';
+  document.getElementById('ey-gender').value   = y.gender ?? '';
+  document.getElementById('ey-category').value = y.category ?? '';
+  document.getElementById('ey-water').checked  = !!y.water_baptised;
+  document.getElementById('ey-hs').checked     = !!y.hs_baptised;
+  document.getElementById('ey-serving').checked= !!y.serving;
+  // Populate leader dropdown
+  const leaderSel = document.getElementById('ey-leader');
+  leaderSel.innerHTML = '<option value="">Unassigned</option>' +
+    allLeaders.filter(l => l.role === 'leader').map(l =>
+      `<option value="${escHtml(l.id)}"${l.id === y.leader_id ? ' selected' : ''}>${escHtml(l.name)}</option>`
+    ).join('');
+  hideError('ey-error');
+  document.getElementById('edit-youth-modal').classList.add('open');
+}
+
+function closeEditYouthModal() {
+  document.getElementById('edit-youth-modal').classList.remove('open');
+}
+
+async function submitEditYouth() {
+  const id   = document.getElementById('ey-id').value;
+  const name = document.getElementById('ey-name').value.trim();
+  if (!name) { showError('Name is required.', 'ey-error'); return; }
+  const btn = document.getElementById('ey-save-btn');
+  setLoading(btn, true);
+  const payload = {
+    name,
+    year_level:     document.getElementById('ey-year').value     || null,
+    gender:         document.getElementById('ey-gender').value   || null,
+    category:       document.getElementById('ey-category').value || null,
+    leader_id:      document.getElementById('ey-leader').value   || null,
+    water_baptised: document.getElementById('ey-water').checked,
+    hs_baptised:    document.getElementById('ey-hs').checked,
+    serving:        document.getElementById('ey-serving').checked,
+  };
+  const { error } = await db.from('youth_roster').update(payload).eq('id', id);
+  setLoading(btn, false);
+  if (error) { showError('Could not save changes.', 'ey-error'); return; }
+  const idx = allYouth.findIndex(x => x.id === id);
+  if (idx !== -1) allYouth[idx] = { ...allYouth[idx], ...payload };
+  closeEditYouthModal();
+  renderRoster();
+  renderTeamTable();
+}
+
+async function archiveYouth() {
+  const id = document.getElementById('ey-id').value;
+  if (!confirm('Archive this youth? They will no longer appear in the listing.')) return;
+  const { error } = await db.from('youth_roster').update({ active: false }).eq('id', id);
+  if (error) { showError('Could not archive.', 'ey-error'); return; }
+  const idx = allYouth.findIndex(x => x.id === id);
+  if (idx !== -1) allYouth[idx].active = false;
+  closeEditYouthModal();
+  renderRoster();
+  renderTeamTable();
 }
 
 // ── Add Youth to Leader ───────────────────────────────────────────────────────
