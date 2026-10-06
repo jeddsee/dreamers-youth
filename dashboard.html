@@ -328,7 +328,7 @@
               <input id="ws-saints" type="number" min="0" max="11" value="0" class="input" autocomplete="off">
             </div>
             <div class="form-group">
-              <label class="entry-field-label">Schools visited</label>
+              <label class="entry-field-label">School engagements</label>
               <input id="ws-schools" type="number" min="0" max="11" value="0" class="input" autocomplete="off">
             </div>
           </div>
@@ -907,7 +907,7 @@
         ${card('Avg Connect Att.', avgConA, avgConB)}
         ${card('Avg Sunday Att.',  avgSunA, avgSunB)}
         ${card('Avg Saints Att.',  avg(colA('saints_attendance')),  avg(colB('saints_attendance')))}
-        ${card('Schools Visited',  sum(colA('schools_visited')),    sum(colB('schools_visited')))}
+        ${card('School Engagements',  sum(colA('schools_visited')),    sum(colB('schools_visited')))}
       </div>
     `;
     el.classList.remove('hidden');
@@ -1327,7 +1327,7 @@
       { label: 'Avg Connect Att.', value: avg(col('connect_attendance')) },
       { label: 'Avg Sunday Att.',  value: avg(col('sunday_attendance')) },
       { label: 'Avg Saints Att.',  value: avg(col('saints_attendance')) },
-      { label: 'Schools Visited',  value: sum(col('schools_visited')) },
+      { label: 'School Engagements',  value: sum(col('schools_visited')) },
     ].map(c => `<div class="stat-card"><div class="stat-card__label">${c.label}</div><div class="stat-card__value">${c.value}</div></div>`).join('');
 
   }
