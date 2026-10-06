@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Decision Card — Dreamers Youth</title>
+  <link rel="stylesheet" href="shared.css">
+  <style>
+    .reg-wrap {
+      min-height: 100vh;
+      background: #beff00;
+      padding: var(--s-6) var(--s-4);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .reg-header {
+      text-align: center;
+      color: #111;
+      margin-bottom: var(--s-6);
+    }
+    .reg-header__icon { font-size: 2.5rem; margin-bottom: var(--s-2); }
+    .reg-header h1  { font-size: var(--text-2xl); font-weight: 800; margin-bottom: var(--s-1); }
+    .reg-header p   { font-size: var(--text-sm); opacity: 0.7; }
+
+    .reg-card {
+      background: var(--c-surface);
+      border-radius: var(--r-lg);
+      padding: var(--s-6);
+      width: 100%;
+      max-width: 480px;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .section-label {
+      font-size: var(--text-xs);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--c-text-muted);
+      margin-bottom: var(--s-3);
+      margin-top: var(--s-5);
+    }
+    .section-label:first-child { margin-top: 0; }
+
+    /* Decision type radio cards */
+    .decision-options {
+      display: flex;
+      flex-direction: column;
+      gap: var(--s-2);
+      margin-bottom: var(--s-2);
+    }
+    .decision-option {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--s-3);
+      border: 2px solid var(--c-border);
+      border-radius: var(--r-lg);
+      padding: var(--s-3) var(--s-4);
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .decision-option:hover { border-color: #beff00; background: #f6ffd4; }
+    .decision-option input[type="radio"] {
+      accent-color: #111;
+      width: 18px; height: 18px;
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+    .decision-option input[type="radio"]:checked + .decision-option__label { font-weight: 700; }
+    .decision-option:has(input:checked) { border-color: #111; background: #f6ffd4; }
+    .decision-option__label { font-size: var(--text-sm); }
+    .decision-option__sub { font-size: var(--text-xs); color: var(--c-text-muted); margin-top: 2px; }
+
+    /* Success screen */
+    .success-screen {
+      text-align: center;
+      padding: var(--s-8) var(--s-4);
+    }
+    .success-screen__icon { font-size: 3.5rem; margin-bottom: var(--s-4); }
+    .success-screen h2 { font-size: var(--text-2xl); margin-bottom: var(--s-3); }
+    .success-screen p  { color: var(--c-text-secondary); font-size: var(--text-base); }
+  </style>
+</head>
+<body>
+  <div class="reg-wrap">
+    <div class="reg-header">
+      <div class="reg-header__icon">✝️</div>
+      <h1>Decision Card</h1>
+      <p id="campus-subtitle">Fill in your details below</p>
+    </div>
+
+    <div class="reg-card">
+
+      <div id="error-banner" class="error-banner hidden" style="margin-bottom:var(--s-4)"></div>
+
+      <form id="reg-form" class="stack--sm" novalidate>
+
+        <p class="section-label">About you</p>
+
+        <div class="form-grid form-grid--2">
+          <div class="form-group" style="grid-column:1/-1">
+            <label for="name">Full name <span class="required">*</span></label>
+            <input id="name" type="text" class="input" placeholder="e.g. Jordan Smith" required autocomplete="name">
+          </div>
+
+          <div class="form-group">
+            <label for="phone">Mobile number</label>
+            <input id="phone" type="tel" class="input" placeholder="04xx xxx xxx" autocomplete="tel">
+          </div>
+
+          <div class="form-group">
+            <label for="year-level">Year level</label>
+            <select id="year-level" class="select">
+              <option value="">Select…</option>
+              <option>Year 7</option>
+              <option>Year 8</option>
+              <option>Year 9</option>
+              <option>Year 10</option>
+              <option>Year 11</option>
+              <option>Year 12</option>
+              <option>Other / Left school</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="gender">Gender</label>
+            <select id="gender" class="select">
+              <option value="">Select…</option>
+              <option>Male</option>
+              <option>Female</option>
+              <option>Prefer not to say</option>
+            </select>
+          </div>
+        </div>
+
+        <p class="section-label" style="margin-top:var(--s-5)">My decision today</p>
+
+        <div class="decision-options">
+          <label class="decision-option">
+            <input type="radio" name="decision" value="first_time" required>
+            <div>
+              <div class="decision-option__label">First time giving my life to Jesus</div>
+              <div class="decision-option__sub">I'm making this decision for the first time</div>
+            </div>
+          </label>
+          <label class="decision-option">
+            <input type="radio" name="decision" value="rededication">
+            <div>
+              <div class="decision-option__label">Rededication</div>
+              <div class="decision-option__sub">I'm recommitting my life to God</div>
+            </div>
+          </label>
+          <label class="decision-option">
+            <input type="radio" name="decision" value="water_baptism">
+            <div>
+              <div class="decision-option__label">Water baptism</div>
+              <div class="decision-option__sub">I want to get baptised</div>
+            </div>
+          </label>
+        </div>
+
+        <div style="margin-top:var(--s-6)">
+          <button id="submit-btn" type="submit" class="btn btn--primary btn--full btn--lg">
+            Submit
+          </button>
+        </div>
+
+      </form>
+
+      <!-- Success screen (hidden until submit) -->
+      <div id="success-screen" class="success-screen hidden">
+        <div class="success-screen__icon">🙌</div>
+        <h2>Thank you!</h2>
+        <p>Your decision has been recorded.<br>We're so proud of you!</p>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.50.0/dist/umd/supabase.min.js"></script>
+  <script src="shared.js"></script>
+  <script>
+    const { db } = DY;
+
+    const params     = new URLSearchParams(window.location.search);
+    const campusSlug = params.get('campus');
+    let campusId     = null;
+    let campusName   = '';
+
+    (async () => {
+      if (!campusSlug) return;
+      const { data } = await db
+        .from('campuses')
+        .select('id, name')
+        .eq('slug', campusSlug)
+        .single();
+      if (data) {
+        campusId   = data.id;
+        campusName = data.name;
+        document.getElementById('campus-subtitle').textContent =
+          `${campusName} campus — fill in your details below`;
+      }
+    })();
+
+    document.getElementById('reg-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideError();
+
+      const name       = document.getElementById('name').value.trim();
+      const phone      = document.getElementById('phone').value.trim();
+      const yearLevel  = document.getElementById('year-level').value;
+      const gender     = document.getElementById('gender').value;
+      const decision   = document.querySelector('input[name="decision"]:checked')?.value;
+
+      if (!name)     { showError('Please enter your name.'); return; }
+      if (!decision) { showError('Please select your decision.'); return; }
+
+      const btn = document.getElementById('submit-btn');
+      setLoading(btn, true);
+
+      const payload = {
+        campus_id:     campusId,
+        name,
+        phone:         phone      || null,
+        year_level:    yearLevel  || null,
+        gender:        gender     || null,
+        decision_type: decision,
+        decision_date: formatDateInput(),
+      };
+
+      const { error } = await db.from('new_christians').insert(payload);
+
+      setLoading(btn, false);
+
+      if (error) {
+        showError('Something went wrong. Please try again or see your leader.');
+        return;
+      }
+
+      document.getElementById('reg-form').classList.add('hidden');
+      document.getElementById('success-screen').classList.remove('hidden');
+    });
+  </script>
+</body>
+</html>

@@ -217,6 +217,45 @@
         </table>
       </div>
 
+      <h2 style="font-size:var(--text-2xl);font-weight:800;letter-spacing:-0.02em;margin-bottom:var(--s-6);margin-top:var(--s-8)">Registration QR Codes</h2>
+
+      <div class="card mb-6">
+        <div class="card__header"><h3>Self-registration links</h3></div>
+        <div class="card__body">
+          <p style="font-size:var(--text-sm);color:var(--c-text-muted);margin-bottom:var(--s-5)">
+            Print or display these QR codes so young people can register themselves directly from their phone.
+          </p>
+          <div id="qr-loading" style="color:var(--c-text-muted);font-size:var(--text-sm)">Loading…</div>
+          <div id="qr-codes" class="hidden" style="display:none;gap:var(--s-8);flex-wrap:wrap">
+
+            <!-- New People -->
+            <div style="text-align:center">
+              <div style="font-size:var(--text-xs);font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#666;margin-bottom:var(--s-3)">New People</div>
+              <div id="qr-np" style="display:inline-block;border:2px solid #111;border-radius:var(--r-lg);padding:var(--s-4);background:#fff"></div>
+              <div style="margin-top:var(--s-3)">
+                <a id="qr-np-link" href="#" target="_blank" style="font-size:var(--text-xs);color:var(--c-primary);word-break:break-all"></a>
+              </div>
+              <div style="margin-top:var(--s-3)">
+                <button class="btn btn--ghost btn--sm" onclick="downloadQR('qr-np','new-people-qr')">Download</button>
+              </div>
+            </div>
+
+            <!-- New Christians -->
+            <div style="text-align:center">
+              <div style="font-size:var(--text-xs);font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#666;margin-bottom:var(--s-3)">New Christians</div>
+              <div id="qr-nc" style="display:inline-block;border:2px solid #beff00;border-radius:var(--r-lg);padding:var(--s-4);background:#fff"></div>
+              <div style="margin-top:var(--s-3)">
+                <a id="qr-nc-link" href="#" target="_blank" style="font-size:var(--text-xs);color:var(--c-primary);word-break:break-all"></a>
+              </div>
+              <div style="margin-top:var(--s-3)">
+                <button class="btn btn--ghost btn--sm" onclick="downloadQR('qr-nc','new-christians-qr')">Download</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
     </div><!-- /page-content -->
   </div><!-- /main-content -->
 </div><!-- /app-layout -->
@@ -257,6 +296,8 @@ async function init() {
 
   document.getElementById('page-loading').classList.add('hidden');
   document.getElementById('page-content').classList.remove('hidden');
+
+  loadQRCodes();
 }
 
 async function loadCampusDow() {
@@ -435,6 +476,45 @@ async function deleteRow(id) {
 }
 
 init();
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+async function loadQRCodes() {
+  const { data } = await db.from('campuses')
+    .select('slug')
+    .eq('id', identity.campus_id)
+    .single();
+  if (!data?.slug) {
+    document.getElementById('qr-loading').textContent = 'No campus slug found — contact support.';
+    return;
+  }
+  const base  = window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
+  const npUrl = base + 'register.html?campus='    + encodeURIComponent(data.slug);
+  const ncUrl = base + 'register-nc.html?campus=' + encodeURIComponent(data.slug);
+
+  document.getElementById('qr-loading').classList.add('hidden');
+  const codesEl = document.getElementById('qr-codes');
+  codesEl.classList.remove('hidden');
+  codesEl.style.display = 'flex';
+
+  document.getElementById('qr-np-link').textContent = npUrl;
+  document.getElementById('qr-np-link').href = npUrl;
+  document.getElementById('qr-nc-link').textContent = ncUrl;
+  document.getElementById('qr-nc-link').href = ncUrl;
+
+  new QRCode(document.getElementById('qr-np'), { text: npUrl, width: 200, height: 200, colorDark: '#111111', colorLight: '#ffffff' });
+  new QRCode(document.getElementById('qr-nc'), { text: ncUrl, width: 200, height: 200, colorDark: '#111111', colorLight: '#ffffff' });
+}
+
+function downloadQR(containerId, filename) {
+  const canvas = document.querySelector('#' + containerId + ' canvas');
+  const img    = document.querySelector('#' + containerId + ' img');
+  const src    = canvas ? canvas.toDataURL('image/png') : img?.src;
+  if (!src) return;
+  const a = document.createElement('a');
+  a.href = src; a.download = filename + '.png'; a.click();
+}
 </script>
 </body>
 </html>
