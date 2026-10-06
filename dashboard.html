@@ -602,7 +602,7 @@
   const { db } = DY;
 
   let identity, leaders = [], roster = [], weeklyStats = [], termReview = null;
-  let archivedCount = 0, snapNP = [], snapLeaderEntries = [];
+  let archivedCount = 0, snapNP = [], snapLeaderEntries = [], snapNC = [];
 
   let allCampuses = [];
   let snapCampusId = null;
@@ -1043,7 +1043,8 @@
     let rosterQ  = db.from('youth_roster').select('id, is_new_christian, water_baptised, category, campus_id').eq('active', true);
     let archQ    = db.from('youth_roster').select('id', { count: 'exact', head: true }).eq('active', false);
     let statsQ   = db.from('weekly_stats').select('*').order('entry_date', { ascending: false }).limit(isAll ? 60 : 20);
-    let npQ      = db.from('new_people').select('status, campus_id, created_at').not('status', 'in', '("archived")');
+    let npQ      = db.from('new_people').select('status, campus_id, created_at, visit_1_date').not('status', 'in', '("archived")');
+    let ncQ      = db.from('new_christians').select('decision_date, decision_type, campus_id');
     let leQ      = db.from('leader_entries').select('entry_date, term, campus_id, youth_attendance').not('youth_attendance', 'is', null);
 
     if (isAll) {
@@ -1054,6 +1055,7 @@
       statsQ   = statsQ.in('campus_id', ids);
       npQ      = npQ.in('campus_id', ids);
       leQ      = leQ.in('campus_id', ids);
+      ncQ      = ncQ.in('campus_id', ids);
     } else {
       leadersQ = leadersQ.eq('campus_id', snapCampusId);
       rosterQ  = rosterQ.eq('campus_id', snapCampusId);
@@ -1061,15 +1063,17 @@
       statsQ   = statsQ.eq('campus_id', snapCampusId);
       npQ      = npQ.eq('campus_id', snapCampusId);
       leQ      = leQ.eq('campus_id', snapCampusId);
+      ncQ      = ncQ.eq('campus_id', snapCampusId);
     }
 
-    const [leadersRes, rosterRes, archRes, statsRes, npRes, leRes] = await Promise.all([leadersQ, rosterQ, archQ, statsQ, npQ, leQ]);
+    const [leadersRes, rosterRes, archRes, statsRes, npRes, leRes, ncRes] = await Promise.all([leadersQ, rosterQ, archQ, statsQ, npQ, leQ, ncQ]);
     leaders            = leadersRes.data ?? [];
     roster             = rosterRes.data ?? [];
     archivedCount      = archRes.count ?? 0;
     weeklyStats        = statsRes.data ?? [];
     snapNP             = npRes.data ?? [];
     snapLeaderEntries  = leRes.data ?? [];
+    snapNC             = ncRes.data ?? [];
 
     // Header
     const campusLabel = isAll
@@ -1192,6 +1196,35 @@
     return snapLeaderEntries;
   }
 
+  // Generic period filter for rows that have a date field (YYYY-MM-DD)
+  function filterByPeriod(arr, dateFn) {
+    if (snapPeriod === 'custom' && snapDateFrom && snapDateTo) {
+      return arr.filter(n => { const d = dateFn(n); return d && d >= snapDateFrom && d <= snapDateTo; });
+    }
+    if (snapPeriod === 'year') {
+      const yearStr = String(new Date().getFullYear());
+      const today   = new Date().toISOString().split('T')[0];
+      return arr.filter(n => { const d = dateFn(n); return d && d >= `${yearStr}-01-01` && d <= today; });
+    }
+    if (['t1','t2','t3','t4'].includes(snapPeriod)) {
+      // Derive date range from the weeklyStats entries for this term
+      const label = snapPeriod.toUpperCase();
+      const termDates = weeklyStats.filter(w => w.term && w.term.startsWith(label + ' ')).map(w => w.entry_date).sort();
+      if (!termDates.length) return arr;
+      const from = termDates[0], to = termDates[termDates.length - 1];
+      return arr.filter(n => { const d = dateFn(n); return d && d >= from && d <= to; });
+    }
+    return arr;
+  }
+
+  function getFilteredNP() {
+    return filterByPeriod(snapNP, n => n.visit_1_date || (n.created_at ? n.created_at.split('T')[0] : null));
+  }
+
+  function getFilteredNC() {
+    return filterByPeriod(snapNC, n => n.decision_date);
+  }
+
   // Sum youth_attendance per entry_date across leaders, then average those daily totals
   function avgAttendanceFromEntries(entries) {
     const byDate = {};
@@ -1257,10 +1290,11 @@
     document.getElementById('snap-leader-count').textContent     = leaderCount || '—';
     document.getElementById('snap-youth-per-leader').textContent = leaderCount > 0 ? youthPerLeader : '—';
 
-    // New People — v1 = all NP (visited at least once), v2 = visited 2+, v3 = visited 3 times
-    const v1 = snapNP.length;
-    const v2 = snapNP.filter(n => n.status === 'visit_2' || n.status === 'visit_3').length;
-    const v3 = snapNP.filter(n => n.status === 'visit_3').length;
+    // New People — filtered to the selected period using visit_1_date
+    const filteredNP = getFilteredNP();
+    const v1 = filteredNP.length;
+    const v2 = filteredNP.filter(n => n.status === 'visit_2' || n.status === 'visit_3').length;
+    const v3 = filteredNP.filter(n => n.status === 'visit_3').length;
     const retention = v1 > 0 ? Math.round((v2 + v3) / (v1 * 2) * 100) : 0;
     const npInPeriod = v1 + v2 + v3;
 
@@ -1273,12 +1307,13 @@
     ].map(c => `<div class="stat-card ${c.cls}"><div class="stat-card__label">${c.label}</div><div class="stat-card__value">${c.value}</div></div>`).join('');
 
     // Life Metrics
-    const nc = roster.filter(y => y.is_new_christian).length;
+    const filteredNC  = getFilteredNC();
+    const nc          = filteredNC.length;
     const baptisedPct = roster.length
       ? Math.round(roster.filter(y => y.water_baptised).length / roster.length * 100)
       : null;
     document.getElementById('snap-life-cards').innerHTML = [
-      { label: 'New Christians (Total)', value: nc,                                               cls: 'stat-card--fill-lime' },
+      { label: 'New Christians', value: nc,                                                       cls: 'stat-card--fill-lime' },
       { label: 'First-Time Decisions',   value: sum(col('salvations_first')),                     cls: 'stat-card--lime' },
       { label: 'Rededications',          value: sum(col('salvations_rededs')),                    cls: 'stat-card--lime' },
       { label: 'Bibles Given',           value: sum(col('bibles_given')),                         cls: 'stat-card--lime' },

@@ -363,6 +363,7 @@
   // computed:true, kind → special render logic
   const SECTIONS = [
     { key: 'attendance', label: 'ATTENDANCE', rows: [
+      { key: 'youth_attendance',    label: 'Youth attendance',    avg: true },
       { key: 'total_in_department', label: 'Total in department', noTotal: true },
       { key: 'leaders_count',       label: 'Total leaders',       avg: true },
       { key: 'ratio',               label: 'Ratio',               computed: true, kind: 'ratio' },
@@ -386,7 +387,7 @@
   const NUMERIC_FIELDS = [
     'total_in_department','leaders_count','connect_attendance',
     'salvations_first','salvations_rededs','bibles_given','fresh_start',
-    'water_baptisms','hs_baptisms','sunday_attendance','saints_attendance','schools_visited'
+    'water_baptisms','hs_baptisms','sunday_attendance','saints_attendance','schools_visited','youth_attendance'
   ];
 
   // ─── Init ───
@@ -470,7 +471,7 @@
     if (wdCampus !== 'all') q = q.eq('campus_id', wdCampus);
 
     let leq = db.from('leader_entries')
-      .select('entry_date, connect_attendance, sunday_attendance')
+      .select('entry_date, connect_attendance, sunday_attendance, youth_attendance')
       .like('term', `%${wdYear}%`);
     if (wdCampus !== 'all') leq = leq.eq('campus_id', wdCampus);
 
@@ -478,15 +479,17 @@
 
     wdStats = curr ?? [];
 
-    // Build entry_date → summed connect/sunday from leader entries
+    // Build entry_date → summed connect/sunday/youth from leader entries
     ldEntriesMap = {};
     for (const e of (leData ?? [])) {
       if (!e.entry_date) continue;
-      if (!ldEntriesMap[e.entry_date]) ldEntriesMap[e.entry_date] = { connect: null, sunday: null };
+      if (!ldEntriesMap[e.entry_date]) ldEntriesMap[e.entry_date] = { connect: null, sunday: null, youth: null };
       if (e.connect_attendance != null)
         ldEntriesMap[e.entry_date].connect = (ldEntriesMap[e.entry_date].connect ?? 0) + e.connect_attendance;
       if (e.sunday_attendance != null)
         ldEntriesMap[e.entry_date].sunday = (ldEntriesMap[e.entry_date].sunday ?? 0) + e.sunday_attendance;
+      if (e.youth_attendance != null)
+        ldEntriesMap[e.entry_date].youth = (ldEntriesMap[e.entry_date].youth ?? 0) + e.youth_attendance;
     }
 
     renderAllTerms();
@@ -506,16 +509,18 @@
       }
       agg[field] = total;
     }
-    // Override connect/sunday with sums from leader_entries (listing data)
+    // Override connect/sunday/youth with sums from leader_entries (listing data)
     const entryDates = [...new Set(entries.map(e => e.entry_date).filter(Boolean))];
-    let connectSum = null, sundaySum = null;
+    let connectSum = null, sundaySum = null, youthSum = null;
     for (const date of entryDates) {
       const le = ldEntriesMap[date];
       if (le?.connect != null) connectSum = (connectSum ?? 0) + le.connect;
-      if (le?.sunday != null) sundaySum = (sundaySum ?? 0) + le.sunday;
+      if (le?.sunday  != null) sundaySum  = (sundaySum  ?? 0) + le.sunday;
+      if (le?.youth   != null) youthSum   = (youthSum   ?? 0) + le.youth;
     }
     agg.connect_attendance = connectSum;
     agg.sunday_attendance  = sundaySum;
+    agg.youth_attendance   = youthSum;
     return agg;
   }
 
