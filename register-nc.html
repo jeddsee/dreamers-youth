@@ -111,8 +111,8 @@
           </div>
 
           <div class="form-group">
-            <label for="year-level">Year level</label>
-            <select id="year-level" class="select">
+            <label for="year-level">Year level <span class="required">*</span></label>
+            <select id="year-level" class="select" required>
               <option value="">Select…</option>
               <option>Year 7</option>
               <option>Year 8</option>
@@ -124,8 +124,8 @@
           </div>
 
           <div class="form-group">
-            <label for="gender">Gender</label>
-            <select id="gender" class="select">
+            <label for="gender">Gender <span class="required">*</span></label>
+            <select id="gender" class="select" required>
               <option value="">Select…</option>
               <option>Male</option>
               <option>Female</option>
@@ -214,8 +214,10 @@
       const decision     = document.querySelector('input[name="decision"]:checked')?.value;
       const waterBaptism = document.getElementById('water-baptism').checked;
 
-      if (!name)     { showError('Please enter your name.'); return; }
-      if (!decision) { showError('Please select your decision.'); return; }
+      if (!name)      { showError('Please enter your name.'); return; }
+      if (!yearLevel) { showError('Please select your year level.'); return; }
+      if (!gender)    { showError('Please select your gender.'); return; }
+      if (!decision)  { showError('Please select your decision.'); return; }
 
       const btn = document.getElementById('submit-btn');
       setLoading(btn, true);
