@@ -832,14 +832,16 @@
     const weeksMsg = s => `${s.length} week${s.length !== 1 ? 's' : ''}`;
 
     const card = (label, vA, vB, isPct) => {
-      const diff  = vA - vB;
-      const cls   = diff > 0 ? 'ycomp-delta--up' : diff < 0 ? 'ycomp-delta--down' : 'ycomp-delta--flat';
-      const arrow = diff > 0 ? '↑' : diff < 0 ? '↓' : '→';
-      const sign  = diff > 0 ? '+' : '';
-      const sfx   = isPct ? '%' : '';
-      const pctStr = vB !== 0
-        ? ` (${diff > 0 ? '+' : diff < 0 ? '' : ''}${Math.round((diff / vB) * 100)}%)`
-        : (diff !== 0 ? ' (new)' : '');
+      const diff    = vA - vB;
+      const badgeCls = diff > 0 ? 'up' : diff < 0 ? 'down' : 'flat';
+      const arrow   = diff > 0 ? '↑' : diff < 0 ? '↓' : '→';
+      const sign    = diff > 0 ? '+' : '';
+      const sfx     = isPct ? '%' : '';
+      const pctVal  = vB !== 0 ? Math.round((diff / vB) * 100) : null;
+      const pctLabel = pctVal !== null
+        ? `${arrow} ${pctVal > 0 ? '+' : ''}${pctVal}%`
+        : diff !== 0 ? `${arrow} new` : '→ 0%';
+      const diffLabel = diff !== 0 ? `${sign}${diff}${sfx} absolute` : '';
       return `<div class="ycomp-card">
         <div class="ycomp-card__label">${label}</div>
         <div class="ycomp-card__row">
@@ -852,7 +854,10 @@
             <span class="ycomp-card__val">${vB}${sfx}</span>
             <span class="ycomp-card__yr">${yearB}</span>
           </div>
-          <div class="ycomp-card__delta ${cls}">${arrow} ${sign}${diff}${sfx}<span class="ycomp-pct">${pctStr}</span></div>
+          <div class="ycomp-card__delta">
+            <span class="ycomp-pct-badge ycomp-pct-badge--${badgeCls}">${pctLabel}</span>
+            ${diffLabel ? `<span class="ycomp-diff">${diffLabel}</span>` : ''}
+          </div>
         </div>
       </div>`;
     };
