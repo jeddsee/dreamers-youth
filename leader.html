@@ -1151,7 +1151,7 @@
           </div>
           <input type="text" class="reason-input ${saved.status==='yes'?'hidden':''}"
             id="reason-${youth.id}"
-            placeholder="Reason (optional)"
+            placeholder="Reason (required)"
             value="${escHtml(saved.reason || '')}">
         </div>
       `;
@@ -1182,6 +1182,15 @@
       const reason = document.getElementById(`reason-${youth.id}`)?.value.trim() ?? '';
       return { youth_id: youth.id, status, reason: reason || undefined };
     });
+
+    // Require a reason for every non-yes marked youth
+    const missing = listing.filter(r => r.status && r.status !== 'yes' && !r.reason);
+    if (missing.length) {
+      const names = missing.map(r => roster.find(y => y.id === r.youth_id)?.name ?? '').filter(Boolean);
+      showError(`Please add a reason for: ${names.join(', ')}`, 'weekly-error');
+      setLoading(btn, false);
+      return;
+    }
 
     const term = termFromDate(currentEntryDate);
     const { error } = await db.from('leader_entries').upsert({
