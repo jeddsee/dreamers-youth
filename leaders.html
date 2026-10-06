@@ -171,7 +171,10 @@
     <div id="page-content" class="hidden main-content__body">
 
       <!-- ══ SECTION 1: TEAM ══════════════════════════════════════════════════ -->
-      <h2 style="font-size:var(--text-2xl);font-weight:800;letter-spacing:-0.02em;margin-bottom:var(--s-5)">Leadership Team</h2>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--s-3);margin-bottom:var(--s-5)">
+        <h2 style="font-size:var(--text-2xl);font-weight:800;letter-spacing:-0.02em;margin:0">Leadership Team</h2>
+        <button class="btn btn--primary btn--sm" onclick="openAddLeaderModal()">+ Add Leader</button>
+      </div>
 
       <!-- Filters -->
       <div style="display:flex;flex-wrap:wrap;gap:var(--s-5);margin-bottom:var(--s-4)">
@@ -379,6 +382,47 @@
   </div>
 </div>
 
+<!-- ── Add Leader Modal ──────────────────────────────────────────────────────── -->
+<div class="modal-backdrop" id="add-leader-modal">
+  <div class="modal">
+    <div class="modal__header">
+      <h3>Add leader</h3>
+      <button class="modal__close" onclick="closeAddLeaderModal()">✕</button>
+    </div>
+    <div class="modal__body">
+      <div class="stack">
+        <div class="form-group">
+          <label>Name <span class="required">*</span></label>
+          <input id="al-name" type="text" class="input" placeholder="Full name">
+        </div>
+        <div class="form-grid form-grid--2">
+          <div class="form-group">
+            <label>Year level</label>
+            <select id="al-year" class="select">
+              <option value="">Select…</option>
+              <option>Year 7</option><option>Year 8</option><option>Year 9</option>
+              <option>Year 10</option><option>Year 11</option><option>Year 12</option>
+              <option>Other / Left school</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Gender</label>
+            <select id="al-gender" class="select">
+              <option value="">Select…</option>
+              <option>Male</option><option>Female</option><option>Prefer not to say</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div id="al-error" class="error-banner hidden mt-3"></div>
+    </div>
+    <div class="modal__footer">
+      <button class="btn btn--ghost" onclick="closeAddLeaderModal()">Cancel</button>
+      <button class="btn btn--primary" id="al-save-btn" onclick="submitAddLeader()">Add</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.50.0/dist/umd/supabase.min.js"></script>
 <script src="shared.js"></script>
 <script>
@@ -506,6 +550,42 @@ function renderTeamTable() {
       <td class="fw-semibold">${filtered.length}</td>
     </tr>`;
   }).join('');
+}
+
+// ── Add Leader ────────────────────────────────────────────────────────────────
+function openAddLeaderModal() {
+  document.getElementById('al-name').value   = '';
+  document.getElementById('al-year').value   = '';
+  document.getElementById('al-gender').value = '';
+  document.getElementById('al-error').classList.add('hidden');
+  document.getElementById('add-leader-modal').classList.add('open');
+  setTimeout(() => document.getElementById('al-name').focus(), 50);
+}
+function closeAddLeaderModal() {
+  document.getElementById('add-leader-modal').classList.remove('open');
+}
+async function submitAddLeader() {
+  const name = document.getElementById('al-name').value.trim();
+  if (!name) { showError('Name is required.', 'al-error'); return; }
+
+  const btn = document.getElementById('al-save-btn');
+  setLoading(btn, true);
+
+  const { data, error } = await db.from('leaders').insert({
+    name,
+    year_level:  document.getElementById('al-year').value   || null,
+    gender:      document.getElementById('al-gender').value || null,
+    role:        'leader',
+    campus_id:   identity.campus_id,
+    active:      true,
+  }).select('id, name, role, year_level, gender').single();
+
+  setLoading(btn, false);
+  if (error) { showError('Failed to add leader: ' + error.message, 'al-error'); return; }
+
+  allLeaders.push(data);
+  renderTeamTable();
+  closeAddLeaderModal();
 }
 
 // ── Youth Roster ──────────────────────────────────────────────────────────────
