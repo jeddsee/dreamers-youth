@@ -489,6 +489,7 @@
   let allEntries  = [];   // leader_entries rows
   let termSettingsMap = {}; // termNum → term_settings row
   let noNightDates = new Set(); // entry_dates with no_youth_night = true
+  let noNightByTerm = {};       // termKey → Set of no-night entry_dates
   let leaderFilter = null;  // selected leader id, or null for all
 
   // ─── Init ───
@@ -694,7 +695,7 @@
         .eq('year', ldYear)
         .or(`campus_id.eq.${ldCampus},campus_id.is.null`),
       db.from('weekly_stats')
-        .select('entry_date')
+        .select('entry_date, term')
         .eq('campus_id', ldCampus)
         .like('term', `%${ldYear}%`)
         .eq('no_youth_night', true),
@@ -710,7 +711,14 @@
 
     allEntries = entryRes.data ?? [];
 
-    noNightDates = new Set((wsRes.data ?? []).map(r => r.entry_date).filter(Boolean));
+    const noNightRows = wsRes.data ?? [];
+    noNightDates  = new Set(noNightRows.map(r => r.entry_date).filter(Boolean));
+    noNightByTerm = {};
+    for (const r of noNightRows) {
+      if (!r.term || !r.entry_date) continue;
+      if (!noNightByTerm[r.term]) noNightByTerm[r.term] = new Set();
+      noNightByTerm[r.term].add(r.entry_date);
+    }
 
     // Build term_settings map: prefer campus-specific over null
     termSettingsMap = {};
@@ -926,7 +934,9 @@
     // used to align columns, because its configured first_date may differ from
     // the campus's actual youth-night DOW by one or more days.
     const tsRow = termSettingsMap[termNum];
-    const actualDates = getTermDates(termKey); // sorted unique dates with real data
+    // Include no-night dates so those weeks appear as columns (they have no leader_entries rows)
+    const noNightForTerm = noNightByTerm[termKey] ?? new Set();
+    const actualDates = [...new Set([...getTermDates(termKey), ...noNightForTerm])].sort();
     let weekCount, displayDates;
 
     if (tsRow) {
@@ -1053,10 +1063,9 @@
       </tr>`;
     }
 
-    // Summary: Sunday
+    // Summary: Sunday (no-night dates still show data — only youth/expected are struck out)
     {
       const wkVals = displayDates.map(date => {
-        if (noNightDates.has(date)) return null;
         let s = null;
         for (const l of filteredLeaders) {
           const entry = lookup[termKey]?.[date]?.[l.id] ?? null;
@@ -1078,10 +1087,9 @@
       </tr>`;
     }
 
-    // Summary: Connect Groups
+    // Summary: Connect Groups (no-night dates still show data)
     {
       const wkVals = displayDates.map(date => {
-        if (noNightDates.has(date)) return null;
         let s = null;
         for (const l of filteredLeaders) {
           const entry = lookup[termKey]?.[date]?.[l.id] ?? null;
@@ -1160,11 +1168,10 @@
         </tr>`;
       }
 
-      // Sunday — editable inputs
+      // Sunday — editable inputs (no-night dates still show an input)
       {
         const esc = s => String(s).replace(/"/g, '&quot;');
         const wkCells = displayDates.map(date => {
-          if (noNightDates.has(date)) return `<td class="td-week"><span class="cell-val empty">—</span></td>`;
           const entry  = lookup[termKey]?.[date]?.[leader.id] ?? null;
           const val    = entry?.sunday_attendance ?? null;
           const valStr = val != null ? String(val) : '';
@@ -1180,7 +1187,6 @@
           `<td class="td-week"><span class="cell-val empty"></span></td>`
         ).join('');
         const wkVals = displayDates.map(date => {
-          if (noNightDates.has(date)) return null;
           const entry = lookup[termKey]?.[date]?.[leader.id] ?? null;
           return entry?.sunday_attendance ?? null;
         });
@@ -1192,11 +1198,10 @@
         </tr>`;
       }
 
-      // Connect groups — editable inputs
+      // Connect groups — editable inputs (no-night dates still show an input)
       {
         const esc = s => String(s).replace(/"/g, '&quot;');
         const wkCells = displayDates.map(date => {
-          if (noNightDates.has(date)) return `<td class="td-week"><span class="cell-val empty">—</span></td>`;
           const entry  = lookup[termKey]?.[date]?.[leader.id] ?? null;
           const val    = entry?.connect_attendance ?? null;
           const valStr = val != null ? String(val) : '';
@@ -1212,7 +1217,6 @@
           `<td class="td-week"><span class="cell-val empty"></span></td>`
         ).join('');
         const wkVals = displayDates.map(date => {
-          if (noNightDates.has(date)) return null;
           const entry = lookup[termKey]?.[date]?.[leader.id] ?? null;
           return entry?.connect_attendance ?? null;
         });
