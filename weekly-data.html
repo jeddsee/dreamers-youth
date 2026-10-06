@@ -461,14 +461,33 @@
   }
 
   // ─── Load data from Supabase ───
+  let ldEntriesMap = {}; // entry_date → { connect: sum, sunday: sum }
+
   async function loadWeeklyData() {
     document.getElementById('wd-terms').innerHTML = '<div class="wd-status">Loading…</div>';
 
     let q = db.from('weekly_stats').select('*').like('term', `%${wdYear}%`);
     if (wdCampus !== 'all') q = q.eq('campus_id', wdCampus);
-    const { data: curr } = await q;
+
+    let leq = db.from('leader_entries')
+      .select('entry_date, connect_attendance, sunday_attendance')
+      .like('term', `%${wdYear}%`);
+    if (wdCampus !== 'all') leq = leq.eq('campus_id', wdCampus);
+
+    const [{ data: curr }, { data: leData }] = await Promise.all([q, leq]);
 
     wdStats = curr ?? [];
+
+    // Build entry_date → summed connect/sunday from leader entries
+    ldEntriesMap = {};
+    for (const e of (leData ?? [])) {
+      if (!e.entry_date) continue;
+      if (!ldEntriesMap[e.entry_date]) ldEntriesMap[e.entry_date] = { connect: null, sunday: null };
+      if (e.connect_attendance != null)
+        ldEntriesMap[e.entry_date].connect = (ldEntriesMap[e.entry_date].connect ?? 0) + e.connect_attendance;
+      if (e.sunday_attendance != null)
+        ldEntriesMap[e.entry_date].sunday = (ldEntriesMap[e.entry_date].sunday ?? 0) + e.sunday_attendance;
+    }
 
     renderAllTerms();
   }
@@ -487,6 +506,16 @@
       }
       agg[field] = total;
     }
+    // Override connect/sunday with sums from leader_entries (listing data)
+    const entryDates = [...new Set(entries.map(e => e.entry_date).filter(Boolean))];
+    let connectSum = null, sundaySum = null;
+    for (const date of entryDates) {
+      const le = ldEntriesMap[date];
+      if (le?.connect != null) connectSum = (connectSum ?? 0) + le.connect;
+      if (le?.sunday != null) sundaySum = (sundaySum ?? 0) + le.sunday;
+    }
+    agg.connect_attendance = connectSum;
+    agg.sunday_attendance  = sundaySum;
     return agg;
   }
 
