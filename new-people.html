@@ -146,6 +146,53 @@
     .comment-item__text { font-size: var(--text-sm); }
     .comment-item__actions { display: flex; gap: var(--s-2); margin-top: var(--s-2); }
     .comment-item--legacy { border-style: dashed; opacity: 0.75; }
+
+    /* Overdue comments section */
+    .overdue-section {
+      margin: var(--s-4) var(--s-5) 0;
+      background: rgba(251,191,36,0.1);
+      border: 1px solid rgba(251,191,36,0.35);
+      border-radius: var(--r-lg);
+      overflow: hidden;
+    }
+    .overdue-header {
+      display: flex;
+      align-items: center;
+      gap: var(--s-2);
+      padding: var(--s-3) var(--s-4);
+      cursor: pointer;
+      font-size: var(--text-sm);
+      font-weight: 600;
+      color: #92400E;
+      user-select: none;
+    }
+    .overdue-header .overdue-count {
+      background: #F59E0B;
+      color: #fff;
+      border-radius: var(--r-full);
+      font-size: var(--text-xs);
+      font-weight: 700;
+      padding: 1px 7px;
+      margin-left: auto;
+    }
+    .overdue-header .overdue-chevron {
+      transition: transform var(--transition);
+      flex-shrink: 0;
+    }
+    .overdue-header .overdue-chevron.open { transform: rotate(180deg); }
+    .overdue-list { padding: 0 var(--s-4) var(--s-3); }
+    .overdue-item {
+      display: flex;
+      align-items: center;
+      gap: var(--s-3);
+      padding: var(--s-2) 0;
+      border-top: 1px solid rgba(251,191,36,0.25);
+      font-size: var(--text-sm);
+      cursor: pointer;
+    }
+    .overdue-item:hover { opacity: 0.75; }
+    .overdue-item__name { font-weight: 600; flex: 1; }
+    .overdue-item__meta { font-size: var(--text-xs); color: #92400E; }
   </style>
 </head>
 <body>
@@ -227,6 +274,17 @@
       <button class="filter-btn" data-gender="Male">Male</button>
       <button class="filter-btn" data-gender="Female">Female</button>
     </div>
+  </div>
+
+  <!-- Overdue NP comments -->
+  <div id="overdue-np-section" class="overdue-section hidden">
+    <div class="overdue-header" onclick="toggleOverdue('overdue-np-section')">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#92400E" stroke-width="2"><circle cx="8" cy="8" r="7"/><line x1="8" y1="4" x2="8" y2="8.5"/><circle cx="8" cy="11" r="0.5" fill="#92400E"/></svg>
+      Overdue Comments
+      <span class="overdue-count" id="overdue-np-count">0</span>
+      <svg class="overdue-chevron" id="overdue-np-chevron" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4,6 8,10 12,6"/></svg>
+    </div>
+    <div class="overdue-list hidden" id="overdue-np-list"></div>
   </div>
 
   <div style="padding:var(--s-4) var(--s-5) 0">
@@ -499,7 +557,7 @@
 
   let identity, allNP = [], leaders = [], currentNP = null, currentFilter = 'all',
       currentYearFilter = new Set(), currentGenderFilter = null,
-      detailComments = [], myLeaderId = null;
+      detailComments = [], myLeaderId = null, npCommentsMap = {};
 
   async function init() {
     DY.initSidebar();
@@ -536,7 +594,82 @@
     document.getElementById('loading').classList.add('hidden');
     if (error) { showError('Could not load new people.'); return; }
     allNP = data ?? [];
+
+    // Load comments for active NPs to compute overdue
+    const activeIds = allNP
+      .filter(n => n.status !== 'activated' && n.status !== 'archived')
+      .map(n => n.id);
+    if (activeIds.length) {
+      const { data: cmtData } = await db.from('np_comments')
+        .select('np_id, created_at')
+        .in('np_id', activeIds);
+      npCommentsMap = {};
+      (cmtData ?? []).forEach(c => {
+        if (!npCommentsMap[c.np_id]) npCommentsMap[c.np_id] = [];
+        npCommentsMap[c.np_id].push(c.created_at);
+      });
+    }
+
+    renderOverdueNPs();
     renderTable(currentFilter);
+  }
+
+  function npLatestVisitDate(np) {
+    const dates = [np.visit_1_date, np.visit_2_date, np.visit_3_date].filter(Boolean);
+    return dates.length ? dates.sort().at(-1) : null;
+  }
+
+  function tuesdayAfterFriday(fridayStr) {
+    const d = new Date(fridayStr + 'T00:00:00');
+    d.setDate(d.getDate() + 4);
+    return d;
+  }
+
+  function renderOverdueNPs() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const overdue = allNP.filter(np => {
+      if (np.status === 'activated' || np.status === 'archived') return false;
+      const visitStr = npLatestVisitDate(np);
+      if (!visitStr) return false;
+      const deadline = tuesdayAfterFriday(visitStr);
+      if (today <= deadline) return false;
+      const comments = npCommentsMap[np.id] ?? [];
+      const visitMs = new Date(visitStr + 'T00:00:00').getTime();
+      const deadlineMs = deadline.getTime() + 86399999;
+      return !comments.some(ts => {
+        const t = new Date(ts).getTime();
+        return t >= visitMs && t <= deadlineMs;
+      });
+    });
+
+    const section = document.getElementById('overdue-np-section');
+    const countEl = document.getElementById('overdue-np-count');
+    const listEl  = document.getElementById('overdue-np-list');
+
+    if (!overdue.length) { section.classList.add('hidden'); return; }
+    section.classList.remove('hidden');
+    countEl.textContent = overdue.length;
+
+    listEl.innerHTML = overdue.map(np => {
+      const leader = leaders.find(l => l.id === np.leader_id);
+      const visitStr = npLatestVisitDate(np);
+      const deadline = tuesdayAfterFriday(visitStr);
+      const daysOverdue = Math.floor((today.getTime() - deadline.getTime()) / 86400000);
+      return `<div class="overdue-item" onclick="openDetailModal(allNP.find(n=>n.id==='${np.id}'))">
+        <span class="overdue-item__name">${escHtml(np.name)}</span>
+        <span class="overdue-item__meta">${escHtml(leader?.name || 'Unassigned')} · ${daysOverdue}d overdue</span>
+      </div>`;
+    }).join('');
+  }
+
+  function toggleOverdue(sectionId) {
+    const listEl = document.getElementById(sectionId).querySelector('.overdue-list');
+    const chevron = document.getElementById(sectionId).querySelector('.overdue-chevron');
+    const open = listEl.classList.contains('hidden');
+    listEl.classList.toggle('hidden', !open);
+    chevron.classList.toggle('open', open);
   }
 
   function setupFilters() {
