@@ -498,7 +498,7 @@
   const { db } = DY;
 
   let identity, allNP = [], leaders = [], currentNP = null, currentFilter = 'all',
-      currentYearFilter = null, currentGenderFilter = null,
+      currentYearFilter = new Set(), currentGenderFilter = null,
       detailComments = [], myLeaderId = null;
 
   async function init() {
@@ -551,12 +551,12 @@
 
     document.querySelectorAll('.filter-btn[data-year]').forEach(btn => {
       btn.addEventListener('click', () => {
-        if (currentYearFilter === btn.dataset.year) {
-          currentYearFilter = null;
+        const yr = btn.dataset.year;
+        if (currentYearFilter.has(yr)) {
+          currentYearFilter.delete(yr);
           btn.classList.remove('active');
         } else {
-          document.querySelectorAll('.filter-btn[data-year]').forEach(b => b.classList.remove('active'));
-          currentYearFilter = btn.dataset.year;
+          currentYearFilter.add(yr);
           btn.classList.add('active');
         }
         renderTable(currentFilter);
@@ -588,7 +588,7 @@
     if (filter === 'ready_to_activate') rows = rows.filter(np => !np.leader_id);
 
     // Year level — exclusive toggle
-    if (currentYearFilter) rows = rows.filter(np => np.year_level === currentYearFilter);
+    if (currentYearFilter.size > 0) rows = rows.filter(np => currentYearFilter.has(np.year_level));
 
     // Gender — exclusive toggle
     if (currentGenderFilter) rows = rows.filter(np => np.gender === currentGenderFilter);
