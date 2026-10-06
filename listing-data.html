@@ -883,6 +883,80 @@
       </tr>`;
     }
 
+    // Summary: Attendance % (youth / expected)
+    {
+      const youthWkVals = displayDates.map(date => {
+        let s = null;
+        for (const l of filteredLeaders) {
+          const v = youthCount(lookup[termKey]?.[date]?.[l.id] ?? null);
+          if (v != null) s = (s ?? 0) + v;
+        }
+        return s;
+      });
+      const pctVals = youthWkVals.map(v =>
+        v != null && totalExpected > 0 ? Math.round(v / totalExpected * 100) : null
+      );
+      const emptyCells = Array.from({length: emptyWeekCount}, () =>
+        `<td class="td-week"><span class="cell-val empty"></span></td>`
+      ).join('');
+      const wkCells = pctVals.map(v =>
+        `<td class="td-week"><span class="cell-val${cellCls(v)}">${v != null ? v + '%' : ''}</span></td>`
+      ).join('');
+      const avgPct = (() => {
+        const nonNull = pctVals.filter(v => v != null);
+        return nonNull.length ? Math.round(nonNull.reduce((s,v) => s+v, 0) / nonNull.length) : null;
+      })();
+      tbodyRows += `<tr class="data-row">
+        <td class="td-label">Attendance %</td>
+        ${wkCells}${emptyCells}
+        <td class="td-total avg${avgPct == null ? ' dash' : ''}">${avgPct != null ? avgPct + '%' : '—'}</td>
+      </tr>`;
+    }
+
+    // Summary: Total Leaders (static)
+    {
+      const leaderCount = filteredLeaders.length;
+      const wkCells = Array.from({length: weekCount}, () =>
+        `<td class="td-week"><span class="cell-val">${leaderCount}</span></td>`
+      ).join('');
+      tbodyRows += `<tr class="data-row row-alt">
+        <td class="td-label">Total Leaders</td>
+        ${wkCells}
+        <td class="td-total">${leaderCount}</td>
+      </tr>`;
+    }
+
+    // Summary: Youth per Leader ratio
+    {
+      const leaderCount = filteredLeaders.length;
+      const youthWkVals = displayDates.map(date => {
+        let s = null;
+        for (const l of filteredLeaders) {
+          const v = youthCount(lookup[termKey]?.[date]?.[l.id] ?? null);
+          if (v != null) s = (s ?? 0) + v;
+        }
+        return s;
+      });
+      const ratioVals = youthWkVals.map(v =>
+        v != null && leaderCount > 0 ? (v / leaderCount).toFixed(1) : null
+      );
+      const emptyCells = Array.from({length: emptyWeekCount}, () =>
+        `<td class="td-week"><span class="cell-val empty"></span></td>`
+      ).join('');
+      const wkCells = ratioVals.map(v =>
+        `<td class="td-week"><span class="cell-val${v == null ? ' empty' : ''}">${v ?? ''}</span></td>`
+      ).join('');
+      const nonNullRatios = ratioVals.filter(v => v != null).map(Number);
+      const avgRatio = nonNullRatios.length
+        ? (nonNullRatios.reduce((s,v) => s+v, 0) / nonNullRatios.length).toFixed(1)
+        : null;
+      tbodyRows += `<tr class="data-row">
+        <td class="td-label">Youth per Leader</td>
+        ${wkCells}${emptyCells}
+        <td class="td-total avg${avgRatio == null ? ' dash' : ''}">${avgRatio ?? '—'}</td>
+      </tr>`;
+    }
+
     // ─ Per-leader sections ─
     filteredLeaders.forEach(leader => {
       const exp   = rosterCount[leader.id] ?? 0;

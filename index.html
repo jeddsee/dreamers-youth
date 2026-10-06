@@ -81,13 +81,15 @@
 
     .login-logo {
       text-align: center;
-      margin-bottom: var(--s-4);
+      margin-bottom: var(--s-3);
+      position: relative;
+      z-index: 2;
     }
     .login-logo img {
-      width: 260px;
+      width: 200px;
       height: auto;
       display: block;
-      margin: -8px auto var(--s-2);
+      margin: 0 auto var(--s-2);
       mix-blend-mode: screen;
     }
     .login-logo__name {
@@ -184,13 +186,12 @@
 </head>
 <body>
   <div class="login-wrap">
+    <div class="login-logo">
+      <img src="dy-logo-white.png" alt="Dreamers Youth">
+      <div class="login-logo__name">Dreamers Youth</div>
+      <div class="login-logo__sub">Pastoral Management System</div>
+    </div>
     <div class="login-card">
-      <div class="login-logo">
-        <img src="dy-logo-white.png" alt="Dreamers Youth">
-        <div class="login-logo__name">Dreamers Youth</div>
-        <div class="login-logo__sub">Pastoral Management System</div>
-      </div>
-
       <div id="error-banner" class="error-banner hidden" style="margin-bottom:var(--s-4)"></div>
 
       <form id="login-form" class="stack">
