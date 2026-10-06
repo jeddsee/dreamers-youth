@@ -383,16 +383,19 @@
 
         <!-- Period filter -->
         <div class="snap-period-bar">
+          <span class="snap-period-label">Year</span>
+          <div class="snap-year-nav">
+            <button class="snap-year-btn" onclick="changeSnapYear(-1)">‹</button>
+            <span id="snap-year-display" class="snap-year-val"></span>
+            <button class="snap-year-btn" onclick="changeSnapYear(1)">›</button>
+          </div>
+          <span class="snap-period-divider" style="margin:0 var(--s-2)">|</span>
           <span class="snap-period-label">Period</span>
-          <button class="snap-period-pill" data-period="year" onclick="setSnapPeriod('year',this)">This Year</button>
+          <button class="snap-period-pill" data-period="year" onclick="setSnapPeriod('year',this)">Full Year</button>
           <button class="snap-period-pill" data-period="t1" onclick="setSnapPeriod('t1',this)">Term 1</button>
           <button class="snap-period-pill" data-period="t2" onclick="setSnapPeriod('t2',this)">Term 2</button>
           <button class="snap-period-pill" data-period="t3" onclick="setSnapPeriod('t3',this)">Term 3</button>
           <button class="snap-period-pill" data-period="t4" onclick="setSnapPeriod('t4',this)">Term 4</button>
-          <span class="snap-period-divider">or</span>
-          <input type="date" id="snap-date-from" class="snap-date-input" onchange="applyCustomDates()">
-          <span class="snap-period-label">to</span>
-          <input type="date" id="snap-date-to" class="snap-date-input" onchange="applyCustomDates()">
         </div>
 
         <!-- Attendance -->
@@ -466,26 +469,46 @@
             <select id="ycomp-year-b" class="ycomp-select"></select>
           </div>
           <div class="ycomp-filter-group">
-            <label class="ycomp-filter-label">Term</label>
-            <select id="ycomp-term" class="ycomp-select">
-              <option value="">All terms</option>
-              <option value="T1">Term 1</option>
-              <option value="T2">Term 2</option>
-              <option value="T3">Term 3</option>
-              <option value="T4">Term 4</option>
-            </select>
-          </div>
-          <div class="ycomp-filter-group">
             <label class="ycomp-filter-label">Campus</label>
             <select id="ycomp-campus" class="ycomp-select"></select>
           </div>
           <div class="ycomp-filter-group">
-            <label class="ycomp-filter-label">From date</label>
-            <input type="date" id="ycomp-from-date" class="snap-date-input ycomp-date-input">
+            <label class="ycomp-filter-label">From</label>
+            <div style="display:flex;gap:var(--s-2)">
+              <select id="ycomp-from-term" class="ycomp-select" style="min-width:90px">
+                <option value="">Any term</option>
+                <option value="T1">Term 1</option>
+                <option value="T2">Term 2</option>
+                <option value="T3">Term 3</option>
+                <option value="T4">Term 4</option>
+              </select>
+              <select id="ycomp-from-week" class="ycomp-select" style="min-width:80px">
+                <option value="">Any wk</option>
+                <option value="1">Wk 1</option><option value="2">Wk 2</option><option value="3">Wk 3</option>
+                <option value="4">Wk 4</option><option value="5">Wk 5</option><option value="6">Wk 6</option>
+                <option value="7">Wk 7</option><option value="8">Wk 8</option><option value="9">Wk 9</option>
+                <option value="10">Wk 10</option><option value="11">Wk 11</option><option value="12">Wk 12</option>
+              </select>
+            </div>
           </div>
           <div class="ycomp-filter-group">
-            <label class="ycomp-filter-label">To date</label>
-            <input type="date" id="ycomp-to-date" class="snap-date-input ycomp-date-input">
+            <label class="ycomp-filter-label">To</label>
+            <div style="display:flex;gap:var(--s-2)">
+              <select id="ycomp-to-term" class="ycomp-select" style="min-width:90px">
+                <option value="">Any term</option>
+                <option value="T1">Term 1</option>
+                <option value="T2">Term 2</option>
+                <option value="T3">Term 3</option>
+                <option value="T4">Term 4</option>
+              </select>
+              <select id="ycomp-to-week" class="ycomp-select" style="min-width:80px">
+                <option value="">Any wk</option>
+                <option value="1">Wk 1</option><option value="2">Wk 2</option><option value="3">Wk 3</option>
+                <option value="4">Wk 4</option><option value="5">Wk 5</option><option value="6">Wk 6</option>
+                <option value="7">Wk 7</option><option value="8">Wk 8</option><option value="9">Wk 9</option>
+                <option value="10">Wk 10</option><option value="11">Wk 11</option><option value="12">Wk 12</option>
+              </select>
+            </div>
           </div>
           <button class="btn btn--primary" onclick="runYearComparison()" style="height:44px;padding:0 var(--s-6);align-self:flex-end">Compare</button>
         </div>
@@ -697,24 +720,34 @@
     selC.innerHTML = `<option value="">All campuses</option>` +
       allCampuses.map(c => `<option value="${c.id}">${escHtml(c.name)}</option>`).join('');
 
-    document.getElementById('ycomp-from-date').value = '';
-    document.getElementById('ycomp-to-date').value   = '';
+    document.getElementById('ycomp-from-term').value = '';
+    document.getElementById('ycomp-from-week').value = '';
+    document.getElementById('ycomp-to-term').value   = '';
+    document.getElementById('ycomp-to-week').value   = '';
     document.getElementById('ycomp-results').classList.add('hidden');
   }
 
   async function runYearComparison() {
     const yearA    = document.getElementById('ycomp-year-a').value;
     const yearB    = document.getElementById('ycomp-year-b').value;
-    const term     = document.getElementById('ycomp-term').value;
     const campusId = document.getElementById('ycomp-campus').value;
-    const fromDate = document.getElementById('ycomp-from-date').value || null;
-    const toDate   = document.getElementById('ycomp-to-date').value   || null;
+    const fromTerm = document.getElementById('ycomp-from-term').value; // e.g. "T2" or ""
+    const fromWeek = parseInt(document.getElementById('ycomp-from-week').value) || 0;
+    const toTerm   = document.getElementById('ycomp-to-term').value;
+    const toWeek   = parseInt(document.getElementById('ycomp-to-week').value) || 0;
+
+    // Convert term+week to a comparable integer: T1=100, T2=200, etc.
+    const TERM_ORD = { T1: 100, T2: 200, T3: 300, T4: 400 };
+    const twVal = (t, w) => (TERM_ORD[t] || 0) + (w || 0);
+    const fromVal = fromTerm ? twVal(fromTerm, fromWeek || 1)  : 0;
+    const toVal   = toTerm   ? twVal(toTerm,   toWeek   || 99) : 9999;
+    const hasRange = !!(fromTerm || toTerm);
 
     document.getElementById('ycomp-loading').classList.remove('hidden');
 
     const isAll = !campusId;
     let statsQ = db.from('weekly_stats').select('*').order('entry_date', { ascending: true });
-    let leQ2   = db.from('leader_entries').select('entry_date, term, campus_id, youth_attendance').not('youth_attendance', 'is', null);
+    let leQ2   = db.from('leader_entries').select('entry_date, term, campus_id, youth_attendance, week_number').not('youth_attendance', 'is', null);
     let npQ2   = db.from('new_people').select('status, campus_id, created_at').not('status', 'in', '("archived")');
 
     if (isAll) {
@@ -733,46 +766,31 @@
     const leRows  = leRes2.data ?? [];
     const npRows  = npRes2.data ?? [];
 
-    const partitionStats = (year) => {
-      let filtered = rows.filter(w => {
-        if (!w.term || w.no_youth_night) return false;
-        const [t, y] = w.term.split(' ');
-        if (y !== year) return false;
-        if (term && t !== term) return false;
-        return true;
-      });
-      if (fromDate || toDate) {
-        filtered = filtered.filter(w =>
-          (!fromDate || w.entry_date >= fromDate) &&
-          (!toDate   || w.entry_date <= toDate)
-        );
+    const partitionStats = (year) => rows.filter(w => {
+      if (!w.term || w.no_youth_night) return false;
+      const [t, y] = w.term.split(' ');
+      if (y !== year) return false;
+      if (hasRange) {
+        const v = twVal(t, w.week_number || 0);
+        if (v < fromVal || v > toVal) return false;
       }
-      return filtered;
-    };
+      return true;
+    });
 
-    const partitionLE = (year) => {
-      let filtered = leRows.filter(e => {
-        if (!e.term) return false;
-        const [t, y] = e.term.split(' ');
-        if (y !== year) return false;
-        if (term && t !== term) return false;
-        return true;
-      });
-      if (fromDate || toDate) {
-        filtered = filtered.filter(e =>
-          (!fromDate || e.entry_date >= fromDate) &&
-          (!toDate   || e.entry_date <= toDate)
-        );
+    const partitionLE = (year) => leRows.filter(e => {
+      if (!e.term) return false;
+      const [t, y] = e.term.split(' ');
+      if (y !== year) return false;
+      if (hasRange) {
+        const v = twVal(t, e.week_number || 0);
+        if (v < fromVal || v > toVal) return false;
       }
-      return filtered;
-    };
+      return true;
+    });
 
     const partitionNP = (year) => npRows.filter(n => {
       const d = new Date(n.created_at);
-      if (String(d.getFullYear()) !== year) return false;
-      if (fromDate && n.created_at.slice(0,10) < fromDate) return false;
-      if (toDate   && n.created_at.slice(0,10) > toDate)   return false;
-      return true;
+      return String(d.getFullYear()) === year;
     });
 
     const statsA = partitionStats(yearA);
