@@ -520,16 +520,13 @@ function renderTeamTable() {
 
   const rows = leaders.map(l => {
     const youth = allYouth.filter(y => y.leader_id === l.id && y.active);
-
-    const filtered = youth.filter(y => {
-      if (genderFilter !== 'all' && y.gender !== genderFilter) return false;
-      if (yearFilter.size > 0 && !yearFilter.has(y.year_level)) return false;
-      return true;
-    });
-
-    return { l, youth, filtered };
-  }).filter(({ filtered }) => !filtersActive || filtered.length > 0)
-    .sort((a, b) => {
+    return { l, youth };
+  }).filter(({ l }) => {
+    if (!filtersActive) return true;
+    if (genderFilter !== 'all' && l.gender !== genderFilter) return false;
+    if (yearFilter.size > 0 && !yearFilter.has(l.year_level)) return false;
+    return true;
+  }).sort((a, b) => {
       const yd = yrNum(a.l.year_level) - yrNum(b.l.year_level);
       if (yd !== 0) return yd;
       const ga = a.l.gender || '', gb = b.l.gender || '';
@@ -542,12 +539,11 @@ function renderTeamTable() {
     return;
   }
 
-  tbody.innerHTML = rows.map(({ l, youth, filtered }) => {
-
+  tbody.innerHTML = rows.map(({ l, youth }) => {
     return `<tr>
       <td class="fw-semibold">${escHtml(l.name)}</td>
       <td>${escHtml(l.year_level || '—')}</td>
-      <td class="fw-semibold">${filtered.length}</td>
+      <td class="fw-semibold">${youth.length}</td>
     </tr>`;
   }).join('');
 }
