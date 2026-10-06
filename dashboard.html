@@ -845,6 +845,9 @@
       const arrow = diff > 0 ? '↑' : diff < 0 ? '↓' : '→';
       const sign  = diff > 0 ? '+' : '';
       const sfx   = isPct ? '%' : '';
+      const pctStr = vB !== 0
+        ? ` (${diff > 0 ? '+' : diff < 0 ? '' : ''}${Math.round((diff / vB) * 100)}%)`
+        : (diff !== 0 ? ' (new)' : '');
       return `<div class="ycomp-card">
         <div class="ycomp-card__label">${label}</div>
         <div class="ycomp-card__row">
@@ -857,7 +860,7 @@
             <span class="ycomp-card__val">${vB}${sfx}</span>
             <span class="ycomp-card__yr">${yearB}</span>
           </div>
-          <div class="ycomp-card__delta ${cls}">${arrow} ${sign}${diff}${sfx}</div>
+          <div class="ycomp-card__delta ${cls}">${arrow} ${sign}${diff}${sfx}<span class="ycomp-pct">${pctStr}</span></div>
         </div>
       </div>`;
     };
