@@ -739,7 +739,7 @@
 
     const isAll = !campusId;
     let statsQ = db.from('weekly_stats').select('*').order('entry_date', { ascending: true });
-    let leQ2   = db.from('leader_entries').select('entry_date, term, campus_id, youth_attendance, week_number').not('youth_attendance', 'is', null);
+    let leQ2   = db.from('leader_entries').select('entry_date, term, campus_id, youth_attendance, connect_attendance, sunday_attendance, week_number');
     let npQ2   = db.from('new_people').select('status, campus_id, created_at').not('status', 'in', '("archived")');
 
     if (isAll) {
@@ -797,25 +797,28 @@
   }
 
   function renderYearCompResults(statsA, statsB, leA, leB, npA, npB, yearA, yearB, term, campusId) {
-    const avg  = arr => arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : 0;
-    const sum  = arr => arr.reduce((a, b) => a + b, 0);
-    const colA = key => statsA.map(w => w[key] ?? 0);
-    const colB = key => statsB.map(w => w[key] ?? 0);
+    // Aggregate leader_entries by date then avg/sum — excludes dates with no data
+    const leByDate = (entries, field) => {
+      const byDate = {};
+      for (const e of entries) {
+        if (e[field] != null) byDate[e.entry_date] = (byDate[e.entry_date] ?? 0) + e[field];
+      }
+      return Object.values(byDate);
+    };
+    const leAvg = (entries, field) => { const v = leByDate(entries, field); return v.length ? Math.round(v.reduce((a,b)=>a+b,0)/v.length) : 0; };
+    const leSum = (entries, field) => leByDate(entries, field).reduce((a,b)=>a+b,0);
 
-    // Attendance from leader_entries
-    const leAvg = (entries) => {
-      const byDate = {};
-      for (const e of entries) { if (e.youth_attendance != null) byDate[e.entry_date] = (byDate[e.entry_date] ?? 0) + e.youth_attendance; }
-      const sums = Object.values(byDate);
-      return sums.length ? Math.round(sums.reduce((a,b) => a+b, 0) / sums.length) : 0;
-    };
-    const leSum = (entries) => {
-      const byDate = {};
-      for (const e of entries) { if (e.youth_attendance != null) byDate[e.entry_date] = (byDate[e.entry_date] ?? 0) + e.youth_attendance; }
-      return Object.values(byDate).reduce((a,b) => a+b, 0);
-    };
-    const avgAttA = leAvg(leA), avgAttB = leAvg(leB);
-    const sumAttA = leSum(leA), sumAttB = leSum(leB);
+    const avgAttA = leAvg(leA, 'youth_attendance'),    avgAttB = leAvg(leB, 'youth_attendance');
+    const sumAttA = leSum(leA, 'youth_attendance'),    sumAttB = leSum(leB, 'youth_attendance');
+    const avgConA = leAvg(leA, 'connect_attendance'),  avgConB = leAvg(leB, 'connect_attendance');
+    const avgSunA = leAvg(leA, 'sunday_attendance'),   avgSunB = leAvg(leB, 'sunday_attendance');
+
+    // Skip nulls in avg/sum so missing weeks don't count as zero
+    const nonNull = arr => arr.filter(x => x != null);
+    const avg  = arr => { const v = nonNull(arr); return v.length ? Math.round(v.reduce((a,b)=>a+b,0)/v.length) : 0; };
+    const sum  = arr => nonNull(arr).reduce((a,b)=>a+b,0);
+    const colA = key => statsA.map(w => w[key]);
+    const colB = key => statsB.map(w => w[key]);
 
     // NP counts from new_people
     const npCounts = (arr) => ({
@@ -827,7 +830,9 @@
     const retA = npcA.v1 > 0 ? Math.round((npcA.v2 + npcA.v3) / (npcA.v1 * 2) * 100) : 0;
     const retB = npcB.v1 > 0 ? Math.round((npcB.v2 + npcB.v3) / (npcB.v1 * 2) * 100) : 0;
 
-    const termLabel   = term ? `Term ${term.replace('T', '')}` : 'All terms';
+    const rangeLabel = fromTerm
+      ? `${fromTerm}${fromWeek ? ' Wk' + fromWeek : ''} → ${toTerm || ''}${toWeek ? ' Wk' + toWeek : ''}`
+      : 'All terms';
     const campusLabel = campusId
       ? (allCampuses.find(c => c.id === campusId)?.name ?? '—')
       : 'All campuses';
@@ -868,7 +873,7 @@
     el.innerHTML = `
       <div class="ycomp-summary">
         Comparing <strong>${yearA}</strong> vs <strong>${yearB}</strong>
-        &mdash; ${escHtml(termLabel)} &mdash; ${escHtml(campusLabel)}
+        &mdash; ${escHtml(rangeLabel)} &mdash; ${escHtml(campusLabel)}
         &mdash; <span class="text-muted">${weeksMsg(statsA)} / ${weeksMsg(statsB)}</span>
       </div>
 
@@ -898,8 +903,8 @@
 
       <span class="section-badge section-badge--dark">Connect &amp; Sunday</span>
       <div class="ycomp-grid mb-5">
-        ${card('Avg Connect Att.', avg(colA('connect_attendance')), avg(colB('connect_attendance')))}
-        ${card('Avg Sunday Att.',  avg(colA('sunday_attendance')),  avg(colB('sunday_attendance')))}
+        ${card('Avg Connect Att.', avgConA, avgConB)}
+        ${card('Avg Sunday Att.',  avgSunA, avgSunB)}
         ${card('Avg Saints Att.',  avg(colA('saints_attendance')),  avg(colB('saints_attendance')))}
         ${card('Schools Visited',  sum(colA('schools_visited')),    sum(colB('schools_visited')))}
       </div>
