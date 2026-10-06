@@ -403,6 +403,9 @@
         <div id="no-youth-night-msg" class="error-banner hidden" style="margin-bottom:var(--s-4)">
           No youth night this week — entry suppressed.
         </div>
+        <div id="no-term-msg" class="hidden" style="margin-bottom:var(--s-4);padding:var(--s-4);background:var(--c-bg);border:1px solid var(--c-border);border-radius:var(--r-lg);font-size:var(--text-sm);color:var(--c-text-secondary);text-align:center">
+          No entry needed this week — this date falls outside configured term dates.
+        </div>
         <div id="weekly-error" class="error-banner hidden" style="margin-bottom:var(--s-4)"></div>
 
       </div>
@@ -732,40 +735,21 @@
 
   // ── State ──────────────────────────────────────────────────────────────────
   let identity, roster = [], recentEntries = [], newPeople = [], termReview = null;
-  // currentEntryDate is set after identity loads so it uses the campus's DOW
   let currentEntryDate = '';
   let termNewPeople = [], termNCs = [];
+  let termDates = new Set(); // valid term week dates for this campus
 
   // ── Init ───────────────────────────────────────────────────────────────────
-  async function computeEntryDate() {
+  async function loadTermDates() {
     const { data: tsRows } = await DY.db
       .from('term_settings')
       .select('first_date, num_weeks')
       .or(`campus_id.eq.${identity.campus_id},campus_id.is.null`)
       .order('first_date', { ascending: true });
-
-    if (!tsRows || !tsRows.length) {
-      return nextYouthNight(new Date(), identity.youth_night_dow);
-    }
-
-    const today = DY.formatDateInput(new Date());
-    let bestPast = null;
-
-    for (const ts of tsRows) {
-      const dates = DY.termWeekDates(ts.first_date, ts.num_weeks ?? 10);
-      for (const d of dates) {
-        if (d <= today && (!bestPast || d > bestPast)) bestPast = d;
-      }
-    }
-
-    if (bestPast) return bestPast;
-
-    // Between terms or before first term — use next upcoming term date
-    const allFuture = tsRows
-      .flatMap(ts => DY.termWeekDates(ts.first_date, ts.num_weeks ?? 10))
-      .filter(d => d > today)
-      .sort();
-    return allFuture[0] || nextYouthNight(new Date(), identity.youth_night_dow);
+    termDates = new Set();
+    (tsRows ?? []).forEach(ts => {
+      DY.termWeekDates(ts.first_date, ts.num_weeks ?? 10).forEach(d => termDates.add(d));
+    });
   }
 
   async function init() {
@@ -776,7 +760,9 @@
     document.getElementById('sidebar-name').textContent   = identity.leader_name;
     document.getElementById('sidebar-campus').textContent = identity.campus_name;
 
-    currentEntryDate = await computeEntryDate();
+    await loadTermDates();
+
+    currentEntryDate = nextYouthNight(new Date(), identity.youth_night_dow);
     document.getElementById('entry-date').value = currentEntryDate;
 
     setupSidebarNav();
@@ -1100,7 +1086,16 @@
     document.getElementById('weekly-list').classList.add('hidden');
     document.getElementById('weekly-footer').classList.add('hidden');
     document.getElementById('no-youth-night-msg').classList.add('hidden');
+    document.getElementById('no-term-msg').classList.add('hidden');
+    document.getElementById('weekly-empty').classList.add('hidden');
     document.getElementById('entry-saved-badge').classList.add('hidden');
+
+    // If terms are configured and this date isn't in any of them, block entry
+    if (termDates.size > 0 && !termDates.has(date)) {
+      document.getElementById('weekly-loading').classList.add('hidden');
+      document.getElementById('no-term-msg').classList.remove('hidden');
+      return;
+    }
 
     const [statsRes, entryRes] = await Promise.all([
       db.from('weekly_stats')
