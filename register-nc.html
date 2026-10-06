@@ -19,7 +19,8 @@
       color: #111;
       margin-bottom: var(--s-6);
     }
-    .reg-header__icon { font-size: 2.5rem; margin-bottom: var(--s-2); }
+    .reg-header__icon { margin-bottom: var(--s-3); }
+    .reg-header__icon img { width: 110px; height: auto; }
     .reg-header h1  { font-size: var(--text-2xl); font-weight: 800; margin-bottom: var(--s-1); }
     .reg-header p   { font-size: var(--text-sm); opacity: 0.7; }
 
@@ -85,7 +86,7 @@
 <body>
   <div class="reg-wrap">
     <div class="reg-header">
-      <div class="reg-header__icon">✝️</div>
+      <div class="reg-header__icon"><img src="dy-logo.png" alt="Dreamers Youth"></div>
       <h1>Decision Card</h1>
       <p id="campus-subtitle">Fill in your details below</p>
     </div>
@@ -119,7 +120,6 @@
               <option>Year 10</option>
               <option>Year 11</option>
               <option>Year 12</option>
-              <option>Other / Left school</option>
             </select>
           </div>
 
@@ -129,7 +129,6 @@
               <option value="">Select…</option>
               <option>Male</option>
               <option>Female</option>
-              <option>Prefer not to say</option>
             </select>
           </div>
         </div>
@@ -151,14 +150,15 @@
               <div class="decision-option__sub">I'm recommitting my life to God</div>
             </div>
           </label>
-          <label class="decision-option">
-            <input type="radio" name="decision" value="water_baptism">
-            <div>
-              <div class="decision-option__label">Water baptism</div>
-              <div class="decision-option__sub">I want to get baptised</div>
-            </div>
-          </label>
         </div>
+
+        <label class="decision-option" style="margin-top:var(--s-2)">
+          <input type="checkbox" id="water-baptism" style="accent-color:#111;width:18px;height:18px;flex-shrink:0;margin-top:2px">
+          <div>
+            <div class="decision-option__label">I also want to get water baptised</div>
+            <div class="decision-option__sub">Tick this as an added bonus</div>
+          </div>
+        </label>
 
         <div style="margin-top:var(--s-6)">
           <button id="submit-btn" type="submit" class="btn btn--primary btn--full btn--lg">
@@ -207,11 +207,12 @@
       e.preventDefault();
       hideError();
 
-      const name       = document.getElementById('name').value.trim();
-      const phone      = document.getElementById('phone').value.trim();
-      const yearLevel  = document.getElementById('year-level').value;
-      const gender     = document.getElementById('gender').value;
-      const decision   = document.querySelector('input[name="decision"]:checked')?.value;
+      const name         = document.getElementById('name').value.trim();
+      const phone        = document.getElementById('phone').value.trim();
+      const yearLevel    = document.getElementById('year-level').value;
+      const gender       = document.getElementById('gender').value;
+      const decision     = document.querySelector('input[name="decision"]:checked')?.value;
+      const waterBaptism = document.getElementById('water-baptism').checked;
 
       if (!name)     { showError('Please enter your name.'); return; }
       if (!decision) { showError('Please select your decision.'); return; }
@@ -227,6 +228,7 @@
         gender:        gender     || null,
         decision_type: decision,
         decision_date: formatDateInput(),
+        baptism_done:  waterBaptism || null,
       };
 
       const { error } = await db.from('new_christians').insert(payload);

@@ -737,6 +737,37 @@
   let termNewPeople = [], termNCs = [];
 
   // ── Init ───────────────────────────────────────────────────────────────────
+  async function computeEntryDate() {
+    const { data: tsRows } = await DY.db
+      .from('term_settings')
+      .select('first_date, num_weeks')
+      .or(`campus_id.eq.${identity.campus_id},campus_id.is.null`)
+      .order('first_date', { ascending: true });
+
+    if (!tsRows || !tsRows.length) {
+      return nextYouthNight(new Date(), identity.youth_night_dow);
+    }
+
+    const today = DY.formatDateInput(new Date());
+    let bestPast = null;
+
+    for (const ts of tsRows) {
+      const dates = DY.termWeekDates(ts.first_date, ts.num_weeks ?? 10);
+      for (const d of dates) {
+        if (d <= today && (!bestPast || d > bestPast)) bestPast = d;
+      }
+    }
+
+    if (bestPast) return bestPast;
+
+    // Between terms or before first term — use next upcoming term date
+    const allFuture = tsRows
+      .flatMap(ts => DY.termWeekDates(ts.first_date, ts.num_weeks ?? 10))
+      .filter(d => d > today)
+      .sort();
+    return allFuture[0] || nextYouthNight(new Date(), identity.youth_night_dow);
+  }
+
   async function init() {
     DY.initSidebar();
     identity = requireIdentity();
@@ -745,7 +776,7 @@
     document.getElementById('sidebar-name').textContent   = identity.leader_name;
     document.getElementById('sidebar-campus').textContent = identity.campus_name;
 
-    currentEntryDate = nextYouthNight(new Date(), identity.youth_night_dow);
+    currentEntryDate = await computeEntryDate();
     document.getElementById('entry-date').value = currentEntryDate;
 
     setupSidebarNav();
