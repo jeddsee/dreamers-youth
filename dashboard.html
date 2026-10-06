@@ -1289,7 +1289,7 @@
 
     // Life Metrics
     const filteredNC  = getFilteredNC();
-    const nc          = filteredNC.length;
+    const nc          = filteredNC.filter(n => n.decision_type === 'first_time' || n.decision_type === 'rededication').length;
     const baptisedPct = roster.length
       ? Math.round(roster.filter(y => y.water_baptised).length / roster.length * 100)
       : null;
