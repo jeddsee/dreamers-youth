@@ -143,8 +143,10 @@
     }
     .th-week { vertical-align: bottom; padding-bottom: 6px; }
     .wk-num { display: block; font-size: 11px; font-weight: 600; color: var(--wd-text); letter-spacing: 0.01em; }
+    .wk-date { display: block; font-size: 9px; font-weight: 500; color: var(--wd-text-faint); margin-top: 1px; }
     .wk-sub { display: block; font-size: 9px; font-weight: 500; letter-spacing: 0.07em; text-transform: uppercase; color: var(--wd-text-faint); margin-top: 2px; }
     .th-week.no-night .wk-num { color: var(--wd-text-faint); }
+    .th-week.no-night .wk-date { color: var(--wd-text-faint); }
     .th-week.no-night .wk-sub { color: #D97706; }
     .th-total { background: var(--wd-total-bg) !important; font-weight: 700; color: var(--wd-text); }
 
@@ -184,7 +186,7 @@
       font-size: 13px; color: var(--wd-text); white-space: nowrap;
     }
     .td-week .cell-val.empty { color: var(--wd-text-faint); }
-    .td-week.no-night .cell-val { color: var(--wd-text-faint); text-align: center; }
+    .td-week.no-night .cell-val { color: var(--wd-text-faint); text-align: left; padding-left: 10px; }
 
     .td-total {
       background: var(--wd-total-bg);
@@ -538,22 +540,27 @@
     return count > 0 ? Math.round(sum / count) : null;
   }
 
-  // ─── Term week count from term_settings ───
+  // ─── Term week count and dates from term_settings ───
   let termWeekCount = { 1: 10, 2: 10, 3: 10, 4: 10 };
+  let termFirstDate = {}; // termNum → first_date string
 
   async function loadTermSettings() {
     let q = db.from('term_settings')
-      .select('term_number, num_weeks, campus_id')
+      .select('term_number, num_weeks, first_date, campus_id')
       .eq('year', wdYear);
     if (wdCampus !== 'all') {
       q = q.or(`campus_id.eq.${wdCampus},campus_id.is.null`);
     }
     const { data: tsRows } = await q;
     termWeekCount = { 1: 10, 2: 10, 3: 10, 4: 10 };
+    termFirstDate = {};
     (tsRows ?? []).forEach(ts => {
       const t = ts.term_number;
       const n = ts.num_weeks ?? 10;
-      if (n > (termWeekCount[t] ?? 0)) termWeekCount[t] = n;
+      if (n > (termWeekCount[t] ?? 0)) {
+        termWeekCount[t] = n;
+        if (ts.first_date) termFirstDate[t] = ts.first_date;
+      }
     });
   }
 
@@ -601,11 +608,20 @@
       '<col class="col-total">';
 
     // ── Build thead ──
+    const fd = termFirstDate[termNum];
+    const weekDates = fd ? DY.termWeekDates(fd, weekCount) : [];
+    const fmtWkDate = iso => {
+      if (!iso) return '';
+      const p = iso.split('-');
+      return p[2] + '/' + p[1];
+    };
     const wkHeaders = Array.from({length: weekCount}, (_, i) => {
       const wd = weekData[i];
       const isNN = wd?.no_youth_night ?? false;
+      const dateStr = weekDates[i] ? fmtWkDate(weekDates[i]) : '';
       return `<th class="th-week${isNN ? ' no-night' : ''}">` +
         `<span class="wk-num">Wk ${i + 1}</span>` +
+        (dateStr ? `<span class="wk-date">${dateStr}</span>` : '') +
         (isNN ? '<span class="wk-sub">no night</span>' : '') +
         '</th>';
     }).join('');
