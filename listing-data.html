@@ -266,6 +266,48 @@
 
     .wd-status { padding: 48px; text-align: center; color: var(--c-text-muted); font-size: var(--text-sm); }
 
+    /* ─── Leader combobox ─── */
+    .leader-combobox { position: relative; }
+    .leader-combobox input {
+      height: 38px;
+      padding: 0 var(--s-3);
+      border: 1px solid var(--c-border);
+      border-radius: var(--r-md);
+      background: var(--c-surface);
+      color: var(--c-text);
+      font-size: var(--text-sm);
+      min-width: 180px;
+      box-sizing: border-box;
+    }
+    .leader-combobox input:focus { outline: 2px solid var(--wd-blue); outline-offset: -1px; }
+    .leader-dropdown {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0; right: 0;
+      background: var(--c-surface);
+      border: 1px solid var(--c-border-dark);
+      border-radius: var(--r);
+      max-height: 220px;
+      overflow-y: auto;
+      z-index: 50;
+      box-shadow: var(--shadow-md);
+      list-style: none;
+      padding: var(--s-1) 0;
+    }
+    .leader-dropdown.hidden { display: none; }
+    .leader-dropdown li {
+      padding: var(--s-2) var(--s-3);
+      font-size: var(--text-sm);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .leader-dropdown li:hover, .leader-dropdown li[aria-selected="true"] {
+      background: rgba(21,0,232,0.08);
+      color: var(--wd-blue);
+    }
+    .leader-dropdown li.no-match { color: var(--c-text-muted); cursor: default; }
+    .leader-dropdown li.no-match:hover { background: none; color: var(--c-text-muted); }
+
     /* ─── Print ─── */
     @media print {
       @page { size: A4 landscape; margin: 10mm; }
@@ -279,18 +321,26 @@
       .term-header { height: 32px !important; background: #1500E8 !important; border-radius: 5px 5px 0 0 !important; }
       .table-wrap { overflow: visible !important; }
       .wd-table { width: 100% !important; table-layout: fixed !important; }
-      .th-label, .td-label { display: none !important; }
-      .col-label { display: none !important; }
+      .col-label { width: 140px !important; }
       .col-week  { width: 50px !important; }
       .col-total { width: 60px !important; }
-      .wd-table tr.data-row td { height: 24px !important; }
-      .wd-table tr.section-row td, .wd-table tr.leader-row td { padding: 4px 8px 3px 12px !important; font-size: 8px !important; background: #EDEDF4 !important; }
-      .wd-table thead th { font-size: 9px !important; padding: 6px 6px 5px !important; background: #FFFFFF !important; }
+      .wd-table tr.data-row td { height: 22px !important; }
+      .wd-table tr.section-row td, .wd-table tr.leader-row td { padding: 4px 6px 3px 10px !important; font-size: 8px !important; background: #EDEDF4 !important; }
+      .wd-table thead th { font-size: 9px !important; padding: 6px 4px 5px !important; background: #FFFFFF !important; }
+      .th-label { font-size: 9px !important; padding-left: 10px !important; background: #FFFFFF !important; }
       .th-total { background: #F4F4FA !important; }
-      .wk-num { font-size: 9px !important; }
-      .td-week .cell-val { font-size: 9px !important; height: 24px !important; line-height: 24px !important; padding: 0 6px !important; }
-      .td-total { background: #F4F4FA !important; padding: 0 6px !important; font-size: 9px !important; }
-      .cell-input { font-size: 9px !important; height: 24px !important; padding: 0 6px !important; }
+      .wk-num { font-size: 8px !important; }
+      .td-label { font-size: 9px !important; padding: 0 8px 0 10px !important; background: transparent !important; }
+      .td-label.indent { padding-left: 18px !important; }
+      .td-label::after { display: none !important; }
+      .td-week .cell-val { font-size: 9px !important; height: 22px !important; line-height: 22px !important; padding: 0 4px !important; }
+      .td-total { background: #F4F4FA !important; padding: 0 4px !important; font-size: 9px !important; }
+      .cell-input { font-size: 9px !important; height: 22px !important; padding: 0 4px !important; }
+      /* Print title */
+      .snap-header { display: block !important; }
+      .snap-header-actions { display: none !important; }
+      .snap-title { font-size: 14px !important; }
+      .snap-subtitle { font-size: 10px !important; }
     }
   </style>
 </head>
@@ -364,7 +414,7 @@
           <div class="snap-subtitle" id="ld-subtitle">Loading…</div>
         </div>
         <div class="snap-header-actions">
-          <button class="btn btn--outline btn--sm" onclick="window.print()">Export PDF</button>
+          <button class="btn btn--outline btn--sm" id="export-pdf-btn" onclick="exportPDF()">Export PDF</button>
         </div>
       </div>
 
@@ -398,6 +448,14 @@
             <button class="pill" data-g="Female" onclick="toggleGender('Female',this)">Female</button>
           </div>
         </div>
+        <div class="wd-filter-group">
+          <label class="wd-filter-label">Leader</label>
+          <div class="leader-combobox" id="leader-combobox">
+            <input type="text" id="leader-search" placeholder="All leaders…" autocomplete="off"
+              oninput="onLeaderInput()" onfocus="openLeaderDropdown()" onblur="onLeaderBlur()">
+            <ul class="leader-dropdown hidden" id="leader-dropdown" role="listbox"></ul>
+          </div>
+        </div>
       </div>
 
       <div id="ld-terms">
@@ -425,6 +483,7 @@
   let rosterCount = {};   // leaderId → count of active youth
   let allEntries  = [];   // leader_entries rows
   let termSettingsMap = {}; // termNum → term_settings row
+  let leaderFilter = null;  // selected leader id, or null for all
 
   // ─── Init ───
   async function init() {
@@ -521,6 +580,90 @@
     loadData();
   }
 
+  // ─── Leader combobox ───
+  function populateLeaderDropdown(query) {
+    const list = document.getElementById('leader-dropdown');
+    const sorted = sortLeaders(allLeaders);
+    const matches = query
+      ? sorted.filter(l => l.name.toLowerCase().includes(query.toLowerCase()))
+      : sorted;
+
+    list.innerHTML = '';
+
+    // "All leaders" option when searching
+    if (!query) {
+      const li = document.createElement('li');
+      li.textContent = 'All leaders';
+      li.setAttribute('role', 'option');
+      li.addEventListener('mousedown', e => { e.preventDefault(); selectLeader(null); });
+      list.appendChild(li);
+    }
+
+    if (!matches.length) {
+      const li = document.createElement('li');
+      li.className = 'no-match';
+      li.textContent = 'No leaders found';
+      list.appendChild(li);
+    } else {
+      matches.forEach(l => {
+        const li = document.createElement('li');
+        li.textContent = leaderLabel(l);
+        li.setAttribute('role', 'option');
+        if (l.id === leaderFilter) li.setAttribute('aria-selected', 'true');
+        li.addEventListener('mousedown', e => { e.preventDefault(); selectLeader(l); });
+        list.appendChild(li);
+      });
+    }
+    list.classList.remove('hidden');
+  }
+
+  function openLeaderDropdown() {
+    populateLeaderDropdown(document.getElementById('leader-search').value.trim());
+  }
+
+  function onLeaderInput() {
+    const q = document.getElementById('leader-search').value.trim();
+    if (!q) {
+      leaderFilter = null;
+      updateExportBtn();
+      renderAll();
+    }
+    populateLeaderDropdown(q);
+  }
+
+  function onLeaderBlur() {
+    setTimeout(() => {
+      document.getElementById('leader-dropdown').classList.add('hidden');
+      // If the text doesn't match the selected leader, clear selection
+      const input = document.getElementById('leader-search');
+      const selected = allLeaders.find(l => l.id === leaderFilter);
+      if (!selected && input.value.trim()) {
+        input.value = '';
+        leaderFilter = null;
+        updateExportBtn();
+        renderAll();
+      }
+    }, 150);
+  }
+
+  function selectLeader(leader) {
+    leaderFilter = leader ? leader.id : null;
+    document.getElementById('leader-search').value = leader ? leader.name : '';
+    document.getElementById('leader-dropdown').classList.add('hidden');
+    updateExportBtn();
+    renderAll();
+  }
+
+  function updateExportBtn() {
+    const btn = document.getElementById('export-pdf-btn');
+    const leader = allLeaders.find(l => l.id === leaderFilter);
+    btn.textContent = leader ? `Export ${leader.name} PDF` : 'Export PDF';
+  }
+
+  function exportPDF() {
+    window.print();
+  }
+
   // ─── Data loading ───
   async function loadData() {
     document.getElementById('ld-terms').innerHTML = '<div class="wd-status">Loading…</div>';
@@ -547,6 +690,7 @@
     ]);
 
     allLeaders = leaderRes.data ?? [];
+    updateExportBtn();
 
     rosterCount = {};
     for (const row of (rosterRes.data ?? [])) {
@@ -705,6 +849,7 @@
     const terms = termFilter.size > 0 ? [...termFilter].sort() : [1,2,3,4];
 
     const filteredLeaders = sortLeaders(allLeaders.filter(l => {
+      if (leaderFilter && l.id !== leaderFilter) return false;
       if (yearLevelFilter.size > 0 && !yearLevelFilter.has(l.year_level)) return false;
       if (genderFilter.size > 0 && !genderFilter.has(l.gender)) return false;
       return true;
@@ -739,6 +884,7 @@
     const el = document.getElementById('ld-block-' + termNum);
     if (!el) return;
     const filteredLeaders = sortLeaders(allLeaders.filter(l => {
+      if (leaderFilter && l.id !== leaderFilter) return false;
       if (yearLevelFilter.size > 0 && !yearLevelFilter.has(l.year_level)) return false;
       if (genderFilter.size > 0 && !genderFilter.has(l.gender)) return false;
       return true;
