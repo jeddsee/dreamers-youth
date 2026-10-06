@@ -1023,20 +1023,35 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   margin: 0 var(--s-1);
   flex-shrink: 0;
 }
-.snap-date-input {
-  font-family: inherit;
-  font-size: var(--text-sm);
-  height: 36px;
-  padding: 0 var(--s-3);
-  border: 1px solid var(--c-border-dark);
-  border-radius: var(--r-md);
+.snap-year-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--s-1);
   background: var(--c-surface);
-  color: var(--c-text);
-  cursor: pointer;
-  width: auto;
+  border: 1px solid var(--c-border-dark);
+  border-radius: var(--r-full);
+  padding: 2px 4px;
 }
-.snap-date-input:focus { outline: none; border-color: var(--c-primary); box-shadow: 0 0 0 3px rgb(0 0 255 / .15); }
-.ycomp-date-input { border-color: #111; border-width: 1.5px; }
+.snap-year-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--c-text-secondary);
+  padding: 2px 6px;
+  border-radius: var(--r-full);
+  transition: background var(--transition), color var(--transition);
+}
+.snap-year-btn:hover { background: var(--c-bg); color: var(--c-text); }
+.snap-year-val {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--c-text);
+  min-width: 36px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
 
 .snap-header {
   display: flex;

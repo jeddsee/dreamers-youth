@@ -625,8 +625,7 @@
   let allCampuses = [];
   let snapCampusId = null;
   let snapPeriod   = 'year';
-  let snapDateFrom = null;
-  let snapDateTo   = null;
+  let snapYear     = new Date().getFullYear();
 
   // ── Init ───────────────────────────────────────────────────────────────────
   async function init() {
@@ -674,13 +673,6 @@
   function selectCampus(id) {
     snapCampusId = id;
     snapPeriod   = 'year';
-    snapDateFrom = null;
-    snapDateTo   = null;
-    const df = document.getElementById('snap-date-from');
-    const dt = document.getElementById('snap-date-to');
-    if (df) { df.value = ''; dt.value = ''; }
-
-    const isAll = id === 'all';
 
     renderCampusSwitcher();
     if (!document.getElementById('section-snapshot').classList.contains('hidden')) {
@@ -1045,10 +1037,15 @@
     let leadersQ = db.from('leaders').select('id, name, role, campus_id').eq('active', true).order('name');
     let rosterQ  = db.from('youth_roster').select('id, is_new_christian, water_baptised, category, campus_id').eq('active', true);
     let archQ    = db.from('youth_roster').select('id', { count: 'exact', head: true }).eq('active', false);
-    let statsQ   = db.from('weekly_stats').select('*').order('entry_date', { ascending: false }).limit(isAll ? 60 : 20);
-    let npQ      = db.from('new_people').select('status, campus_id, created_at, visit_1_date').not('status', 'in', '("archived")');
-    let ncQ      = db.from('new_christians').select('decision_date, decision_type, campus_id');
-    let leQ      = db.from('leader_entries').select('entry_date, term, campus_id, youth_attendance').not('youth_attendance', 'is', null);
+    const yearFrom = `${snapYear}-01-01`;
+    const yearTo   = `${snapYear}-12-31`;
+    let statsQ   = db.from('weekly_stats').select('*').gte('entry_date', yearFrom).lte('entry_date', yearTo).order('entry_date', { ascending: false });
+    let npQ      = db.from('new_people').select('status, campus_id, created_at, visit_1_date').not('status', 'in', '("archived")').gte('visit_1_date', yearFrom).lte('visit_1_date', yearTo);
+    let ncQ      = db.from('new_christians').select('decision_date, decision_type, campus_id').gte('decision_date', yearFrom).lte('decision_date', yearTo);
+    let leQ      = db.from('leader_entries').select('entry_date, term, campus_id, youth_attendance').not('youth_attendance', 'is', null).gte('entry_date', yearFrom).lte('entry_date', yearTo);
+
+    // Update year display
+    document.getElementById('snap-year-display').textContent = snapYear;
 
     if (isAll) {
       const ids = allCampuses.map(c => c.id);
@@ -1168,51 +1165,35 @@
 
   function getFilteredStats() {
     const active = weeklyStats.filter(w => !w.no_youth_night);
-    if (snapPeriod === 'custom' && snapDateFrom && snapDateTo) {
-      return active.filter(w => w.entry_date >= snapDateFrom && w.entry_date <= snapDateTo);
-    }
     if (snapPeriod === 'year') {
-      const yearStr = String(new Date().getFullYear());
-      const today   = new Date().toISOString().split('T')[0];
-      return active.filter(w => w.entry_date >= `${yearStr}-01-01` && w.entry_date <= today);
+      return active; // already filtered to snapYear at query time
     }
     if (['t1','t2','t3','t4'].includes(snapPeriod)) {
-      const label = snapPeriod.toUpperCase(); // 'T1'…'T4'
-      return active.filter(w => w.term && w.term.startsWith(label + ' '));
+      const label = `${snapPeriod.toUpperCase()} ${snapYear}`; // e.g. 'T1 2026'
+      return active.filter(w => w.term === label);
     }
     return active;
   }
 
   function getFilteredLeaderEntries() {
-    if (snapPeriod === 'custom' && snapDateFrom && snapDateTo) {
-      return snapLeaderEntries.filter(e => e.entry_date >= snapDateFrom && e.entry_date <= snapDateTo);
-    }
     if (snapPeriod === 'year') {
-      const yearStr = String(new Date().getFullYear());
-      const today   = new Date().toISOString().split('T')[0];
-      return snapLeaderEntries.filter(e => e.entry_date >= `${yearStr}-01-01` && e.entry_date <= today);
+      return snapLeaderEntries; // already filtered to snapYear at query time
     }
     if (['t1','t2','t3','t4'].includes(snapPeriod)) {
-      const label = snapPeriod.toUpperCase();
-      return snapLeaderEntries.filter(e => e.term && e.term.startsWith(label + ' '));
+      const label = `${snapPeriod.toUpperCase()} ${snapYear}`;
+      return snapLeaderEntries.filter(e => e.term === label);
     }
     return snapLeaderEntries;
   }
 
   // Generic period filter for rows that have a date field (YYYY-MM-DD)
   function filterByPeriod(arr, dateFn) {
-    if (snapPeriod === 'custom' && snapDateFrom && snapDateTo) {
-      return arr.filter(n => { const d = dateFn(n); return d && d >= snapDateFrom && d <= snapDateTo; });
-    }
     if (snapPeriod === 'year') {
-      const yearStr = String(new Date().getFullYear());
-      const today   = new Date().toISOString().split('T')[0];
-      return arr.filter(n => { const d = dateFn(n); return d && d >= `${yearStr}-01-01` && d <= today; });
+      return arr; // already filtered to snapYear at query time
     }
     if (['t1','t2','t3','t4'].includes(snapPeriod)) {
-      // Derive date range from the weeklyStats entries for this term
-      const label = snapPeriod.toUpperCase();
-      const termDates = weeklyStats.filter(w => w.term && w.term.startsWith(label + ' ')).map(w => w.entry_date).sort();
+      const label = `${snapPeriod.toUpperCase()} ${snapYear}`;
+      const termDates = weeklyStats.filter(w => w.term === label).map(w => w.entry_date).sort();
       if (!termDates.length) return arr;
       const from = termDates[0], to = termDates[termDates.length - 1];
       return arr.filter(n => { const d = dateFn(n); return d && d >= from && d <= to; });
@@ -1240,26 +1221,18 @@
   }
 
   function setSnapPeriod(period, btn) {
-    snapPeriod   = period;
-    snapDateFrom = null;
-    snapDateTo   = null;
-    const df = document.getElementById('snap-date-from');
-    const dt = document.getElementById('snap-date-to');
-    if (df) { df.value = ''; dt.value = ''; }
+    snapPeriod = period;
     document.querySelectorAll('.snap-period-pill').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     renderSnapshotStats();
   }
 
-  function applyCustomDates() {
-    const from = document.getElementById('snap-date-from').value;
-    const to   = document.getElementById('snap-date-to').value;
-    if (!from || !to) return;
-    snapPeriod   = 'custom';
-    snapDateFrom = from;
-    snapDateTo   = to;
+  function changeSnapYear(delta) {
+    snapYear += delta;
+    snapPeriod = 'year';
     document.querySelectorAll('.snap-period-pill').forEach(b => b.classList.remove('active'));
-    renderSnapshotStats();
+    document.querySelector('.snap-period-pill[data-period="year"]').classList.add('active');
+    loadSnapshot();
   }
 
   function renderSnapshotStats() {
@@ -1270,10 +1243,9 @@
 
     const isAll = snapCampusId === 'all';
     const filteredStats = getFilteredStats();
-    const year = new Date().getFullYear();
 
     document.getElementById('snap-weeks-subtitle').textContent =
-      `${year} — ${filteredStats.length} week${filteredStats.length !== 1 ? 's' : ''} of data` +
+      `${snapYear} — ${filteredStats.length} week${filteredStats.length !== 1 ? 's' : ''} of data` +
       (isAll && allCampuses.length > 1 ? ` across ${allCampuses.length} campuses` : '');
 
     const avg = arr => arr.length ? Math.round(arr.reduce((a,b) => a+b, 0) / arr.length) : 0;
