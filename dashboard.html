@@ -1460,6 +1460,7 @@
 
   function renderLeadersList() {
     const el = document.getElementById('leaders-list');
+    if (!el) return;
     const active = leaders.filter(l => l.active);
     el.innerHTML = active.map(l => {
       const meta = l.role === 'leader'
