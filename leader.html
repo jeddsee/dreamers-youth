@@ -719,6 +719,13 @@
             </div>
           </div>
           <div class="form-group">
+            <label>Follow-up status</label>
+            <select id="lnce-status" class="select">
+              <option value="in_progress">In Progress</option>
+              <option value="processed">Processed</option>
+            </select>
+          </div>
+          <div class="form-group">
             <label>Notes</label>
             <textarea id="lnce-notes" class="textarea" rows="2" placeholder="Any notes…"></textarea>
           </div>
@@ -1918,6 +1925,7 @@
     document.getElementById('lnce-fs').checked     = !!nc.fresh_start_started;
     document.getElementById('lnce-fsc').checked    = !!nc.fresh_start_completed;
     document.getElementById('lnce-hs-bap').checked = !!nc.hs_baptised;
+    document.getElementById('lnce-status').value   = nc.follow_up_status || 'in_progress';
     document.getElementById('lnce-notes').value    = nc.notes ?? '';
     document.getElementById('nc-edit-error').classList.add('hidden');
     document.getElementById('nc-edit-modal').classList.add('open');
@@ -1941,6 +1949,7 @@
       fresh_start_started:    document.getElementById('lnce-fs').checked,
       fresh_start_completed:  document.getElementById('lnce-fsc').checked,
       hs_baptised:            document.getElementById('lnce-hs-bap').checked,
+      follow_up_status:       document.getElementById('lnce-status').value || 'in_progress',
       notes:                  document.getElementById('lnce-notes').value.trim() || null,
     };
     const { error } = await db.from('new_christians').update(payload).eq('id', editingNCId);

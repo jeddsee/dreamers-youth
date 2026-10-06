@@ -264,7 +264,16 @@
 
   <div class="sub-filter-bar">
     <div class="sub-filter-group">
-      <span class="sub-filter-label">Year</span>
+      <span class="sub-filter-label">Period</span>
+      <select id="np-cal-year" class="filter-btn" style="height:32px;padding:0 var(--s-2);font-size:12px;font-weight:600;cursor:pointer"></select>
+      <button class="filter-btn active" data-term="all">All</button>
+      <button class="filter-btn" data-term="T1">T1</button>
+      <button class="filter-btn" data-term="T2">T2</button>
+      <button class="filter-btn" data-term="T3">T3</button>
+      <button class="filter-btn" data-term="T4">T4</button>
+    </div>
+    <div class="sub-filter-group">
+      <span class="sub-filter-label">Year level</span>
       <button class="filter-btn" data-year="Year 7">Yr 7</button>
       <button class="filter-btn" data-year="Year 8">Yr 8</button>
       <button class="filter-btn" data-year="Year 9">Yr 9</button>
@@ -561,7 +570,8 @@
 
   let identity, allNP = [], leaders = [], currentNP = null, currentFilter = 'all',
       currentYearFilter = new Set(), currentGenderFilter = null,
-      detailComments = [], myLeaderId = null, npCommentsMap = {};
+      detailComments = [], myLeaderId = null, npCommentsMap = {},
+      npCalYear = new Date().getFullYear(), npTermFilter = 'all';
 
   async function init() {
     DY.initSidebar();
@@ -569,6 +579,18 @@
     if (!identity) return;
     document.getElementById('sidebar-campus').textContent = identity.campus_name;
     document.getElementById('sidebar-user').textContent   = identity.leader_name;
+
+    // Populate year selector
+    const yearSel = document.getElementById('np-cal-year');
+    const currYear = new Date().getFullYear();
+    for (let y = currYear + 1; y >= currYear - 3; y--) {
+      const opt = document.createElement('option');
+      opt.value = y; opt.textContent = y;
+      if (y === currYear) opt.selected = true;
+      yearSel.appendChild(opt);
+    }
+    npCalYear = currYear;
+
     await Promise.all([loadLeaders(), loadNP()]);
     setupFilters();
   }
@@ -713,6 +735,20 @@
         renderTable(currentFilter);
       });
     });
+
+    document.getElementById('np-cal-year').addEventListener('change', e => {
+      npCalYear = parseInt(e.target.value);
+      renderTable(currentFilter);
+    });
+
+    document.querySelectorAll('.filter-btn[data-term]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn[data-term]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        npTermFilter = btn.dataset.term;
+        renderTable(currentFilter);
+      });
+    });
   }
 
   function renderTable(filter) {
@@ -728,6 +764,17 @@
 
     // Ready: only show people needing a leader assigned
     if (filter === 'ready_to_activate') rows = rows.filter(np => !np.leader_id);
+
+    // Calendar year / term filter on visit_1_date
+    if (npTermFilter === 'all') {
+      rows = rows.filter(np => {
+        if (!np.visit_1_date) return true;
+        return np.visit_1_date.startsWith(String(npCalYear));
+      });
+    } else {
+      const targetTerm = `${npTermFilter} ${npCalYear}`;
+      rows = rows.filter(np => np.visit_1_date && DY.termFromDate(np.visit_1_date) === targetTerm);
+    }
 
     // Year level — exclusive toggle
     if (currentYearFilter.size > 0) rows = rows.filter(np => currentYearFilter.has(np.year_level));

@@ -209,8 +209,14 @@
     <button class="btn btn--primary btn--sm" style="margin-left:auto;flex-shrink:0" onclick="openAddModal()">+ Add</button>
   </div>
 
-  <!-- Year & Gender sub-filters -->
+  <!-- Year, Gender & Status sub-filters -->
   <div class="sub-filter-bar">
+    <div class="sub-filter-group">
+      <span class="sub-filter-label">Status</span>
+      <button class="filter-btn active" data-nc-status="in_progress">In Progress</button>
+      <button class="filter-btn" data-nc-status="processed">Processed</button>
+      <button class="filter-btn" data-nc-status="all">All</button>
+    </div>
     <div class="sub-filter-group">
       <span class="sub-filter-label">Year</span>
       <button class="filter-btn" data-nc-year="Year 7">Yr 7</button>
@@ -327,6 +333,15 @@
               </label>
             </div>
           </div>
+          <div class="form-grid form-grid--2">
+            <div class="form-group">
+              <label>Follow-up status</label>
+              <select id="e-status" class="select">
+                <option value="in_progress">In Progress</option>
+                <option value="processed">Processed</option>
+              </select>
+            </div>
+          </div>
           <div class="form-group">
             <label>Notes</label>
             <textarea id="e-notes" class="textarea" rows="2" placeholder="Any notes…"></textarea>
@@ -398,7 +413,7 @@
   const { db } = DY;
 
   let identity, allNC = [], leaders = [], rosterYouth = [], currentNC = null, npNameSet = new Set(),
-      ncCommentsMap = {}, ncYearFilter = new Set(), ncGenderFilter = null, ncAssignFilter = 'all';
+      ncCommentsMap = {}, ncYearFilter = new Set(), ncGenderFilter = null, ncAssignFilter = 'all', ncStatusFilter = 'in_progress';
 
   async function init() {
     DY.initSidebar();
@@ -424,6 +439,14 @@
         const yr = btn.dataset.ncYear;
         if (ncYearFilter.has(yr)) { ncYearFilter.delete(yr); btn.classList.remove('active'); }
         else { ncYearFilter.add(yr); btn.classList.add('active'); }
+        renderList();
+      });
+    });
+    document.querySelectorAll('.filter-btn[data-nc-status]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn[data-nc-status]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        ncStatusFilter = btn.dataset.ncStatus;
         renderList();
       });
     });
@@ -552,6 +575,7 @@
 
   function renderList() {
     let rows = allNC;
+    if (ncStatusFilter !== 'all') rows = rows.filter(nc => (nc.follow_up_status || 'in_progress') === ncStatusFilter);
     if (ncAssignFilter === 'unassigned') rows = rows.filter(nc => !nc.leader_id);
     if (ncYearFilter.size > 0) rows = rows.filter(nc => ncYearFilter.has(nc.year_level));
     if (ncGenderFilter) rows = rows.filter(nc => nc.gender === ncGenderFilter);
@@ -594,7 +618,7 @@
           <span class="nc-step ${nc.fresh_start_completed ? 'done' : 'pending'}">FS✓</span>
           <span class="nc-step ${nc.hs_baptised           ? 'done' : 'pending'}">HS</span>
         </td>
-        <td><span class="badge badge--${complete ? 'success' : 'warning'}">${complete ? 'Complete' : 'In progress'}</span></td>
+        <td><span class="badge badge--${nc.follow_up_status === 'processed' ? 'success' : 'warning'}">${nc.follow_up_status === 'processed' ? 'Processed' : 'In Progress'}</span></td>
       `;
       tr.addEventListener('click', () => openEditModal(nc));
       tbody.appendChild(tr);
@@ -614,6 +638,7 @@
     document.getElementById('e-fs').checked   = nc.fresh_start_started;
     document.getElementById('e-fsc').checked  = nc.fresh_start_completed;
     document.getElementById('e-hs-bap').checked = !!nc.hs_baptised;
+    document.getElementById('e-status').value = nc.follow_up_status || 'in_progress';
     document.getElementById('e-notes').value  = nc.notes || '';
 
     const sel = document.getElementById('e-leader');
@@ -648,6 +673,7 @@
       fresh_start_started:  document.getElementById('e-fs').checked,
       fresh_start_completed:document.getElementById('e-fsc').checked,
       hs_baptised:          document.getElementById('e-hs-bap').checked,
+      follow_up_status:     document.getElementById('e-status').value || 'in_progress',
       notes:                document.getElementById('e-notes').value.trim() || null,
     };
     const { error } = await db.from('new_christians').update(updates).eq('id', currentNC.id);
