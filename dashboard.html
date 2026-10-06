@@ -792,11 +792,15 @@
     const npA    = partitionNP(yearA);
     const npB    = partitionNP(yearB);
 
+    const rangeLabel = hasRange
+      ? `${fromTerm}${fromWeek ? ' Wk' + fromWeek : ''} → ${toTerm || ''}${toWeek ? ' Wk' + toWeek : ''}`
+      : 'All terms';
+
     document.getElementById('ycomp-loading').classList.add('hidden');
-    renderYearCompResults(statsA, statsB, leA, leB, npA, npB, yearA, yearB, term, campusId);
+    renderYearCompResults(statsA, statsB, leA, leB, npA, npB, yearA, yearB, rangeLabel, campusId);
   }
 
-  function renderYearCompResults(statsA, statsB, leA, leB, npA, npB, yearA, yearB, term, campusId) {
+  function renderYearCompResults(statsA, statsB, leA, leB, npA, npB, yearA, yearB, rangeLabel, campusId) {
     // Aggregate leader_entries by date then avg/sum — excludes dates with no data
     const leByDate = (entries, field) => {
       const byDate = {};
@@ -830,9 +834,6 @@
     const retA = npcA.v1 > 0 ? Math.round((npcA.v2 + npcA.v3) / (npcA.v1 * 2) * 100) : 0;
     const retB = npcB.v1 > 0 ? Math.round((npcB.v2 + npcB.v3) / (npcB.v1 * 2) * 100) : 0;
 
-    const rangeLabel = fromTerm
-      ? `${fromTerm}${fromWeek ? ' Wk' + fromWeek : ''} → ${toTerm || ''}${toWeek ? ' Wk' + toWeek : ''}`
-      : 'All terms';
     const campusLabel = campusId
       ? (allCampuses.find(c => c.id === campusId)?.name ?? '—')
       : 'All campuses';
