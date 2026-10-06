@@ -98,20 +98,7 @@
     }
     .term-name { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; flex: 1; }
     .term-meta { font-size: 11px; font-weight: 500; opacity: 0.6; margin-right: 6px; }
-    .week-controls { display: flex; align-items: center; gap: 7px; }
-    .wk-btn {
-      width: 26px; height: 26px;
-      border-radius: 50%;
-      border: 1.5px solid rgba(255,255,255,0.35);
-      background: transparent; color: #fff;
-      font-size: 18px; line-height: 1;
-      cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      transition: background 0.12s, border-color 0.12s;
-      padding: 0; padding-bottom: 1px;
-    }
-    .wk-btn:hover:not(:disabled) { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.7); }
-    .wk-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+    .week-controls { display: none; }
 
     /* ─── Table ─── */
     .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -363,14 +350,14 @@
   // computed:true, kind → special render logic
   const SECTIONS = [
     { key: 'attendance', label: 'ATTENDANCE', rows: [
-      { key: 'youth_attendance',    label: 'Youth attendance',    avg: true },
+      { key: 'youth_attendance',    label: 'Youth attendance',    avg: true, suppressOnNoNight: true },
       { key: 'total_in_department', label: 'Total in department', noTotal: true },
       { key: 'leaders_count',       label: 'Total leaders',       avg: true },
       { key: 'ratio',               label: 'Ratio',               computed: true, kind: 'ratio' },
     ]},
-    { key: 'life', label: 'LIFE METRICS', rows: [
-      { key: 'salvations_first',  label: 'First-time decisions' },
-      { key: 'salvations_rededs', label: 'Rededications'        },
+    { key: 'life', label: 'DISCIPLESHIP STEPS', rows: [
+      { key: 'salvations_first',  label: 'First-time decisions', suppressOnNoNight: true },
+      { key: 'salvations_rededs', label: 'Rededications',        suppressOnNoNight: true },
       { key: 'bibles_given',      label: 'Bibles given'         },
       { key: 'fresh_start',       label: 'Fresh Start'          },
       { key: 'water_baptisms',    label: 'Water baptisms'       },
@@ -476,6 +463,7 @@
     if (wdCampus !== 'all') leq = leq.eq('campus_id', wdCampus);
 
     const [{ data: curr }, { data: leData }] = await Promise.all([q, leq]);
+    await loadTermSettings();
 
     wdStats = curr ?? [];
 
@@ -524,22 +512,22 @@
     return agg;
   }
 
-  // Sum a field across week data array, skipping no-night weeks
-  function sumField(weekDataArr, field) {
+  // Sum a field across week data array; skipNoNight=true excludes no-night weeks
+  function sumField(weekDataArr, field, skipNoNight = false) {
     let t = null;
     for (const wd of weekDataArr) {
-      if (wd && !wd.no_youth_night && wd[field] != null) {
+      if (wd && (skipNoNight ? !wd.no_youth_night : true) && wd[field] != null) {
         t = (t ?? 0) + Number(wd[field]);
       }
     }
     return t;
   }
 
-  // Average a field across week data array, skipping no-night weeks
-  function avgField(weekDataArr, field) {
+  // Average a field across week data array; skipNoNight=true excludes no-night weeks
+  function avgField(weekDataArr, field, skipNoNight = false) {
     let sum = 0, count = 0;
     for (const wd of weekDataArr) {
-      if (wd && !wd.no_youth_night && wd[field] != null) {
+      if (wd && (skipNoNight ? !wd.no_youth_night : true) && wd[field] != null) {
         sum += Number(wd[field]);
         count++;
       }
@@ -547,19 +535,23 @@
     return count > 0 ? Math.round(sum / count) : null;
   }
 
-  // ─── Week count in localStorage ───
-  function getWeekCount(termNum) {
-    try {
-      return Math.max(1, Math.min(20, parseInt(localStorage.getItem('dy_wd_weeks_T' + termNum + '_' + wdYear) || '10')));
-    } catch { return 10; }
-  }
-  function setWeekCount(termNum, n) {
-    try { localStorage.setItem('dy_wd_weeks_T' + termNum + '_' + wdYear, String(Math.max(1, Math.min(20, n)))); }
-    catch {}
-  }
-  function adjustWeeks(termNum, delta) {
-    setWeekCount(termNum, getWeekCount(termNum) + delta);
-    renderTerm(termNum);
+  // ─── Term week count from term_settings ───
+  let termWeekCount = { 1: 10, 2: 10, 3: 10, 4: 10 };
+
+  async function loadTermSettings() {
+    let q = db.from('term_settings')
+      .select('term_number, num_weeks, campus_id')
+      .eq('year', wdYear);
+    if (wdCampus !== 'all') {
+      q = q.or(`campus_id.eq.${wdCampus},campus_id.is.null`);
+    }
+    const { data: tsRows } = await q;
+    termWeekCount = { 1: 10, 2: 10, 3: 10, 4: 10 };
+    (tsRows ?? []).forEach(ts => {
+      const t = ts.term_number;
+      const n = ts.num_weeks ?? 10;
+      if (n > (termWeekCount[t] ?? 0)) termWeekCount[t] = n;
+    });
   }
 
   // ─── Render all visible terms ───
@@ -591,7 +583,7 @@
 
   // ─── Render a single term block ───
   function renderTermInto(el, termNum) {
-    const weekCount = getWeekCount(termNum);
+    const weekCount = termWeekCount[termNum] ?? 10;
 
     // Build per-week aggregated data
     const weekData = [];
@@ -708,7 +700,7 @@
           const wkCells = Array.from({length: weekCount}, (_, i) => {
             const wd = weekData[i];
             if (!wd) return '<td class="td-week"><span class="cell-val empty"></span></td>';
-            if (wd.no_youth_night) return '<td class="td-week no-night"><span class="cell-val">—</span></td>';
+            if (wd.no_youth_night && row.suppressOnNoNight) return '<td class="td-week no-night"><span class="cell-val">—</span></td>';
             const val = wd[row.key];
             return `<td class="td-week"><span class="cell-val${val == null ? ' empty' : ''}">${val ?? ''}</span></td>`;
           }).join('');
@@ -722,11 +714,11 @@
 
         if (row.avg) {
           // Average in summary column
-          const avgVal = avgField(weekData, row.key);
+          const avgVal = avgField(weekData, row.key, row.suppressOnNoNight);
           const wkCells = Array.from({length: weekCount}, (_, i) => {
             const wd = weekData[i];
             if (!wd) return '<td class="td-week"><span class="cell-val empty"></span></td>';
-            if (wd.no_youth_night) return '<td class="td-week no-night"><span class="cell-val">—</span></td>';
+            if (wd.no_youth_night && row.suppressOnNoNight) return '<td class="td-week no-night"><span class="cell-val">—</span></td>';
             const val = wd[row.key];
             return `<td class="td-week"><span class="cell-val${val == null ? ' empty' : ''}">${val ?? ''}</span></td>`;
           }).join('');
@@ -739,11 +731,11 @@
         }
 
         // Default: sum in summary column
-        const total = sumField(weekData, row.key);
+        const total = sumField(weekData, row.key, row.suppressOnNoNight);
         const wkCells = Array.from({length: weekCount}, (_, i) => {
           const wd = weekData[i];
           if (!wd) return '<td class="td-week"><span class="cell-val empty"></span></td>';
-          if (wd.no_youth_night) return '<td class="td-week no-night"><span class="cell-val">—</span></td>';
+          if (wd.no_youth_night && row.suppressOnNoNight) return '<td class="td-week no-night"><span class="cell-val">—</span></td>';
           const val = wd[row.key];
           return `<td class="td-week"><span class="cell-val${val == null ? ' empty' : ''}">${val ?? ''}</span></td>`;
         }).join('');
@@ -759,10 +751,6 @@
       <div class="term-header">
         <span class="term-name">TERM ${termNum}</span>
         <span class="term-meta">${weekCount} weeks · ${weeksWithData} with data</span>
-        <div class="week-controls">
-          <button class="wk-btn" onclick="adjustWeeks(${termNum}, -1)"${weekCount <= 1 ? ' disabled' : ''}>−</button>
-          <button class="wk-btn" onclick="adjustWeeks(${termNum}, 1)"${weekCount >= 20 ? ' disabled' : ''}>+</button>
-        </div>
       </div>
       <div class="table-wrap">
         <table class="wd-table">
