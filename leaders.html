@@ -203,6 +203,7 @@
               <th>Leader</th>
               <th>Year Level</th>
               <th>Youth</th>
+              <th></th>
             </tr>
           </thead>
           <tbody id="team-tbody"></tbody>
@@ -451,6 +452,58 @@
   </div>
 </div>
 
+<!-- ── Edit Leader Modal ─────────────────────────────────────────────────────── -->
+<div class="modal-backdrop" id="edit-leader-modal">
+  <div class="modal">
+    <div class="modal__header">
+      <h3>Edit leader</h3>
+      <button class="modal__close" onclick="closeEditLeaderModal()">✕</button>
+    </div>
+    <div class="modal__body">
+      <input type="hidden" id="el-id">
+      <div class="stack">
+        <div class="form-group">
+          <label>Name <span class="required">*</span></label>
+          <input id="el-name" type="text" class="input" placeholder="Full name">
+        </div>
+        <div class="form-grid form-grid--2">
+          <div class="form-group">
+            <label>Year level</label>
+            <select id="el-year" class="select">
+              <option value="">Select…</option>
+              <option>Year 7</option><option>Year 8</option><option>Year 9</option>
+              <option>Year 10</option><option>Year 11</option><option>Year 12</option>
+              <option>Other / Left school</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Gender</label>
+            <select id="el-gender" class="select">
+              <option value="">Select…</option>
+              <option>Male</option><option>Female</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Role</label>
+          <select id="el-role" class="select">
+            <option value="leader">Leader</option>
+            <option value="pastor">Pastor</option>
+          </select>
+        </div>
+      </div>
+      <div id="el-error" class="error-banner hidden mt-3"></div>
+    </div>
+    <div class="modal__footer" style="justify-content:space-between">
+      <button class="btn btn--danger btn--sm" onclick="deactivateLeader()">Deactivate</button>
+      <div style="display:flex;gap:var(--s-2)">
+        <button class="btn btn--ghost" onclick="closeEditLeaderModal()">Cancel</button>
+        <button class="btn btn--primary" id="el-save-btn" onclick="submitEditLeader()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ── Add Leader Modal ──────────────────────────────────────────────────────── -->
 <div class="modal-backdrop" id="add-leader-modal">
   <div class="modal">
@@ -613,8 +666,67 @@ function renderTeamTable() {
       <td class="fw-semibold">${escHtml(l.name)}</td>
       <td>${escHtml(l.year_level || '—')}</td>
       <td class="fw-semibold">${youth.length}</td>
+      <td style="text-align:right"><button class="btn btn--ghost btn--sm" onclick="openEditLeaderModal('${escHtml(l.id)}')">Edit</button></td>
     </tr>`;
   }).join('');
+}
+
+// ── Edit Leader ───────────────────────────────────────────────────────────────
+function openEditLeaderModal(leaderId) {
+  const l = allLeaders.find(x => x.id === leaderId);
+  if (!l) return;
+  document.getElementById('el-id').value     = l.id;
+  document.getElementById('el-name').value   = l.name ?? '';
+  document.getElementById('el-year').value   = l.year_level ?? '';
+  document.getElementById('el-gender').value = l.gender ?? '';
+  document.getElementById('el-role').value   = l.role ?? 'leader';
+  hideError('el-error');
+  document.getElementById('edit-leader-modal').classList.add('open');
+  setTimeout(() => document.getElementById('el-name').focus(), 50);
+}
+
+function closeEditLeaderModal() {
+  document.getElementById('edit-leader-modal').classList.remove('open');
+}
+
+async function submitEditLeader() {
+  const id   = document.getElementById('el-id').value;
+  const name = document.getElementById('el-name').value.trim();
+  if (!name) { showError('Name is required.', 'el-error'); return; }
+
+  const btn = document.getElementById('el-save-btn');
+  setLoading(btn, true);
+
+  const payload = {
+    name,
+    year_level: document.getElementById('el-year').value   || null,
+    gender:     document.getElementById('el-gender').value || null,
+    role:       document.getElementById('el-role').value,
+  };
+
+  const { error } = await db.from('leaders').update(payload).eq('id', id);
+  setLoading(btn, false);
+
+  if (error) { showError('Could not save changes: ' + error.message, 'el-error'); return; }
+
+  const idx = allLeaders.findIndex(x => x.id === id);
+  if (idx !== -1) allLeaders[idx] = { ...allLeaders[idx], ...payload };
+  closeEditLeaderModal();
+  renderTeamTable();
+}
+
+async function deactivateLeader() {
+  const id   = document.getElementById('el-id').value;
+  const name = document.getElementById('el-name').value.trim();
+  if (!confirm(`Deactivate ${name}? They will no longer appear in the team list or login screen.`)) return;
+
+  const { error } = await db.from('leaders').update({ active: false }).eq('id', id);
+  if (error) { showError('Could not deactivate leader.', 'el-error'); return; }
+
+  const idx = allLeaders.findIndex(x => x.id === id);
+  if (idx !== -1) allLeaders.splice(idx, 1);
+  closeEditLeaderModal();
+  renderTeamTable();
 }
 
 // ── Add Leader ────────────────────────────────────────────────────────────────
