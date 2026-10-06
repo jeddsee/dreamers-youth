@@ -90,6 +90,14 @@ function mostRecentYouthNight(from = new Date(), dow = YOUTH_NIGHT_DOW_FALLBACK)
   return formatDateInput(d);
 }
 
+// Returns YYYY-MM-DD of the next upcoming youth night (today if today is that DOW).
+function nextYouthNight(from = new Date(), dow = YOUTH_NIGHT_DOW_FALLBACK) {
+  const d = new Date(from);
+  const daysUntil = (dow - d.getDay() + 7) % 7;
+  d.setDate(d.getDate() + daysUntil);
+  return formatDateInput(d);
+}
+
 // Returns the youth_night_dow for the current identity (reads sessionStorage).
 function getCampusDow() {
   const identity = getIdentity();
@@ -233,7 +241,7 @@ function toggleSidebar() {
 window.DY = {
   db: supaDb,
   getIdentity, setIdentity, clearIdentity, requireIdentity,
-  formatDate, formatDateInput, termFromDate, mostRecentYouthNight, getCampusDow,
+  formatDate, formatDateInput, termFromDate, mostRecentYouthNight, nextYouthNight, getCampusDow,
   showError, hideError, setLoading,
   checkDuplicateNP, activateNewPerson,
   computeAttendanceStats, hasAbsenceFlag,

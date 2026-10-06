@@ -332,8 +332,9 @@
         <p>No youth on your roster yet.</p>
       </div>
       <div id="weekly-list" class="card card--flush hidden"></div>
-      <div id="weekly-footer" class="sticky-footer hidden">
-        <button id="weekly-submit" class="btn btn--primary btn--full">Save attendance</button>
+      <div id="weekly-footer" class="sticky-footer hidden" style="gap:var(--s-3)">
+        <button id="weekly-reset" class="btn btn--ghost" onclick="resetWeeklyEntry()">Reset</button>
+        <button id="weekly-submit" class="btn btn--primary" style="flex:1">Save attendance</button>
       </div>
     </section>
 
@@ -473,7 +474,7 @@
     document.getElementById('sidebar-name').textContent   = identity.leader_name;
     document.getElementById('sidebar-campus').textContent = identity.campus_name;
 
-    currentEntryDate = mostRecentYouthNight(new Date(), identity.youth_night_dow);
+    currentEntryDate = nextYouthNight(new Date(), identity.youth_night_dow);
     document.getElementById('entry-date').value = currentEntryDate;
 
     setupSidebarNav();
@@ -887,6 +888,27 @@
       recentEntries = data ?? [];
     }
   });
+
+  async function resetWeeklyEntry() {
+    if (!confirm('Reset all attendance for this date? This will clear saved entries.')) return;
+    const btn = document.getElementById('weekly-reset');
+    setLoading(btn, true);
+    await db.from('leader_entries')
+      .delete()
+      .eq('leader_id', identity.leader_id)
+      .eq('entry_date', currentEntryDate);
+    setLoading(btn, false);
+
+    // Clear all toggles in the UI
+    document.querySelectorAll('.toggle-btn').forEach(b => {
+      b.className = 'toggle-btn';
+    });
+    document.querySelectorAll('[id^="reason-"]').forEach(el => {
+      el.value = '';
+      el.classList.add('hidden');
+    });
+    document.getElementById('entry-saved-badge').classList.add('hidden');
+  }
 
   // ── New People ─────────────────────────────────────────────────────────────
   async function loadNewPeople() {
