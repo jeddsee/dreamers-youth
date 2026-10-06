@@ -152,7 +152,6 @@
     .sidebar { display: none !important; }
     .main-content { margin-left: 0 !important; width: 100% !important; }
     .snap-period-pills, .snap-campus-row, .ycomp-filter-bar,
-    .snap-submission-card,
     .btn, button, .sidebar-logout { display: none !important; }
     .app-layout { display: block; }
     body { background: #fff !important; }
@@ -353,6 +352,15 @@
           <div id="ws-saved" class="badge badge--success hidden">Saved</div>
         </div>
 
+        <!-- Submission status -->
+        <div class="snap-submission-card" style="margin-top:var(--s-6)">
+          <div class="snap-submission-head">
+            <span class="fw-semibold">Submission status — this week</span>
+            <span id="snap-sub-summary" class="text-sm text-muted">—</span>
+          </div>
+          <div class="snap-submission-body" id="snap-submission-leaders"></div>
+        </div>
+
         <!-- Hidden date field used for Supabase keying -->
         <input type="date" id="ws-date" style="display:none">
 
@@ -433,21 +441,6 @@
         <span class="section-badge section-badge--dark">Connect &amp; Sunday</span>
         <div class="stat-card-grid stat-card-grid--4 mb-5" id="snap-connect-cards"></div>
 
-        <!-- Life metrics by week chart -->
-        <div class="snap-chart-card">
-          <h3>Life metrics by week</h3>
-          <p id="snap-chart-empty" class="text-sm text-muted hidden">No weekly data to display yet.</p>
-          <canvas id="life-metrics-chart"></canvas>
-        </div>
-
-        <!-- Submission status -->
-        <div class="snap-submission-card">
-          <div class="snap-submission-head">
-            <span class="fw-semibold">Submission status — this week</span>
-            <span id="snap-sub-summary" class="text-sm text-muted">—</span>
-          </div>
-          <div class="snap-submission-body" id="snap-submission-leaders"></div>
-        </div>
 
       </div>
     </section>
@@ -604,7 +597,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.50.0/dist/umd/supabase.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script src="shared.js"></script>
   <script>
   const { db } = DY;
@@ -617,7 +609,6 @@
   let snapPeriod   = 'year';
   let snapDateFrom = null;
   let snapDateTo   = null;
-  let lifeChart = null;
 
   // ── Init ───────────────────────────────────────────────────────────────────
   async function init() {
@@ -1162,32 +1153,19 @@
     const deptTotal  = roster.length;
     const leaderCount = leaders.filter(l => l.role === 'leader' && l.active !== false).length;
     const attPct     = deptTotal > 0 ? Math.round(avgAtt / deptTotal * 100) : 0;
-    const youthPerLeader = leaderCount > 0 ? (avgAtt / leaderCount).toFixed(1) : '—';
+    const youthPerLeader = leaderCount > 0 ? Math.round(avgAtt / leaderCount) : '—';
     document.getElementById('snap-avg-att').textContent          = avgAtt;
     document.getElementById('snap-total-dept').textContent       = deptTotal;
     document.getElementById('snap-att-pct').textContent          = deptTotal > 0 ? `${attPct}%` : '—';
     document.getElementById('snap-leader-count').textContent     = leaderCount || '—';
     document.getElementById('snap-youth-per-leader').textContent = leaderCount > 0 ? youthPerLeader : '—';
 
-    // New People — counts from actual new_people records
-    const npCount = s => snapNP.filter(n => n.status === s).length;
-    const v1 = npCount('visit_1'), v2 = npCount('visit_2'), v3 = npCount('visit_3');
+    // New People — v1 = all NP (visited at least once), v2 = visited 2+, v3 = visited 3 times
+    const v1 = snapNP.length;
+    const v2 = snapNP.filter(n => n.status === 'visit_2' || n.status === 'visit_3').length;
+    const v3 = snapNP.filter(n => n.status === 'visit_3').length;
     const retention = v1 > 0 ? Math.round((v2 + v3) / (v1 * 2) * 100) : 0;
-
-    // Total new people added in the selected period
-    const npInPeriod = snapNP.filter(n => {
-      const d = new Date(n.created_at);
-      if (snapPeriod === 'custom' && snapDateFrom && snapDateTo) {
-        const dateStr = n.created_at.slice(0, 10);
-        return dateStr >= snapDateFrom && dateStr <= snapDateTo;
-      }
-      if (['t1','t2','t3','t4'].includes(snapPeriod)) {
-        const range = TERM_RANGES.find(r => r.term === snapPeriod.toUpperCase());
-        return range && d.getFullYear() === year &&
-               d.getMonth() + 1 >= range.startMonth && d.getMonth() + 1 <= range.endMonth;
-      }
-      return d.getFullYear() === year; // 'all' = this calendar year
-    }).length;
+    const npInPeriod = v1 + v2 + v3;
 
     document.getElementById('snap-np-cards').innerHTML = [
       { label: 'Visit 1',        value: v1,              cls: 'stat-card--red' },
@@ -1239,71 +1217,8 @@
       { label: 'Schools Visited',  value: sum(col('schools_visited')) },
     ].map(c => `<div class="stat-card"><div class="stat-card__label">${c.label}</div><div class="stat-card__value">${c.value}</div></div>`).join('');
 
-    renderLifeMetricsChart(filteredStats);
   }
 
-  function renderLifeMetricsChart(stats) {
-    const canvas  = document.getElementById('life-metrics-chart');
-    const emptyEl = document.getElementById('snap-chart-empty');
-    if (lifeChart) { lifeChart.destroy(); lifeChart = null; }
-
-    if (!stats.length) {
-      emptyEl.classList.remove('hidden');
-      canvas.classList.add('hidden');
-      return;
-    }
-    emptyEl.classList.add('hidden');
-    canvas.classList.remove('hidden');
-
-    // Aggregate by date (multiple campuses may share a date)
-    const byDate = {};
-    stats.forEach(w => {
-      if (!byDate[w.entry_date]) byDate[w.entry_date] = { salvations: 0, water: 0, hs: 0 };
-      byDate[w.entry_date].salvations += (w.salvations_first ?? 0) + (w.salvations_rededs ?? 0);
-      byDate[w.entry_date].water      += (w.water_baptisms ?? 0);
-      byDate[w.entry_date].hs         += (w.hs_baptisms ?? 0);
-    });
-    const dates   = Object.keys(byDate).sort();
-    const labels  = dates.map(d => formatDate(d));
-
-    lifeChart = new Chart(canvas, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [
-          {
-            label: 'Salvations',
-            data: dates.map(d => byDate[d].salvations),
-            borderColor: '#ff3500', backgroundColor: 'rgba(255,53,0,0.08)',
-            borderWidth: 2, tension: 0.35, fill: true, pointRadius: 4,
-          },
-          {
-            label: 'Water baptisms',
-            data: dates.map(d => byDate[d].water),
-            borderColor: '#0000ff', backgroundColor: 'rgba(0,0,255,0.06)',
-            borderWidth: 2, tension: 0.35, fill: true, pointRadius: 4,
-          },
-          {
-            label: 'HS baptisms',
-            data: dates.map(d => byDate[d].hs),
-            borderColor: '#8aaa00', backgroundColor: 'rgba(190,255,0,0.15)',
-            borderWidth: 2, tension: 0.35, fill: true, pointRadius: 4,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        interaction: { mode: 'index', intersect: false },
-        plugins: {
-          legend: { position: 'bottom', labels: { font: { family: 'Outfit', size: 12 }, boxWidth: 12, padding: 16 } },
-        },
-        scales: {
-          y: { beginAtZero: true, ticks: { stepSize: 1, font: { family: 'Outfit' } } },
-          x: { ticks: { font: { family: 'Outfit', size: 11 }, maxRotation: 45 } },
-        },
-      },
-    });
-  }
 
   // ── Term management ─────────────────────────────────────────────────────────
   async function loadTermSection() {
