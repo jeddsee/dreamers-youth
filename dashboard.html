@@ -1150,7 +1150,8 @@
 
     // Attendance
     const avgAtt     = avg(col('attendance'));
-    const deptTotal  = roster.length;
+    const latestDept = weeklyStats.find(w => w.total_in_department != null);
+    const deptTotal  = latestDept ? latestDept.total_in_department : roster.length;
     const leaderCount = leaders.filter(l => l.role === 'leader' && l.active !== false).length;
     const attPct     = deptTotal > 0 ? Math.round(avgAtt / deptTotal * 100) : 0;
     const youthPerLeader = leaderCount > 0 ? Math.round(avgAtt / leaderCount) : '—';
