@@ -677,7 +677,7 @@
 
     const [leaderRes, rosterRes, entryRes, tsRes, wsRes] = await Promise.all([
       db.from('leaders')
-        .select('id, name, year_level, gender')
+        .select('id, name, year_level, year_levels, gender')
         .eq('campus_id', ldCampus)
         .eq('role', 'leader')
         .eq('active', true)
@@ -769,20 +769,26 @@
     return parts[2] + '/' + parts[1];
   }
 
+  function getLeaderYears(l) {
+    if (Array.isArray(l.year_levels) && l.year_levels.length) return l.year_levels;
+    if (l.year_level) return [l.year_level];
+    return [];
+  }
+
   function leaderLabel(l) {
-    const yr = l.year_level ? l.year_level.replace('Year ', '') : '?';
+    const yrs = getLeaderYears(l);
+    const yr = yrs.length ? yrs.map(y => y.replace('Year ', '')).join('/') : '?';
     const gen = l.gender === 'Male' ? ' Boys' : l.gender === 'Female' ? ' Girls' : '';
     return 'Yr ' + yr + gen + ' — ' + l.name;
   }
 
   function sortLeaders(leaders) {
-    const yrNum = yl => {
-      if (!yl) return 99;
-      const n = parseInt(yl.replace('Year ', ''));
-      return isNaN(n) ? 99 : n;
+    const minYrNum = l => {
+      const nums = getLeaderYears(l).map(y => { const n = parseInt(y.replace('Year ', '')); return isNaN(n) ? 99 : n; });
+      return nums.length ? Math.min(...nums) : 99;
     };
     return [...leaders].sort((a, b) => {
-      const yd = yrNum(a.year_level) - yrNum(b.year_level);
+      const yd = minYrNum(a) - minYrNum(b);
       if (yd !== 0) return yd;
       if (a.gender && b.gender && a.gender !== b.gender) return a.gender < b.gender ? -1 : 1;
       return (a.name || '').localeCompare(b.name || '');
@@ -882,7 +888,7 @@
 
     const filteredLeaders = sortLeaders(allLeaders.filter(l => {
       if (leaderFilter && l.id !== leaderFilter) return false;
-      if (yearLevelFilter.size > 0 && !yearLevelFilter.has(l.year_level)) return false;
+      if (yearLevelFilter.size > 0 && !getLeaderYears(l).some(y => yearLevelFilter.has(y))) return false;
       if (genderFilter.size > 0 && !genderFilter.has(l.gender)) return false;
       return true;
     }));
@@ -917,7 +923,7 @@
     if (!el) return;
     const filteredLeaders = sortLeaders(allLeaders.filter(l => {
       if (leaderFilter && l.id !== leaderFilter) return false;
-      if (yearLevelFilter.size > 0 && !yearLevelFilter.has(l.year_level)) return false;
+      if (yearLevelFilter.size > 0 && !getLeaderYears(l).some(y => yearLevelFilter.has(y))) return false;
       if (genderFilter.size > 0 && !genderFilter.has(l.gender)) return false;
       return true;
     }));

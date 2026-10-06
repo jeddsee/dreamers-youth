@@ -472,13 +472,16 @@
         </div>
         <div class="form-grid form-grid--2">
           <div class="form-group">
-            <label>Year level</label>
-            <select id="el-year" class="select">
-              <option value="">Select…</option>
-              <option>Year 7</option><option>Year 8</option><option>Year 9</option>
-              <option>Year 10</option><option>Year 11</option><option>Year 12</option>
-              <option>Other / Left school</option>
-            </select>
+            <label>Year level(s)</label>
+            <div id="el-year-checks" class="check-pill-group">
+              <label class="check-pill"><input type="checkbox" value="Year 7"> Yr 7</label>
+              <label class="check-pill"><input type="checkbox" value="Year 8"> Yr 8</label>
+              <label class="check-pill"><input type="checkbox" value="Year 9"> Yr 9</label>
+              <label class="check-pill"><input type="checkbox" value="Year 10"> Yr 10</label>
+              <label class="check-pill"><input type="checkbox" value="Year 11"> Yr 11</label>
+              <label class="check-pill"><input type="checkbox" value="Year 12"> Yr 12</label>
+              <label class="check-pill"><input type="checkbox" value="Other / Left school"> Other</label>
+            </div>
           </div>
           <div class="form-group">
             <label>Gender</label>
@@ -536,13 +539,16 @@
         </div>
         <div class="form-grid form-grid--2">
           <div class="form-group">
-            <label>Year level</label>
-            <select id="al-year" class="select">
-              <option value="">Select…</option>
-              <option>Year 7</option><option>Year 8</option><option>Year 9</option>
-              <option>Year 10</option><option>Year 11</option><option>Year 12</option>
-              <option>Other / Left school</option>
-            </select>
+            <label>Year level(s)</label>
+            <div id="al-year-checks" class="check-pill-group">
+              <label class="check-pill"><input type="checkbox" value="Year 7"> Yr 7</label>
+              <label class="check-pill"><input type="checkbox" value="Year 8"> Yr 8</label>
+              <label class="check-pill"><input type="checkbox" value="Year 9"> Yr 9</label>
+              <label class="check-pill"><input type="checkbox" value="Year 10"> Yr 10</label>
+              <label class="check-pill"><input type="checkbox" value="Year 11"> Yr 11</label>
+              <label class="check-pill"><input type="checkbox" value="Year 12"> Yr 12</label>
+              <label class="check-pill"><input type="checkbox" value="Other / Left school"> Other</label>
+            </div>
           </div>
           <div class="form-group">
             <label>Gender</label>
@@ -606,7 +612,7 @@ async function init() {
   document.getElementById('rv-year').value = new Date().getFullYear();
 
   const [leadersRes, youthRes] = await Promise.all([
-    db.from('leaders').select('id, name, role, year_level, gender, joined_date, left_date').eq('campus_id', identity.campus_id).eq('active', true).order('name'),
+    db.from('leaders').select('id, name, role, year_level, year_levels, gender, joined_date, left_date').eq('campus_id', identity.campus_id).eq('active', true).order('name'),
     db.from('youth_roster').select('id, name, leader_id, year_level, gender, category, water_baptised, hs_baptised, serving, active, created_at').eq('campus_id', identity.campus_id),
   ]);
   allLeaders = leadersRes.data ?? [];
@@ -648,6 +654,25 @@ function setFilter(type, value, btn) {
   renderTeamTable();
 }
 
+// Returns array of year levels for a leader, preferring year_levels[], falling back to year_level string
+function getLeaderYears(l) {
+  if (Array.isArray(l.year_levels) && l.year_levels.length) return l.year_levels;
+  if (l.year_level) return [l.year_level];
+  return [];
+}
+
+function getLeaderYearsLabel(l) {
+  const yrs = getLeaderYears(l);
+  if (!yrs.length) return '—';
+  return yrs.map(y => y.replace('Year ', 'Yr ')).join(', ');
+}
+
+function getLeaderMinYearNum(l) {
+  const yrs = getLeaderYears(l);
+  const nums = yrs.map(y => { const n = parseInt(y.replace('Year ', '')); return isNaN(n) ? 99 : n; });
+  return nums.length ? Math.min(...nums) : 99;
+}
+
 function tenureLabel(joinedDate) {
   if (!joinedDate) return '—';
   const start = new Date(joinedDate + 'T00:00:00');
@@ -679,10 +704,10 @@ function renderTeamTable() {
   }).filter(({ l }) => {
     if (!filtersActive) return true;
     if (genderFilter !== 'all' && l.gender !== genderFilter) return false;
-    if (yearFilter.size > 0 && !yearFilter.has(l.year_level)) return false;
+    if (yearFilter.size > 0 && !getLeaderYears(l).some(y => yearFilter.has(y))) return false;
     return true;
   }).sort((a, b) => {
-      const yd = yrNum(a.l.year_level) - yrNum(b.l.year_level);
+      const yd = getLeaderMinYearNum(a.l) - getLeaderMinYearNum(b.l);
       if (yd !== 0) return yd;
       const ga = a.l.gender || '', gb = b.l.gender || '';
       if (ga !== gb) return ga < gb ? -1 : 1;
@@ -704,7 +729,7 @@ function renderTeamTable() {
       : '';
     return `<tr${rowStyle}>
       <td class="fw-semibold">${escHtml(l.name)}${inactivePill}</td>
-      <td>${escHtml(l.year_level || '—')}</td>
+      <td>${escHtml(getLeaderYearsLabel(l))}</td>
       <td class="fw-semibold">${inactive ? '—' : youth.length}</td>
       <td style="color:var(--c-text-muted);font-size:var(--text-sm)"${sinceStr}>${tenure}</td>
       <td style="text-align:right"><button class="btn btn--ghost btn--sm" onclick="openEditLeaderModal('${escHtml(l.id)}')">Edit</button></td>
@@ -718,8 +743,11 @@ function openEditLeaderModal(leaderId) {
   if (!l) return;
   document.getElementById('el-id').value     = l.id;
   document.getElementById('el-name').value   = l.name ?? '';
-  document.getElementById('el-year').value   = l.year_level ?? '';
   document.getElementById('el-gender').value = l.gender ?? '';
+  const elYears = getLeaderYears(l);
+  document.querySelectorAll('#el-year-checks input[type=checkbox]').forEach(cb => {
+    cb.checked = elYears.includes(cb.value);
+  });
   document.getElementById('el-role').value   = l.role ?? 'leader';
   document.getElementById('el-joined').value = l.joined_date ?? '';
   document.getElementById('el-left').value   = l.left_date ?? '';
@@ -754,9 +782,10 @@ async function submitEditLeader() {
   const btn = document.getElementById('el-save-btn');
   setLoading(btn, true);
 
+  const elChecked = [...document.querySelectorAll('#el-year-checks input[type=checkbox]:checked')].map(cb => cb.value);
   const payload = {
     name,
-    year_level:  document.getElementById('el-year').value   || null,
+    year_levels: elChecked.length ? elChecked : null,
     gender:      document.getElementById('el-gender').value || null,
     role:        document.getElementById('el-role').value,
     joined_date: document.getElementById('el-joined').value || null,
@@ -791,9 +820,9 @@ async function deactivateLeader() {
 // ── Add Leader ────────────────────────────────────────────────────────────────
 function openAddLeaderModal() {
   document.getElementById('al-name').value   = '';
-  document.getElementById('al-year').value   = '';
   document.getElementById('al-gender').value = '';
   document.getElementById('al-joined').value = '';
+  document.querySelectorAll('#al-year-checks input[type=checkbox]').forEach(cb => cb.checked = false);
   document.getElementById('al-error').classList.add('hidden');
   document.getElementById('add-leader-modal').classList.add('open');
   setTimeout(() => document.getElementById('al-name').focus(), 50);
@@ -808,15 +837,16 @@ async function submitAddLeader() {
   const btn = document.getElementById('al-save-btn');
   setLoading(btn, true);
 
+  const alChecked = [...document.querySelectorAll('#al-year-checks input[type=checkbox]:checked')].map(cb => cb.value);
   const { data, error } = await db.from('leaders').insert({
     name,
-    year_level:  document.getElementById('al-year').value   || null,
+    year_levels: alChecked.length ? alChecked : null,
     gender:      document.getElementById('al-gender').value || null,
     joined_date: document.getElementById('al-joined').value || null,
     role:        'leader',
     campus_id:   identity.campus_id,
     active:      true,
-  }).select('id, name, role, year_level, gender, joined_date, left_date').single();
+  }).select('id, name, role, year_level, year_levels, gender, joined_date, left_date').single();
 
   setLoading(btn, false);
   if (error) { showError('Failed to add leader: ' + error.message, 'al-error'); return; }
@@ -871,7 +901,7 @@ function renderRoster() {
   if (rosterYearFilter.size > 0) {
     validLeaderIds = new Set([...validLeaderIds].filter(id => {
       const l = allLeaders.find(x => x.id === id);
-      return rosterYearFilter.has(l?.year_level);
+      return getLeaderYears(l).some(y => rosterYearFilter.has(y));
     }));
   }
   if (rosterGenderFilter !== 'all') {

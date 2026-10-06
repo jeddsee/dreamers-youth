@@ -355,6 +355,18 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   margin-top: var(--s-1);
 }
 
+.check-pill-group { display: flex; flex-wrap: wrap; gap: var(--s-1); padding-top: 2px; }
+.check-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: var(--text-xs); font-weight: 600; cursor: pointer;
+  padding: 3px 10px; border-radius: var(--r-full);
+  border: 1px solid var(--c-border-dark); background: var(--c-surface);
+  color: var(--c-text-secondary); user-select: none;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+.check-pill input[type=checkbox] { display: none; }
+.check-pill:has(input:checked) { background: #111; color: #fff; border-color: #111; }
+
 /* ── Toggle (Yes/Maybe/No) ────────────────────────────────────────────────────*/
 .toggle-group {
   display: inline-flex;
