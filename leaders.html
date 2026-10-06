@@ -206,6 +206,7 @@
               <th>Leader</th>
               <th>Year Level</th>
               <th>Youth</th>
+              <th>On team</th>
               <th></th>
             </tr>
           </thead>
@@ -494,6 +495,19 @@
             <option value="pastor">Pastor</option>
           </select>
         </div>
+        <div class="form-grid form-grid--2">
+          <div class="form-group">
+            <label>Joined team</label>
+            <input id="el-joined" type="date" class="input">
+          </div>
+          <div class="form-group">
+            <label>Left team <span style="font-size:0.65rem;font-weight:400;color:var(--c-text-muted)">(inactive date)</span></label>
+            <input id="el-left" type="date" class="input">
+          </div>
+        </div>
+        <div>
+          <button type="button" id="el-inactive-btn" class="btn btn--sm btn--outline" onclick="toggleLeaderInactive()" style="font-size:var(--text-xs)"></button>
+        </div>
       </div>
       <div id="el-error" class="error-banner hidden mt-3"></div>
     </div>
@@ -537,6 +551,10 @@
               <option>Male</option><option>Female</option><option>Prefer not to say</option>
             </select>
           </div>
+        </div>
+        <div class="form-group">
+          <label>Joined team</label>
+          <input id="al-joined" type="date" class="input">
         </div>
       </div>
       <div id="al-error" class="error-banner hidden mt-3"></div>
@@ -588,7 +606,7 @@ async function init() {
   document.getElementById('rv-year').value = new Date().getFullYear();
 
   const [leadersRes, youthRes] = await Promise.all([
-    db.from('leaders').select('id, name, role, year_level, gender').eq('campus_id', identity.campus_id).eq('active', true).order('name'),
+    db.from('leaders').select('id, name, role, year_level, gender, joined_date, left_date').eq('campus_id', identity.campus_id).eq('active', true).order('name'),
     db.from('youth_roster').select('id, name, leader_id, year_level, gender, category, water_baptised, hs_baptised, serving, active, created_at').eq('campus_id', identity.campus_id),
   ]);
   allLeaders = leadersRes.data ?? [];
@@ -630,6 +648,18 @@ function setFilter(type, value, btn) {
   renderTeamTable();
 }
 
+function tenureLabel(joinedDate) {
+  if (!joinedDate) return '—';
+  const start = new Date(joinedDate + 'T00:00:00');
+  const now   = new Date();
+  let years  = now.getFullYear() - start.getFullYear();
+  let months = now.getMonth()    - start.getMonth();
+  if (months < 0) { years--; months += 12; }
+  if (years > 0)  return `${years}y ${months}m`;
+  if (months > 0) return `${months}m`;
+  return '< 1m';
+}
+
 function renderTeamTable() {
   const tbody = document.getElementById('team-tbody');
   const leaders = allLeaders.filter(l => l.role === 'leader');
@@ -665,10 +695,18 @@ function renderTeamTable() {
   }
 
   tbody.innerHTML = rows.map(({ l, youth }) => {
-    return `<tr>
-      <td class="fw-semibold">${escHtml(l.name)}</td>
+    const inactive = !!l.left_date;
+    const tenure   = tenureLabel(l.joined_date);
+    const sinceStr = l.joined_date ? ` title="Since ${l.joined_date}"` : '';
+    const rowStyle = inactive ? ' style="opacity:0.55"' : '';
+    const inactivePill = inactive
+      ? `<span class="badge badge--warning" style="font-size:0.6rem;margin-left:6px" title="Left ${l.left_date}">Inactive</span>`
+      : '';
+    return `<tr${rowStyle}>
+      <td class="fw-semibold">${escHtml(l.name)}${inactivePill}</td>
       <td>${escHtml(l.year_level || '—')}</td>
-      <td class="fw-semibold">${youth.length}</td>
+      <td class="fw-semibold">${inactive ? '—' : youth.length}</td>
+      <td style="color:var(--c-text-muted);font-size:var(--text-sm)"${sinceStr}>${tenure}</td>
       <td style="text-align:right"><button class="btn btn--ghost btn--sm" onclick="openEditLeaderModal('${escHtml(l.id)}')">Edit</button></td>
     </tr>`;
   }).join('');
@@ -683,6 +721,10 @@ function openEditLeaderModal(leaderId) {
   document.getElementById('el-year').value   = l.year_level ?? '';
   document.getElementById('el-gender').value = l.gender ?? '';
   document.getElementById('el-role').value   = l.role ?? 'leader';
+  document.getElementById('el-joined').value = l.joined_date ?? '';
+  document.getElementById('el-left').value   = l.left_date ?? '';
+  document.getElementById('el-inactive-btn').textContent =
+    l.left_date ? 'Clear inactive / Rejoin team' : 'Mark as inactive (set today as end date)';
   hideError('el-error');
   document.getElementById('edit-leader-modal').classList.add('open');
   setTimeout(() => document.getElementById('el-name').focus(), 50);
@@ -690,6 +732,18 @@ function openEditLeaderModal(leaderId) {
 
 function closeEditLeaderModal() {
   document.getElementById('edit-leader-modal').classList.remove('open');
+}
+
+function toggleLeaderInactive() {
+  const leftEl = document.getElementById('el-left');
+  const btn    = document.getElementById('el-inactive-btn');
+  if (leftEl.value) {
+    leftEl.value = '';
+    btn.textContent = 'Mark as inactive (set today as end date)';
+  } else {
+    leftEl.value = new Date().toISOString().split('T')[0];
+    btn.textContent = 'Clear inactive / Rejoin team';
+  }
 }
 
 async function submitEditLeader() {
@@ -702,9 +756,11 @@ async function submitEditLeader() {
 
   const payload = {
     name,
-    year_level: document.getElementById('el-year').value   || null,
-    gender:     document.getElementById('el-gender').value || null,
-    role:       document.getElementById('el-role').value,
+    year_level:  document.getElementById('el-year').value   || null,
+    gender:      document.getElementById('el-gender').value || null,
+    role:        document.getElementById('el-role').value,
+    joined_date: document.getElementById('el-joined').value || null,
+    left_date:   document.getElementById('el-left').value   || null,
   };
 
   const { error } = await db.from('leaders').update(payload).eq('id', id);
@@ -737,6 +793,7 @@ function openAddLeaderModal() {
   document.getElementById('al-name').value   = '';
   document.getElementById('al-year').value   = '';
   document.getElementById('al-gender').value = '';
+  document.getElementById('al-joined').value = '';
   document.getElementById('al-error').classList.add('hidden');
   document.getElementById('add-leader-modal').classList.add('open');
   setTimeout(() => document.getElementById('al-name').focus(), 50);
@@ -755,10 +812,11 @@ async function submitAddLeader() {
     name,
     year_level:  document.getElementById('al-year').value   || null,
     gender:      document.getElementById('al-gender').value || null,
+    joined_date: document.getElementById('al-joined').value || null,
     role:        'leader',
     campus_id:   identity.campus_id,
     active:      true,
-  }).select('id, name, role, year_level, gender').single();
+  }).select('id, name, role, year_level, gender, joined_date, left_date').single();
 
   setLoading(btn, false);
   if (error) { showError('Failed to add leader: ' + error.message, 'al-error'); return; }
