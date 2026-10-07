@@ -540,7 +540,7 @@
       }
       agg[field] = total;
     }
-    // Override connect/sunday/youth with sums from leader_entries (listing data)
+    // Override connect/sunday with sums from leader_entries (listing data)
     const entryDates = [...new Set(entries.map(e => e.entry_date).filter(Boolean))];
     let connectSum = null, sundaySum = null, youthSum = null;
     for (const date of entryDates) {
@@ -551,7 +551,8 @@
     }
     agg.connect_attendance = connectSum;
     agg.sunday_attendance  = sundaySum;
-    agg.youth_attendance   = youthSum;
+    // Youth attendance: use the pastor's weekly_stats entry if set; fall back to leader_entries sum
+    agg.youth_attendance   = agg.youth_attendance ?? youthSum;
 
     return agg;
   }

@@ -285,6 +285,10 @@
               <label class="entry-field-label">Total in department</label>
               <input id="ws-total-dept" type="number" min="0" max="11" value="0" class="input" autocomplete="off">
             </div>
+            <div class="form-group ws-night-field">
+              <label class="entry-field-label">Youth attendance</label>
+              <input id="ws-youth-att" type="number" min="0" max="999" value="0" class="input" autocomplete="off">
+            </div>
           </div>
         </div>
 
@@ -1004,6 +1008,7 @@
   function fillWSForm(d) {
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? 0; };
     set('ws-total-dept', d.total_in_department);
+    set('ws-youth-att',  d.youth_attendance);
     set('ws-first-time', d.salvations_first);
     set('ws-rededs',     d.salvations_rededs);
     set('ws-bibles',     d.bibles_given);
@@ -1019,7 +1024,7 @@
   }
 
   function clearWSForm() {
-    ['ws-total-dept','ws-first-time','ws-rededs','ws-bibles',
+    ['ws-total-dept','ws-youth-att','ws-first-time','ws-rededs','ws-bibles',
      'ws-fresh','ws-water-bap','ws-hs-bap','ws-saints','ws-schools'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = 0;
@@ -1062,6 +1067,7 @@
       week_number:          weekNum,
       no_youth_night:       noNight,
       total_in_department:  int('ws-total-dept'),
+      youth_attendance:     int('ws-youth-att'),
       leaders_count:        leaderCount ?? null,
       salvations_first:     int('ws-first-time'),
       salvations_rededs:    int('ws-rededs'),
