@@ -193,6 +193,22 @@
     .overdue-item:hover { opacity: 0.75; }
     .overdue-item__name { font-weight: 600; flex: 1; }
     .overdue-item__meta { font-size: var(--text-xs); color: #92400E; }
+
+    .leader-search { position: relative; }
+    .leader-search__list {
+      position: absolute; top: calc(100% + 2px); left: 0; right: 0;
+      background: var(--c-surface);
+      border: 1px solid var(--c-border-dark);
+      border-radius: var(--r-sm);
+      max-height: 180px; overflow-y: auto;
+      z-index: 300; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .leader-search__item {
+      padding: 8px 12px; font-size: var(--text-sm); cursor: pointer;
+      transition: background var(--transition);
+    }
+    .leader-search__item:hover { background: var(--c-primary-light); }
+    .leader-search__item--empty { padding: 8px 12px; font-size: var(--text-sm); color: var(--c-text-muted); }
   </style>
 </head>
 <body>
@@ -557,7 +573,11 @@
             </div>
             <div class="form-group">
               <label>Assigned leader</label>
-              <select id="a-leader" class="select"><option value="">Select…</option></select>
+              <div class="leader-search" id="a-leader-wrap">
+                <input type="text" id="a-leader-input" class="input" placeholder="Search leader…" autocomplete="off">
+                <div class="leader-search__list hidden" id="a-leader-list"></div>
+                <input type="hidden" id="a-leader" value="">
+              </div>
             </div>
           </div>
           <div class="form-group">
@@ -613,13 +633,7 @@
       .order('name');
     leaders = data ?? [];
 
-    // Populate add modal leader dropdown
-    const sel = document.getElementById('a-leader');
-    leaders.forEach(l => {
-      const o = document.createElement('option');
-      o.value = l.id; o.textContent = l.name;
-      sel.appendChild(o);
-    });
+    initLeaderSearch();
   }
 
   async function loadNP() {
@@ -1060,6 +1074,64 @@
   }
 
   // ── Add modal ────────────────────────────────────────────────────────────────
+  function initLeaderSearch() {
+    const inp  = document.getElementById('a-leader-input');
+    const list = document.getElementById('a-leader-list');
+    const hid  = document.getElementById('a-leader');
+
+    function renderList(query) {
+      const q = query.trim().toLowerCase();
+      const filtered = q
+        ? leaders.filter(l => l.name.toLowerCase().includes(q))
+        : leaders;
+      list.innerHTML = '';
+      if (!filtered.length) {
+        list.innerHTML = '<div class="leader-search__item--empty">No leaders found</div>';
+      } else {
+        const unassigned = document.createElement('div');
+        unassigned.className = 'leader-search__item';
+        unassigned.textContent = 'Unassigned';
+        unassigned.addEventListener('mousedown', e => { e.preventDefault(); selectLeader('', ''); });
+        if (!q) list.appendChild(unassigned);
+        filtered.forEach(l => {
+          const item = document.createElement('div');
+          item.className = 'leader-search__item';
+          item.textContent = l.name;
+          item.addEventListener('mousedown', e => { e.preventDefault(); selectLeader(l.id, l.name); });
+          list.appendChild(item);
+        });
+      }
+      list.classList.remove('hidden');
+    }
+
+    function selectLeader(id, name) {
+      hid.value = id;
+      inp.value = name;
+      list.classList.add('hidden');
+    }
+
+    inp.addEventListener('focus', () => renderList(inp.value));
+    inp.addEventListener('input', () => {
+      hid.value = '';
+      renderList(inp.value);
+    });
+    inp.addEventListener('blur', () => {
+      setTimeout(() => list.classList.add('hidden'), 150);
+    });
+
+    document.addEventListener('click', e => {
+      if (!document.getElementById('a-leader-wrap').contains(e.target)) {
+        list.classList.add('hidden');
+      }
+    });
+  }
+
+  function resetLeaderSearch() {
+    document.getElementById('a-leader-input').value = '';
+    document.getElementById('a-leader').value = '';
+    document.getElementById('a-leader-list').classList.add('hidden');
+  }
+
   function openAddModal() {
     document.getElementById('a-name').value  = '';
     document.getElementById('a-phone').value = '';
@@ -1067,7 +1139,7 @@
     document.getElementById('a-friend').value = '';
     document.getElementById('a-year').value  = '';
     document.getElementById('a-gender').value = '';
-    document.getElementById('a-leader').value = '';
+    resetLeaderSearch();
     document.getElementById('a-v1').value    = formatDateInput();
     document.getElementById('add-dup-warning').innerHTML = '';
     document.getElementById('add-dup-warning').classList.add('hidden');
