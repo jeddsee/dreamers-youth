@@ -857,14 +857,13 @@
     return al.filter(r => r.status === 'yes' || r.status === 'maybe').length;
   }
 
-  // Expected attendance for a given entry: use the full attendance_listing length (roster
-  // submitted for that week), falling back to the static roster count if no entry exists.
-  function expectedCount(entry, leaderId) {
-    if (entry) {
-      const al = entry.attendance_listing;
-      if (Array.isArray(al) && al.length > 0) return al.length;
-    }
-    return rosterCount[leaderId] ?? 0;
+  // Expected attendance for a given entry: attendance_listing length from the submitted entry.
+  // Returns null if no entry was saved for that week — never falls back to roster count.
+  function expectedCount(entry) {
+    if (!entry) return null;
+    const al = entry.attendance_listing;
+    if (Array.isArray(al) && al.length > 0) return al.length;
+    return null;
   }
 
   // ─── Generic save for any leader_entries field ───
@@ -1031,14 +1030,17 @@
     {
       const wkExpected = displayDates.map((date, idx) => {
         if (noNightWeeks[termKey]?.has(idx + 1)) return null;
-        return filteredLeaders.reduce((s, l) => {
+        let total = null;
+        for (const l of filteredLeaders) {
           const entry = lookup[termKey]?.[date]?.[l.id] ?? null;
-          return s + expectedCount(entry, l.id);
-        }, 0);
+          const v = expectedCount(entry);
+          if (v != null) total = (total ?? 0) + v;
+        }
+        return total;
       });
       const displayCells = wkExpected.map(v =>
         v == null
-          ? `<td class="td-week"><span class="cell-val empty">—</span></td>`
+          ? `<td class="td-week"><span class="cell-val empty"></span></td>`
           : `<td class="td-week"><span class="cell-val">${v}</span></td>`
       ).join('');
       const emptyCells = Array.from({length: emptyWeekCount}, () =>
@@ -1135,13 +1137,15 @@
       const label = leaderLabel(leader);
       tbodyRows += `<tr class="leader-row"><td colspan="${colspan}">${label}</td></tr>`;
 
-      // Expected (per-week from attendance_listing, falls back to roster count)
+      // Expected (per-week from attendance_listing — only for submitted weeks)
       {
         const displayCells = displayDates.map((date, idx) => {
           if (noNightWeeks[termKey]?.has(idx + 1)) return `<td class="td-week"><span class="cell-val empty">—</span></td>`;
           const entry = lookup[termKey]?.[date]?.[leader.id] ?? null;
-          const v = expectedCount(entry, leader.id);
-          return `<td class="td-week"><span class="cell-val">${v}</span></td>`;
+          const v = expectedCount(entry);
+          return v == null
+            ? `<td class="td-week"><span class="cell-val empty"></span></td>`
+            : `<td class="td-week"><span class="cell-val">${v}</span></td>`;
         }).join('');
         const emptyCells = Array.from({length: emptyWeekCount}, () =>
           `<td class="td-week"><span class="cell-val empty"></span></td>`
