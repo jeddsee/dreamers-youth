@@ -959,7 +959,15 @@ function renderRoster() {
         <span>${escHtml(ln)} <span class="text-muted" style="font-weight:400">(${ys.length})</span></span>
         <button class="btn btn--sm btn--ghost" onclick="openAddYouthModal('${escHtml(lid)}','${escHtml(ln).replace(/'/g,"\\'")}')">+ Add youth</button>
       </div>
-      <table class="leaders-table" style="min-width:0">
+      <table class="leaders-table" style="min-width:0;table-layout:fixed">
+        <colgroup>
+          <col style="width:35%">
+          <col style="width:22%">
+          <col style="width:15%">
+          <col style="width:15%">
+          <col style="width:9%">
+          <col style="width:4%">
+        </colgroup>
         <thead><tr><th>Name</th><th>Category</th><th>Water Bap.</th><th>HS Bap.</th><th>Serving</th><th></th></tr></thead>
         <tbody>${ys.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')).map(y => `
           <tr>
