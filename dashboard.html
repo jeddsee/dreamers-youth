@@ -626,6 +626,7 @@
   let snapCampusId = null;
   let snapPeriod   = 'year';
   let snapYear     = new Date().getFullYear();
+  let wsTermFirstDate = {}; // termNum → first_date from term_settings
 
   // ── Init ───────────────────────────────────────────────────────────────────
   async function init() {
@@ -635,12 +636,26 @@
     snapCampusId = identity.campus_id;
     document.getElementById('sidebar-user').textContent = identity.leader_name;
 
+    // Load term settings so entry_dates match canonical week dates
+    const curYear = new Date().getFullYear();
+    const { data: tsRows } = await db.from('term_settings')
+      .select('term_number, first_date, campus_id')
+      .eq('year', curYear)
+      .or(`campus_id.eq.${identity.campus_id},campus_id.is.null`);
+    wsTermFirstDate = {};
+    for (const ts of (tsRows ?? [])) {
+      const t = ts.term_number;
+      if (!wsTermFirstDate[t] || wsTermFirstDate[t]._isFallback) {
+        wsTermFirstDate[t] = { first_date: ts.first_date, _isFallback: ts.campus_id === null };
+      }
+    }
+
     // Auto-detect current term/year and set week 1
     const termKey = currentTermKey();
     const termSelect = document.getElementById('ws-term');
     if (termSelect) termSelect.value = termKey;
     const yearEl = document.getElementById('ws-year');
-    if (yearEl) yearEl.value = new Date().getFullYear();
+    if (yearEl) yearEl.value = curYear;
     const initDate = termWeekToDate(termKey, 1);
     document.getElementById('ws-date').value = initDate;
 
@@ -933,9 +948,17 @@
 
   // ── Weekly entry ────────────────────────────────────────────────────────────
 
-  // Map term key + week number → approximate entry_date based on campus youth night DOW
+  // Map term key + week number → canonical entry_date matching term_settings.first_date
   function termWeekToDate(termKey, weekNum) {
     const year = parseInt(document.getElementById('ws-year')?.value) || new Date().getFullYear();
+    const termNum = parseInt(termKey.replace('T', '')) || 1;
+    const configured = wsTermFirstDate[termNum];
+    if (configured?.first_date) {
+      const d = new Date(configured.first_date + 'T00:00:00');
+      d.setDate(d.getDate() + (weekNum - 1) * 7);
+      return d.toISOString().slice(0, 10);
+    }
+    // Fallback: hardcoded starts + DOW adjustment (no term_settings configured)
     const starts = { T1: `${year}-02-03`, T2: `${year}-04-22`, T3: `${year}-07-14`, T4: `${year}-10-06` };
     const start = new Date(starts[termKey] || starts['T1']);
     start.setDate(start.getDate() + (weekNum - 1) * 7);

@@ -592,13 +592,15 @@
     const { data: tsRows } = await q;
     termWeekCount = { 1: 10, 2: 10, 3: 10, 4: 10 };
     termFirstDate = {};
+    // Track best row per term: prefer campus-specific over global (null campus_id)
+    const best = {};
     (tsRows ?? []).forEach(ts => {
       const t = ts.term_number;
-      const n = ts.num_weeks ?? 10;
-      if (n > (termWeekCount[t] ?? 0)) {
-        termWeekCount[t] = n;
-        if (ts.first_date) termFirstDate[t] = ts.first_date;
-      }
+      if (!best[t] || best[t].campus_id === null) best[t] = ts;
+    });
+    Object.values(best).forEach(ts => {
+      termWeekCount[ts.term_number] = ts.num_weeks ?? 10;
+      if (ts.first_date) termFirstDate[ts.term_number] = ts.first_date;
     });
   }
 
