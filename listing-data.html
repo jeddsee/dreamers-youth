@@ -443,6 +443,7 @@
             <button class="pill" data-yl="Year 10" onclick="toggleYearLevel('Year 10',this)">10</button>
             <button class="pill" data-yl="Year 11" onclick="toggleYearLevel('Year 11',this)">11</button>
             <button class="pill" data-yl="Year 12" onclick="toggleYearLevel('Year 12',this)">12</button>
+            <button class="pill" data-yl="inactive" onclick="toggleYearLevel('inactive',this)">Inactive</button>
           </div>
         </div>
         <div class="wd-filter-group">
@@ -491,7 +492,8 @@
   let noNightDates = new Set(); // entry_dates with no_youth_night = true (kept for fallback date building)
   let noNightByTerm = {};       // termKey → Set of no-night entry_dates
   let noNightWeeks  = {};       // termKey → Set of no-night week_numbers
-  let leaderFilter = null;  // selected leader id, or null for all
+  let leaderFilter  = null;  // selected leader id, or null for all
+  let showInactive  = false; // true = show only inactive leaders
 
   // ─── Init ───
   async function init() {
@@ -556,15 +558,21 @@
   }
 
   function toggleYearLevel(val, btn) {
-    if (val === 'all') {
+    if (val === 'inactive') {
+      showInactive = !showInactive;
+      if (showInactive) yearLevelFilter.clear();
+    } else if (val === 'all') {
       yearLevelFilter.clear();
+      showInactive = false;
     } else {
       if (yearLevelFilter.has(val)) yearLevelFilter.delete(val);
       else yearLevelFilter.add(val);
+      showInactive = false;
     }
     document.querySelectorAll('#year-level-pills .pill').forEach(b => {
       const v = b.dataset.yl;
-      b.classList.toggle('active', v === 'all' ? yearLevelFilter.size === 0 : yearLevelFilter.has(v));
+      if (v === 'inactive') b.classList.toggle('active', showInactive);
+      else b.classList.toggle('active', v === 'all' ? (yearLevelFilter.size === 0 && !showInactive) : yearLevelFilter.has(v));
     });
     renderAll();
   }
@@ -591,7 +599,7 @@
   // ─── Leader combobox ───
   function populateLeaderDropdown(query) {
     const list = document.getElementById('leader-dropdown');
-    const sorted = sortLeaders(allLeaders);
+    const sorted = sortLeaders(allLeaders.filter(l => showInactive ? l.active === false : l.active !== false));
     const matches = query
       ? sorted.filter(l => l.name.toLowerCase().includes(query.toLowerCase()))
       : sorted;
@@ -678,10 +686,9 @@
 
     const [leaderRes, rosterRes, entryRes, tsRes, wsRes] = await Promise.all([
       db.from('leaders')
-        .select('id, name, year_level, year_levels, gender')
+        .select('id, name, year_level, year_levels, gender, active')
         .eq('campus_id', ldCampus)
         .eq('role', 'leader')
-        .eq('active', true)
         .order('name'),
       db.from('youth_roster')
         .select('leader_id')
@@ -893,6 +900,7 @@
     const terms = termFilter.size > 0 ? [...termFilter].sort() : [1,2,3,4];
 
     const filteredLeaders = sortLeaders(allLeaders.filter(l => {
+      if (showInactive ? l.active !== false : l.active === false) return false;
       if (leaderFilter && l.id !== leaderFilter) return false;
       if (yearLevelFilter.size > 0 && !getLeaderYears(l).some(y => yearLevelFilter.has(y))) return false;
       if (genderFilter.size > 0 && !genderFilter.has(l.gender)) return false;
@@ -928,6 +936,7 @@
     const el = document.getElementById('ld-block-' + termNum);
     if (!el) return;
     const filteredLeaders = sortLeaders(allLeaders.filter(l => {
+      if (showInactive ? l.active !== false : l.active === false) return false;
       if (leaderFilter && l.id !== leaderFilter) return false;
       if (yearLevelFilter.size > 0 && !getLeaderYears(l).some(y => yearLevelFilter.has(y))) return false;
       if (genderFilter.size > 0 && !genderFilter.has(l.gender)) return false;
