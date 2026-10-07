@@ -963,7 +963,8 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--c-text-muted);
-  min-height: 2.4em;
+  min-height: 2rem;
+  line-height: 1.4;
 }
 .stat-card--fill-blue .stat-card__label { color: rgba(255,255,255,0.7); }
 .stat-card--fill-red  .stat-card__label { color: rgba(255,255,255,0.7); }
@@ -1230,6 +1231,8 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--c-text-muted);
+  min-height: 2rem;
+  line-height: 1.4;
 }
 .ycomp-card__row {
   display: flex;
