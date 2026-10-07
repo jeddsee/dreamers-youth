@@ -14,6 +14,7 @@
     :root {
       --wd-blue: #1500E8;
       --wd-blue-dim: rgba(21,0,232,0.07);
+      --wd-edit-bg: #EEEEFF;
       --wd-surface: #FFFFFF;
       --wd-border: #E2E2EA;
       --wd-text: #111118;
@@ -27,6 +28,7 @@
     }
     @media (prefers-color-scheme: dark) {
       :root:not([data-theme="light"]) {
+        --wd-edit-bg: #1A1A38;
         --wd-surface: #141420;
         --wd-border: #252535;
         --wd-text: #EEEEF8;
@@ -40,6 +42,7 @@
       }
     }
     :root[data-theme="dark"] {
+      --wd-edit-bg: #1A1A38;
       --wd-surface: #141420;
       --wd-border: #252535;
       --wd-text: #EEEEF8;
@@ -199,9 +202,10 @@
     .td-total.avg  { font-style: italic; }
 
     /* ─── Edit mode inputs ─── */
+    #wd-terms.wd-edit-mode .td-week { background: var(--wd-edit-bg) !important; }
     .cell-input-wd {
       width: 100%; height: 36px; border: none;
-      background: var(--wd-blue-dim);
+      background: transparent;
       text-align: right; padding: 0 10px; font-size: 13px;
       font-variant-numeric: tabular-nums; color: var(--wd-text);
       outline: none; -moz-appearance: textfield; box-sizing: border-box; display: block;
@@ -616,19 +620,21 @@
     btn.textContent = editMode ? 'Done' : 'Edit';
     btn.classList.toggle('btn--primary', editMode);
     btn.classList.toggle('btn--outline', !editMode);
+    document.getElementById('wd-terms').classList.toggle('wd-edit-mode', editMode);
     renderAllTerms();
   }
 
   function wdCellHtml(wd, row, weekNum, termNum) {
-    if (!wd) return '<td class="td-week"><span class="cell-val empty"></span></td>';
-    if (wd.no_youth_night && row.suppressOnNoNight) return '<td class="td-week no-night"><span class="cell-val">—</span></td>';
-    const val = wd[row.key];
+    if (wd?.no_youth_night && row.suppressOnNoNight) return '<td class="td-week no-night"><span class="cell-val">—</span></td>';
     if (editMode && WD_EDITABLE.has(row.key) && wdCampus !== 'all') {
       const termKey = `T${termNum} ${wdYear}`;
+      const val = wd ? wd[row.key] : null;
       return `<td class="td-week"><input type="number" class="cell-input-wd"
         value="${val ?? ''}" data-term="${termKey}" data-week="${weekNum}"
         data-field="${row.key}" onchange="saveWdCell(this)" min="0" max="9999"></td>`;
     }
+    if (!wd) return '<td class="td-week"><span class="cell-val empty"></span></td>';
+    const val = wd[row.key];
     return `<td class="td-week"><span class="cell-val${val == null ? ' empty' : ''}">${val ?? ''}</span></td>`;
   }
 
