@@ -708,9 +708,19 @@
         if (btn.dataset.nav === 'yearcomp') initYearComparison();
       });
     });
-    // Show snapshot by default
+    // Show snapshot by default, or the section requested via URL hash
     document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
-    document.getElementById('section-snapshot').classList.remove('hidden');
+    const deepLink = location.hash.slice(1);
+    const deepSection = deepLink && document.getElementById(`section-${deepLink}`);
+    if (deepSection) {
+      document.querySelectorAll('.sidebar-nav-item[data-nav]').forEach(b => b.classList.remove('active'));
+      const deepBtn = document.querySelector(`.sidebar-nav-item[data-nav="${deepLink}"]`);
+      if (deepBtn) deepBtn.classList.add('active');
+      deepSection.classList.remove('hidden');
+      if (deepLink === 'yearcomp') initYearComparison();
+    } else {
+      document.getElementById('section-snapshot').classList.remove('hidden');
+    }
   }
 
   // ── Year comparison ─────────────────────────────────────────────────────────
