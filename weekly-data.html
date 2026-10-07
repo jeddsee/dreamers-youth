@@ -198,6 +198,19 @@
     .td-total.zero { color: var(--wd-text-faint); font-weight: 400; }
     .td-total.avg  { font-style: italic; }
 
+    /* ─── Edit mode inputs ─── */
+    .cell-input-wd {
+      width: 100%; height: 36px; border: none;
+      background: var(--wd-blue-dim);
+      text-align: right; padding: 0 10px; font-size: 13px;
+      font-variant-numeric: tabular-nums; color: var(--wd-text);
+      outline: none; -moz-appearance: textfield; box-sizing: border-box; display: block;
+    }
+    .cell-input-wd:focus { outline: 2px solid var(--wd-blue); outline-offset: -2px; }
+    .cell-input-wd::-webkit-inner-spin-button,
+    .cell-input-wd::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .cell-input-wd:disabled { opacity: 0.5; }
+
     /* ─── Loading / empty ─── */
     .wd-status { padding: 48px; text-align: center; color: var(--c-text-muted); font-size: var(--text-sm); }
 
@@ -309,6 +322,7 @@
           <div class="snap-subtitle" id="wd-subtitle">Loading…</div>
         </div>
         <div class="snap-header-actions">
+          <button id="wd-edit-btn" class="btn btn--outline btn--sm" onclick="toggleEditMode()">Edit</button>
           <button class="btn btn--outline btn--sm" onclick="window.print()">Export PDF</button>
         </div>
       </div>
@@ -355,6 +369,14 @@
   let wdTerm   = 'all';
   let wdStats     = [];
   let allCampuses = [];
+  let editMode    = false;
+
+  // Fields that come directly from weekly_stats and can be overridden
+  const WD_EDITABLE = new Set([
+    'total_in_department', 'leaders_count',
+    'salvations_first', 'salvations_rededs', 'bibles_given', 'fresh_start',
+    'water_baptisms', 'hs_baptisms', 'saints_attendance', 'schools_visited',
+  ]);
 
   // ─── Row definitions ───
   // avg:true     → summary column shows average (not sum)
@@ -445,6 +467,11 @@
     wdCampus = document.getElementById('wd-campus').value;
     wdYear   = parseInt(document.getElementById('wd-year').value);
     wdTerm   = document.getElementById('wd-term').value;
+    if (editMode) {
+      editMode = false;
+      const btn = document.getElementById('wd-edit-btn');
+      if (btn) { btn.textContent = 'Edit'; btn.classList.remove('btn--primary'); btn.classList.add('btn--outline'); }
+    }
     loadWeeklyData();
   }
 
@@ -580,6 +607,65 @@
       termWeekCount[ts.term_number] = ts.num_weeks ?? 10;
       if (ts.first_date) termFirstDate[ts.term_number] = ts.first_date;
     });
+  }
+
+  // ─── Edit mode ───
+  function toggleEditMode() {
+    editMode = !editMode;
+    const btn = document.getElementById('wd-edit-btn');
+    btn.textContent = editMode ? 'Done' : 'Edit';
+    btn.classList.toggle('btn--primary', editMode);
+    btn.classList.toggle('btn--outline', !editMode);
+    renderAllTerms();
+  }
+
+  function wdCellHtml(wd, row, weekNum, termNum) {
+    if (!wd) return '<td class="td-week"><span class="cell-val empty"></span></td>';
+    if (wd.no_youth_night && row.suppressOnNoNight) return '<td class="td-week no-night"><span class="cell-val">—</span></td>';
+    const val = wd[row.key];
+    if (editMode && WD_EDITABLE.has(row.key) && wdCampus !== 'all') {
+      const termKey = `T${termNum} ${wdYear}`;
+      return `<td class="td-week"><input type="number" class="cell-input-wd"
+        value="${val ?? ''}" data-term="${termKey}" data-week="${weekNum}"
+        data-field="${row.key}" onchange="saveWdCell(this)" min="0" max="9999"></td>`;
+    }
+    return `<td class="td-week"><span class="cell-val${val == null ? ' empty' : ''}">${val ?? ''}</span></td>`;
+  }
+
+  async function saveWdCell(input) {
+    const termKey = input.dataset.term;
+    const weekNum = parseInt(input.dataset.week);
+    const field   = input.dataset.field;
+    const rawVal  = input.value.trim();
+    const val     = rawVal === '' ? null : parseInt(rawVal, 10);
+    if (rawVal !== '' && isNaN(val)) { input.style.outline = '2px solid #e53e3e'; return; }
+
+    const existing = wdStats.find(r => r.term === termKey && r.week_number === weekNum && r.campus_id === wdCampus);
+
+    input.disabled = true;
+    input.style.outline = '';
+    let error;
+    if (existing) {
+      ({ error } = await db.from('weekly_stats').update({ [field]: val }).eq('id', existing.id));
+      if (!error) existing[field] = val;
+    } else {
+      const tNum = parseInt(termKey[1]);
+      const entryDate = getWeekDate(tNum, weekNum);
+      const newRow = { term: termKey, week_number: weekNum, campus_id: wdCampus, entry_date: entryDate, [field]: val };
+      const { data: rows, error: err } = await db.from('weekly_stats')
+        .upsert(newRow, { onConflict: 'campus_id,entry_date' }).select();
+      error = err;
+      if (!error && rows?.[0]) wdStats.push(rows[0]);
+    }
+
+    input.disabled = false;
+    if (error) {
+      input.style.outline = '2px solid #e53e3e';
+      console.error('Save failed:', error.message);
+    } else {
+      input.style.outline = '2px solid #38a169';
+      setTimeout(() => { input.style.outline = ''; }, 1000);
+    }
   }
 
   // ─── Render all visible terms ───
@@ -734,13 +820,7 @@
 
         if (row.noTotal) {
           // No aggregate — show — in summary column
-          const wkCells = Array.from({length: weekCount}, (_, i) => {
-            const wd = weekData[i];
-            if (!wd) return '<td class="td-week"><span class="cell-val empty"></span></td>';
-            if (wd.no_youth_night && row.suppressOnNoNight) return '<td class="td-week no-night"><span class="cell-val">—</span></td>';
-            const val = wd[row.key];
-            return `<td class="td-week"><span class="cell-val${val == null ? ' empty' : ''}">${val ?? ''}</span></td>`;
-          }).join('');
+          const wkCells = Array.from({length: weekCount}, (_, i) => wdCellHtml(weekData[i], row, i + 1, termNum)).join('');
           tbodyRows += `<tr class="${rowCls}">
             <td class="td-label">${row.label}</td>
             ${wkCells}
@@ -752,13 +832,7 @@
         if (row.avg) {
           // Average in summary column
           const avgVal = avgField(weekData, row.key, row.suppressOnNoNight);
-          const wkCells = Array.from({length: weekCount}, (_, i) => {
-            const wd = weekData[i];
-            if (!wd) return '<td class="td-week"><span class="cell-val empty"></span></td>';
-            if (wd.no_youth_night && row.suppressOnNoNight) return '<td class="td-week no-night"><span class="cell-val">—</span></td>';
-            const val = wd[row.key];
-            return `<td class="td-week"><span class="cell-val${val == null ? ' empty' : ''}">${val ?? ''}</span></td>`;
-          }).join('');
+          const wkCells = Array.from({length: weekCount}, (_, i) => wdCellHtml(weekData[i], row, i + 1, termNum)).join('');
           tbodyRows += `<tr class="${rowCls}">
             <td class="td-label">${row.label}</td>
             ${wkCells}
@@ -769,13 +843,7 @@
 
         // Default: sum in summary column
         const total = sumField(weekData, row.key, row.suppressOnNoNight);
-        const wkCells = Array.from({length: weekCount}, (_, i) => {
-          const wd = weekData[i];
-          if (!wd) return '<td class="td-week"><span class="cell-val empty"></span></td>';
-          if (wd.no_youth_night && row.suppressOnNoNight) return '<td class="td-week no-night"><span class="cell-val">—</span></td>';
-          const val = wd[row.key];
-          return `<td class="td-week"><span class="cell-val${val == null ? ' empty' : ''}">${val ?? ''}</span></td>`;
-        }).join('');
+        const wkCells = Array.from({length: weekCount}, (_, i) => wdCellHtml(weekData[i], row, i + 1, termNum)).join('');
         tbodyRows += `<tr class="${rowCls}">
           <td class="td-label">${row.label}</td>
           ${wkCells}
