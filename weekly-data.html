@@ -355,7 +355,6 @@
   let wdTerm   = 'all';
   let wdStats     = [];
   let allCampuses = [];
-  let ncByDate    = {};
 
   // ─── Row definitions ───
   // avg:true     → summary column shows average (not sum)
@@ -475,26 +474,10 @@
       .like('term', `%${wdYear}%`);
     if (wdCampus !== 'all') leq = leq.eq('campus_id', wdCampus);
 
-    let ncq = db.from('new_christians')
-      .select('decision_date, decision_type')
-      .eq('archived', false)
-      .gte('decision_date', `${wdYear}-01-01`)
-      .lte('decision_date', `${wdYear}-12-31`);
-    if (wdCampus !== 'all') ncq = ncq.eq('campus_id', wdCampus);
-
-    const [{ data: curr }, { data: leData }, { data: ncData }] = await Promise.all([q, leq, ncq]);
+    const [{ data: curr }, { data: leData }] = await Promise.all([q, leq]);
     await loadTermSettings();
 
     wdStats = curr ?? [];
-
-    // Build decision_date → {first_time, rededication} counts
-    ncByDate = {};
-    for (const nc of (ncData ?? [])) {
-      if (!nc.decision_date) continue;
-      if (!ncByDate[nc.decision_date]) ncByDate[nc.decision_date] = { first_time: 0, rededication: 0 };
-      if (nc.decision_type === 'first_time') ncByDate[nc.decision_date].first_time++;
-      else if (nc.decision_type === 'rededication') ncByDate[nc.decision_date].rededication++;
-    }
 
     // Build entry_date → summed connect/sunday/youth from leader entries
     ldEntriesMap = {};
@@ -538,18 +521,6 @@
     agg.connect_attendance = connectSum;
     agg.sunday_attendance  = sundaySum;
     agg.youth_attendance   = youthSum;
-
-    // Override salvations from new_christians (keyed by decision_date)
-    const weekDate = getWeekDate(termNum, weekNum);
-    const ncDates = new Set([...entryDates, ...(weekDate ? [weekDate] : [])]);
-    let firstTime = null, rededics = null;
-    for (const date of ncDates) {
-      const nc = ncByDate[date];
-      if (nc?.first_time)   firstTime = (firstTime ?? 0) + nc.first_time;
-      if (nc?.rededication) rededics  = (rededics  ?? 0) + nc.rededication;
-    }
-    agg.salvations_first  = firstTime;
-    agg.salvations_rededs = rededics;
 
     return agg;
   }
