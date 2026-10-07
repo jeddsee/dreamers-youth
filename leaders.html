@@ -207,6 +207,7 @@
           <button class="pill" data-year="Year 10" onclick="setFilter('year','Year 10',this)">10</button>
           <button class="pill" data-year="Year 11" onclick="setFilter('year','Year 11',this)">11</button>
           <button class="pill" data-year="Year 12" onclick="setFilter('year','Year 12',this)">12</button>
+          <button class="pill" data-year="inactive" onclick="setFilter('year','inactive',this)">Inactive</button>
         </div>
       </div>
 
@@ -589,7 +590,7 @@
 const { db } = DY;
 
 let identity, allLeaders = [], allYouth = [];
-let genderFilter = 'all', yearFilter = new Set();
+let genderFilter = 'all', yearFilter = new Set(), showInactiveLeaders = false;
 let rosterYearFilter = new Set(), rosterGenderFilter = 'all';
 let lastRosterData = [], lastRosterLeaderMap = {};
 
@@ -651,15 +652,21 @@ function setFilter(type, value, btn) {
     document.querySelectorAll('#gender-pills .pill').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
   } else {
-    if (value === 'all') {
+    if (value === 'inactive') {
+      showInactiveLeaders = !showInactiveLeaders;
+      if (showInactiveLeaders) yearFilter.clear();
+    } else if (value === 'all') {
       yearFilter.clear();
+      showInactiveLeaders = false;
     } else {
       if (yearFilter.has(value)) yearFilter.delete(value);
       else yearFilter.add(value);
+      showInactiveLeaders = false;
     }
     document.querySelectorAll('#year-pills .pill').forEach(b => {
       const v = b.dataset.year;
-      b.classList.toggle('active', v === 'all' ? yearFilter.size === 0 : yearFilter.has(v));
+      if (v === 'inactive') b.classList.toggle('active', showInactiveLeaders);
+      else b.classList.toggle('active', v === 'all' ? (yearFilter.size === 0 && !showInactiveLeaders) : yearFilter.has(v));
     });
   }
   renderTeamTable();
@@ -705,7 +712,7 @@ function renderTeamTable() {
     return;
   }
 
-  const filtersActive = genderFilter !== 'all' || yearFilter.size > 0;
+  const filtersActive = genderFilter !== 'all' || yearFilter.size > 0 || showInactiveLeaders;
 
   const yrNum = yl => { const n = parseInt((yl || '').replace('Year ', '')); return isNaN(n) ? 99 : n; };
 
@@ -713,7 +720,9 @@ function renderTeamTable() {
     const youth = allYouth.filter(y => y.leader_id === l.id && y.active);
     return { l, youth };
   }).filter(({ l }) => {
-    if (!filtersActive) return true;
+    const isInactive = !!l.left_date;
+    // Always filter by active/inactive state first
+    if (showInactiveLeaders ? !isInactive : isInactive) return false;
     if (genderFilter !== 'all' && l.gender !== genderFilter) return false;
     if (yearFilter.size > 0 && !getLeaderYears(l).some(y => yearFilter.has(y))) return false;
     return true;

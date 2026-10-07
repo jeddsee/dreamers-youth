@@ -214,6 +214,7 @@
         .select('id, name, role')
         .eq('campus_id', campusId)
         .eq('active', true)
+        .is('left_date', null)
         .order('name');
       campusSelect.disabled = false;
 
