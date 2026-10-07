@@ -94,6 +94,27 @@
     .check-yes { color: #00a86b; font-weight: 700; font-size: var(--text-base); }
     .check-no  { color: var(--c-border-dark); }
 
+    .rv-combobox { position: relative; }
+    .rv-combobox__list {
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      background: var(--c-surface);
+      border: 1px solid var(--c-border-dark);
+      border-radius: var(--r);
+      max-height: 220px; overflow-y: auto;
+      z-index: 200; box-shadow: var(--shadow-md);
+      list-style: none; padding: var(--s-1) 0;
+    }
+    .rv-combobox__list.hidden { display: none; }
+    .rv-combobox__list li {
+      padding: var(--s-2) var(--s-3);
+      cursor: pointer;
+      font-size: var(--text-sm);
+      color: var(--c-text);
+    }
+    .rv-combobox__list li:hover { background: var(--c-primary-light); color: var(--c-primary-text); }
+    .rv-combobox__list li.no-results { color: var(--c-text-muted); cursor: default; }
+    .rv-combobox__list li.no-results:hover { background: none; }
+
     .section-rule {
       border: none;
       border-top: 2px solid #111;
@@ -296,9 +317,11 @@
             </div>
             <div class="form-group" style="grid-column:1/-1">
               <label>Leader</label>
-              <select id="rv-leader" class="select">
-                <option value="">Select a leader…</option>
-              </select>
+              <div class="rv-combobox" id="rv-leader-wrap">
+                <input type="text" id="rv-leader-search" class="input" placeholder="Search leader…" autocomplete="off">
+                <ul class="rv-combobox__list hidden" id="rv-leader-list" role="listbox"></ul>
+                <input type="hidden" id="rv-leader" value="">
+              </div>
             </div>
           </div>
           <button class="btn btn--primary mt-4" onclick="generateReport()">Generate Report</button>
@@ -630,14 +653,8 @@ async function init() {
   allLeaders = leadersRes.data ?? [];
   allYouth   = youthRes.data ?? [];
 
-  // Populate leader dropdown (leaders only, not pastors)
-  const sel = document.getElementById('rv-leader');
-  allLeaders.filter(l => l.role === 'leader').forEach(l => {
-    const opt = document.createElement('option');
-    opt.value = l.id;
-    opt.textContent = l.name;
-    sel.appendChild(opt);
-  });
+  // Init searchable leader combobox for review (active leaders only, no left_date)
+  initRvLeaderCombobox();
 
   renderTeamTable();
 
@@ -985,6 +1002,45 @@ function renderRoster() {
 }
 
 // ── Review ─────────────────────────────────────────────────────────────────────
+function initRvLeaderCombobox() {
+  const inp  = document.getElementById('rv-leader-search');
+  const list = document.getElementById('rv-leader-list');
+  const hid  = document.getElementById('rv-leader');
+  const activeLeaders = allLeaders.filter(l => l.role === 'leader' && !l.left_date);
+
+  function renderList(query) {
+    const q = query.trim().toLowerCase();
+    const matches = q ? activeLeaders.filter(l => l.name.toLowerCase().includes(q)) : activeLeaders;
+    list.innerHTML = '';
+    if (!matches.length) {
+      const li = document.createElement('li');
+      li.className = 'no-results'; li.textContent = 'No leaders found';
+      list.appendChild(li);
+    } else {
+      matches.forEach(l => {
+        const li = document.createElement('li');
+        li.textContent = l.name;
+        li.setAttribute('role', 'option');
+        li.addEventListener('mousedown', e => {
+          e.preventDefault();
+          hid.value = l.id;
+          inp.value = l.name;
+          list.classList.add('hidden');
+        });
+        list.appendChild(li);
+      });
+    }
+    list.classList.remove('hidden');
+  }
+
+  inp.addEventListener('focus', () => renderList(inp.value));
+  inp.addEventListener('input', () => { hid.value = ''; renderList(inp.value); });
+  inp.addEventListener('blur', () => setTimeout(() => list.classList.add('hidden'), 150));
+  document.addEventListener('click', e => {
+    if (!document.getElementById('rv-leader-wrap').contains(e.target)) list.classList.add('hidden');
+  });
+}
+
 function applyTermDates() {
   const term = parseInt(document.getElementById('rv-term').value);
   if (!term) return;
