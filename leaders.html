@@ -726,7 +726,7 @@ function tenureLabel(joinedDate) {
 
 function renderTeamTable() {
   const tbody = document.getElementById('team-tbody');
-  const leaders = allLeaders.filter(l => l.role === 'leader');
+  const leaders = allLeaders;
 
   if (!leaders.length) {
     tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--c-text-muted);padding:var(--s-6)">No leaders set up yet.</td></tr>';
@@ -768,8 +768,11 @@ function renderTeamTable() {
     const inactivePill = inactive
       ? `<span class="badge badge--warning" style="font-size:0.6rem;margin-left:6px" title="Left ${l.left_date}">Inactive</span>`
       : '';
+    const rolePill = l.role === 'pastor'
+      ? `<span class="badge badge--blue" style="font-size:0.6rem;margin-left:6px">Pastor</span>`
+      : '';
     return `<tr${rowStyle}>
-      <td class="fw-semibold">${escHtml(l.name)}${inactivePill}</td>
+      <td class="fw-semibold">${escHtml(l.name)}${rolePill}${inactivePill}</td>
       <td>${escHtml(getLeaderYearsLabel(l))}</td>
       <td class="fw-semibold">${inactive ? '—' : youth.length}</td>
       <td style="color:var(--c-text-muted);font-size:var(--text-sm)"${sinceStr}>${tenure}</td>
