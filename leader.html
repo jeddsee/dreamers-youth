@@ -131,6 +131,23 @@
       border-radius: var(--r-lg);
       padding: var(--s-4);
     }
+    .np-card--overdue {
+      background: #fff5f5;
+      border-color: #fca5a5;
+    }
+    .np-overdue-pill {
+      display: inline-block;
+      margin-left: var(--s-2);
+      background: #fee2e2;
+      color: #b91c1c;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: var(--r-full);
+      vertical-align: middle;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
     .np-card__header {
       display: flex;
       align-items: flex-start;
@@ -430,16 +447,6 @@
           <h2 style="font-size:var(--text-lg)">My New People</h2>
         </div>
         <div id="np-error" class="error-banner hidden" style="margin-bottom:var(--s-4)"></div>
-        <!-- Overdue NP comments -->
-        <div id="overdue-np-section" class="overdue-section hidden">
-          <div class="overdue-header" onclick="toggleOverdue('overdue-np-section')">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#92400E" stroke-width="2"><circle cx="8" cy="8" r="7"/><line x1="8" y1="4" x2="8" y2="8.5"/><circle cx="8" cy="11" r="0.5" fill="#92400E"/></svg>
-            Overdue Comments
-            <span class="overdue-count" id="overdue-np-count">0</span>
-            <svg class="overdue-chevron" id="overdue-np-chevron" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4,6 8,10 12,6"/></svg>
-          </div>
-          <div class="overdue-list hidden" id="overdue-np-list"></div>
-        </div>
       </div>
       <div id="np-loading" class="loading-overlay"><div class="spinner"></div> Loading…</div>
       <div id="np-empty" class="empty-state hidden">
@@ -1287,12 +1294,16 @@
     list.classList.remove('hidden');
 
     newPeople.forEach(np => {
+      const daysOD = npDaysOverdue(np);
+      const overduePill = daysOD != null
+        ? `<span class="np-overdue-pill">${daysOD}d overdue</span>`
+        : '';
       const card = document.createElement('div');
-      card.className = 'np-card';
+      card.className = daysOD != null ? 'np-card np-card--overdue' : 'np-card';
       card.innerHTML = `
         <div class="np-card__header">
           <div>
-            <div class="np-card__name">${escHtml(np.name)}</div>
+            <div class="np-card__name">${escHtml(np.name)}${overduePill}</div>
             <div class="np-card__meta">${[np.school, np.year_level].filter(Boolean).join(' · ')}</div>
           </div>
           <div style="display:flex;align-items:center;gap:var(--s-2)">
@@ -1374,41 +1385,26 @@
     chevron.classList.toggle('open', open);
   }
 
-  function renderOverdueNPs() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const overdue = newPeople.filter(np => {
-      const visitStr = npLatestVisitDate(np);
-      if (!visitStr) return false;
-      const deadline = tuesdayAfterFriday(visitStr);
-      if (today <= deadline) return false;
-      const comments = (npComments[np.id] ?? []).map(c => c.created_at);
-      const visitMs = new Date(visitStr + 'T00:00:00').getTime();
-      const deadlineMs = deadline.getTime() + 86399999;
-      return !comments.some(ts => {
-        const t = new Date(ts).getTime();
-        return t >= visitMs && t <= deadlineMs;
-      });
+  function npDaysOverdue(np) {
+    const visitStr = npLatestVisitDate(np);
+    if (!visitStr) return null;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const deadline = tuesdayAfterFriday(visitStr);
+    if (today <= deadline) return null;
+    const comments = (npComments[np.id] ?? []).map(c => c.created_at);
+    const visitMs = new Date(visitStr + 'T00:00:00').getTime();
+    const deadlineMs = deadline.getTime() + 86399999;
+    const hasComment = comments.some(ts => {
+      const t = new Date(ts).getTime();
+      return t >= visitMs && t <= deadlineMs;
     });
+    if (hasComment) return null;
+    return Math.floor((today.getTime() - deadline.getTime()) / 86400000);
+  }
 
-    overdueNPCount = overdue.length;
+  function renderOverdueNPs() {
+    overdueNPCount = newPeople.filter(np => npDaysOverdue(np) != null).length;
     updateCommentsBanner();
-
-    const section = document.getElementById('overdue-np-section');
-    const countEl = document.getElementById('overdue-np-count');
-    const listEl  = document.getElementById('overdue-np-list');
-    if (!overdue.length) { section.classList.add('hidden'); return; }
-    section.classList.remove('hidden');
-    countEl.textContent = overdue.length;
-    listEl.innerHTML = overdue.map(np => {
-      const deadline = tuesdayAfterFriday(npLatestVisitDate(np));
-      const daysOverdue = Math.floor((today.getTime() - deadline.getTime()) / 86400000);
-      return `<div class="overdue-item">
-        <span class="overdue-item__name">${escHtml(np.name)}</span>
-        <span class="overdue-item__meta">${daysOverdue}d overdue</span>
-      </div>`;
-    }).join('');
   }
 
   function renderOverdueNCs(ncs) {
