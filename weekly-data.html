@@ -380,6 +380,7 @@
     'total_in_department', 'leaders_count',
     'salvations_first', 'salvations_rededs', 'bibles_given', 'fresh_start',
     'water_baptisms', 'hs_baptisms', 'saints_attendance', 'schools_visited',
+    'first_timers', 'second_timers', 'third_timers',
   ]);
 
   // ─── Row definitions ───
@@ -392,6 +393,12 @@
       { key: 'total_in_department', label: 'Total in department', noTotal: true },
       { key: 'leaders_count',       label: 'Total leaders',       avg: true },
       { key: 'ratio',               label: 'Ratio',               computed: true, kind: 'ratio' },
+    ]},
+    { key: 'new_people', label: 'NEW PEOPLE', rows: [
+      { key: '_total_np',     label: 'Total NP',    computed: true, kind: 'total_np', suppressOnNoNight: true },
+      { key: 'first_timers',  label: '1st timers',  suppressOnNoNight: true },
+      { key: 'second_timers', label: '2nd timers',  suppressOnNoNight: true },
+      { key: 'third_timers',  label: '3rd timers',  suppressOnNoNight: true },
     ]},
     { key: 'life', label: 'DISCIPLESHIP STEPS', rows: [
       { key: 'salvations_first',  label: 'First-time decisions', suppressOnNoNight: true },
@@ -412,7 +419,8 @@
   const NUMERIC_FIELDS = [
     'total_in_department','leaders_count','connect_attendance',
     'salvations_first','salvations_rededs','bibles_given','fresh_start',
-    'water_baptisms','hs_baptisms','sunday_attendance','saints_attendance','schools_visited','youth_attendance'
+    'water_baptisms','hs_baptisms','sunday_attendance','saints_attendance','schools_visited','youth_attendance',
+    'first_timers','second_timers','third_timers',
   ];
 
   // ─── Init ───
