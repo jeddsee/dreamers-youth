@@ -157,6 +157,25 @@
     body { background: #fff !important; }
     * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
   }
+  .snap-sub-filter-bar {
+    padding: var(--s-3) var(--s-5);
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+  }
+  .snap-sub-pill-row { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+  .snap-sub-pill {
+    padding: 3px 10px;
+    border-radius: var(--r-full);
+    border: 1.5px solid var(--c-border-dark);
+    background: transparent;
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--c-text-secondary);
+  }
+  .snap-sub-pill.active { background: #111; color: #fff; border-color: #111; }
   </style>
 </head>
 <body>
@@ -361,6 +380,10 @@
           <div class="snap-submission-head">
             <span class="fw-semibold">Submission status — this week</span>
             <span id="snap-sub-summary" class="text-sm text-muted">—</span>
+          </div>
+          <div id="snap-sub-filters" class="snap-sub-filter-bar hidden">
+            <div class="snap-sub-pill-row" id="snap-sub-year-pills"></div>
+            <div class="snap-sub-pill-row" id="snap-sub-gender-pills"></div>
           </div>
           <div class="snap-submission-body" id="snap-submission-leaders"></div>
         </div>
@@ -656,6 +679,8 @@
 
   let identity, leaders = [], roster = [], weeklyStats = [], termReview = null;
   let wsSyncSaving = false;
+  let subLeaders = [], subEntryMap = new Map(), subNoNightCampuses = new Set(), subIsAll = false;
+  let subYearFilter = '', subGenderFilter = '';
   let archivedCount = 0, snapNP = [], snapLeaderEntries = [], snapNC = [];
 
   let allCampuses = [];
@@ -1051,6 +1076,97 @@
     el.classList.remove('hidden');
   }
 
+  // ── Submission status filters ────────────────────────────────────────────────
+  function getLeaderYearLevels(l) {
+    return Array.isArray(l.year_levels) && l.year_levels.length
+      ? l.year_levels : (l.year_level ? [l.year_level] : []);
+  }
+
+  function sortYearLevels(a, b) {
+    const ORDER = ['Year 7','Year 8','Year 9','Year 10','Year 11','Year 12','SAF','Volunteer'];
+    const ai = ORDER.indexOf(a), bi = ORDER.indexOf(b);
+    if (ai !== -1 && bi !== -1) return ai - bi;
+    return ai !== -1 ? -1 : bi !== -1 ? 1 : a.localeCompare(b);
+  }
+
+  function setSubYearFilter(btn) {
+    document.querySelectorAll('#snap-sub-year-pills .snap-sub-pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    subYearFilter = btn.dataset.syl;
+    renderSubmissionChips();
+  }
+
+  function setSubGenderFilter(btn) {
+    document.querySelectorAll('#snap-sub-gender-pills .snap-sub-pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    subGenderFilter = btn.dataset.sgender;
+    renderSubmissionChips();
+  }
+
+  function renderSubmissionChips() {
+    const subBody    = document.getElementById('snap-submission-leaders');
+    const subSummary = document.getElementById('snap-sub-summary');
+    subBody.innerHTML = '';
+
+    if (!subLeaders.length) {
+      subBody.innerHTML = `<div class="snap-leader-chip" style="color:var(--c-text-muted)">No leaders set up</div>`;
+      subSummary.textContent = 'No leaders';
+      return;
+    }
+    if (!subIsAll && subNoNightCampuses.has(snapCampusId)) {
+      subBody.innerHTML = `<div class="snap-leader-chip" style="color:var(--c-text-muted)">No youth night this week — submissions not required</div>`;
+      subSummary.textContent = 'No youth night';
+      return;
+    }
+
+    // Summary always reflects all unfiltered active leaders
+    const allActive = subLeaders.filter(l => !subNoNightCampuses.has(l.campus_id));
+    const allSubmitted = allActive.filter(l => subEntryMap.get(l.id)).length;
+    subSummary.textContent = allActive.length
+      ? `${allSubmitted} / ${allActive.length} submitted`
+      : 'No youth night';
+
+    // Apply year-level and gender filters to displayed leaders
+    let displayed = subLeaders;
+    if (subYearFilter) displayed = displayed.filter(l => getLeaderYearLevels(l).includes(subYearFilter));
+    if (subGenderFilter) displayed = displayed.filter(l => l.gender === subGenderFilter);
+
+    const makeChip = (l) => {
+      const inNoNight = subNoNightCampuses.has(l.campus_id);
+      const done = !inNoNight && (subEntryMap.get(l.id) ?? false);
+      const chip = document.createElement('div');
+      chip.className = 'snap-leader-chip';
+      chip.innerHTML = inNoNight
+        ? `<span class="fw-medium">${escHtml(l.name)}</span><span class="badge" style="background:var(--c-bg);color:var(--c-text-muted)">No night</span>`
+        : `<span class="fw-medium">${escHtml(l.name)}</span><span class="badge badge--${done ? 'success' : 'danger'}">${done ? 'Submitted' : 'Missing'}</span>`;
+      return chip;
+    };
+
+    if (subIsAll) {
+      allCampuses.forEach(campus => {
+        const campusLeaders = displayed.filter(l => l.campus_id === campus.id);
+        if (!campusLeaders.length) return;
+        const group = document.createElement('div');
+        group.style.cssText = 'width:100%';
+        group.innerHTML = `<div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:var(--c-text-muted);margin-bottom:var(--s-2)">${escHtml(campus.name)}</div>`;
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;flex-wrap:wrap;gap:var(--s-2);margin-bottom:var(--s-3)';
+        if (subNoNightCampuses.has(campus.id)) {
+          const chip = document.createElement('div');
+          chip.className = 'snap-leader-chip';
+          chip.innerHTML = `<span style="color:var(--c-text-muted);font-size:var(--text-xs)">No youth night this week</span>`;
+          row.appendChild(chip);
+        } else {
+          campusLeaders.forEach(l => row.appendChild(makeChip(l)));
+        }
+        group.appendChild(row);
+        subBody.appendChild(group);
+      });
+    } else {
+      displayed.forEach(l => subBody.appendChild(makeChip(l)));
+    }
+  }
+
   // ── Weekly entry ────────────────────────────────────────────────────────────
 
   // Map term key + week number → canonical entry_date matching term_settings.first_date
@@ -1187,7 +1303,7 @@
     const mostRecentDate = mostRecentYouthNight(new Date(), identity.youth_night_dow);
 
     // Build queries — single campus or all campuses
-    let leadersQ = db.from('leaders').select('id, name, role, campus_id, year_level, year_levels').eq('active', true).order('name');
+    let leadersQ = db.from('leaders').select('id, name, role, campus_id, year_level, year_levels, gender').eq('active', true).order('name');
     let rosterQ  = db.from('youth_roster').select('id, is_new_christian, water_baptised, category, campus_id').eq('active', true);
     let archQ    = db.from('youth_roster').select('id', { count: 'exact', head: true }).eq('category', 'archive');
     const yearFrom = `${snapYear}-01-01`;
@@ -1241,10 +1357,8 @@
         .map(w => w.campus_id)
     );
 
-    // Submission status
+    // Submission status — cache results, populate filters, then render
     const leaderOnly = leaders.filter(l => l.role === 'leader');
-
-    // Only check submission for leaders in campuses that had a youth night
     const activeLeaders = leaderOnly.filter(l => !noNightCampuses.has(l.campus_id));
     const entryRes = await Promise.all(
       activeLeaders.map(l =>
@@ -1253,62 +1367,25 @@
       )
     );
 
-    const subBody    = document.getElementById('snap-submission-leaders');
-    const subSummary = document.getElementById('snap-sub-summary');
-    subBody.innerHTML = '';
+    subLeaders = leaderOnly;
+    subIsAll = isAll;
+    subNoNightCampuses = noNightCampuses;
+    subEntryMap = new Map(activeLeaders.map((l, i) => [l.id, !!entryRes[i]?.data]));
+    subYearFilter = '';
+    subGenderFilter = '';
 
-    if (!leaderOnly.length) {
-      const msg = isAll ? 'No leaders set up' : `${campusLabel} / No leaders set up`;
-      subBody.innerHTML = `<div class="snap-leader-chip" style="color:var(--c-text-muted)">${escHtml(msg)}</div>`;
-      subSummary.textContent = 'No leaders';
-    } else if (!isAll && noNightCampuses.has(snapCampusId)) {
-      subBody.innerHTML = `<div class="snap-leader-chip" style="color:var(--c-text-muted)">No youth night this week — submissions not required</div>`;
-      subSummary.textContent = 'No youth night';
-    } else {
-      const submittedCount = entryRes.filter(r => !!r?.data).length;
-      subSummary.textContent = activeLeaders.length
-        ? `${submittedCount} / ${activeLeaders.length} submitted`
-        : 'No youth night';
+    // Populate year-level filter pills from available data
+    const availableYLs = [...new Set(leaderOnly.flatMap(getLeaderYearLevels))].sort(sortYearLevels);
+    document.getElementById('snap-sub-year-pills').innerHTML =
+      `<button class="snap-sub-pill active" data-syl="" onclick="setSubYearFilter(this)">All years</button>` +
+      availableYLs.map(yl => `<button class="snap-sub-pill" data-syl="${escHtml(yl)}" onclick="setSubYearFilter(this)">${escHtml(yl)}</button>`).join('');
+    document.getElementById('snap-sub-gender-pills').innerHTML =
+      `<button class="snap-sub-pill active" data-sgender="" onclick="setSubGenderFilter(this)">All genders</button>` +
+      `<button class="snap-sub-pill" data-sgender="male" onclick="setSubGenderFilter(this)">Male</button>` +
+      `<button class="snap-sub-pill" data-sgender="female" onclick="setSubGenderFilter(this)">Female</button>`;
+    document.getElementById('snap-sub-filters').classList.toggle('hidden', !leaderOnly.length);
 
-      if (isAll) {
-        // Group chips by campus
-        allCampuses.forEach(campus => {
-          const campusLeaders = leaderOnly.filter(l => l.campus_id === campus.id);
-          if (!campusLeaders.length) return;
-          const group = document.createElement('div');
-          group.style.cssText = 'width:100%';
-          group.innerHTML = `<div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:var(--c-text-muted);margin-bottom:var(--s-2)">${escHtml(campus.name)}</div>`;
-          const row = document.createElement('div');
-          row.style.cssText = 'display:flex;flex-wrap:wrap;gap:var(--s-2);margin-bottom:var(--s-3)';
-
-          if (noNightCampuses.has(campus.id)) {
-            const chip = document.createElement('div');
-            chip.className = 'snap-leader-chip';
-            chip.innerHTML = `<span style="color:var(--c-text-muted);font-size:var(--text-xs)">No youth night this week</span>`;
-            row.appendChild(chip);
-          } else {
-            campusLeaders.forEach(l => {
-              const idx = activeLeaders.indexOf(l);
-              const done = idx !== -1 && !!entryRes[idx]?.data;
-              const chip = document.createElement('div');
-              chip.className = 'snap-leader-chip';
-              chip.innerHTML = `<span class="fw-medium">${escHtml(l.name)}</span><span class="badge badge--${done ? 'success' : 'danger'}">${done ? 'Submitted' : 'Missing'}</span>`;
-              row.appendChild(chip);
-            });
-          }
-          group.appendChild(row);
-          subBody.appendChild(group);
-        });
-      } else {
-        activeLeaders.forEach((l, i) => {
-          const done = !!entryRes[i]?.data;
-          const chip = document.createElement('div');
-          chip.className = 'snap-leader-chip';
-          chip.innerHTML = `<span class="fw-medium">${escHtml(l.name)}</span><span class="badge badge--${done ? 'success' : 'danger'}">${done ? 'Submitted' : 'Missing'}</span>`;
-          subBody.appendChild(chip);
-        });
-      }
-    }
+    renderSubmissionChips();
 
     renderSnapshotStats();
 
