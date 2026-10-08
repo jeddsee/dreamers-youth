@@ -923,7 +923,9 @@
     const filteredLeaders = sortLeaders(allLeaders.filter(l => {
       if (showInactive ? l.active !== false : l.active === false) return false;
       if (leaderFilter && l.id !== leaderFilter) return false;
-      if (yearLevelFilter.size > 0 && !getLeaderYears(l).some(y => yearLevelFilter.has(y))) return false;
+      const yrs = getLeaderYears(l);
+      if (yrs.some(y => y === 'Volunteer' || y === 'DST')) return false;
+      if (yearLevelFilter.size > 0 && !yrs.some(y => yearLevelFilter.has(y))) return false;
       if (genderFilter.size > 0 && !genderFilter.has(l.gender)) return false;
       return true;
     }));
@@ -959,7 +961,9 @@
     const filteredLeaders = sortLeaders(allLeaders.filter(l => {
       if (showInactive ? l.active !== false : l.active === false) return false;
       if (leaderFilter && l.id !== leaderFilter) return false;
-      if (yearLevelFilter.size > 0 && !getLeaderYears(l).some(y => yearLevelFilter.has(y))) return false;
+      const yrs = getLeaderYears(l);
+      if (yrs.some(y => y === 'Volunteer' || y === 'DST')) return false;
+      if (yearLevelFilter.size > 0 && !yrs.some(y => yearLevelFilter.has(y))) return false;
       if (genderFilter.size > 0 && !genderFilter.has(l.gender)) return false;
       return true;
     }));
