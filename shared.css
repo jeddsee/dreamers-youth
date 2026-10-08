@@ -347,6 +347,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 }
 @media (min-width: 480px) {
   .form-grid--2 { grid-template-columns: 1fr 1fr; }
+  .form-grid--3 { grid-template-columns: 1fr 1fr 1fr; }
 }
 
 .form-hint {

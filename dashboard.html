@@ -280,10 +280,14 @@
         <!-- Department -->
         <div class="entry-section" id="ws-form">
           <div class="entry-section-label">Department</div>
-          <div class="form-grid form-grid--2">
+          <div class="form-grid form-grid--3">
             <div class="form-group">
               <label class="entry-field-label">Total in department</label>
-              <input id="ws-total-dept" type="number" min="0" max="11" value="0" class="input" autocomplete="off">
+              <input id="ws-total-dept" type="number" min="0" max="999" value="0" class="input" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label class="entry-field-label">Leaders</label>
+              <input id="ws-leaders-count" type="number" min="0" max="999" value="0" class="input" autocomplete="off">
             </div>
             <div class="form-group ws-night-field">
               <label class="entry-field-label">Youth attendance</label>
@@ -349,6 +353,7 @@
         <div class="entry-save-row">
           <button class="btn btn--primary" id="ws-save-btn" onclick="saveWeeklyStats()">Save entry</button>
           <div id="ws-saved" class="badge badge--success hidden">Saved</div>
+          <div id="ws-sync-badge" class="badge badge--blue hidden" style="margin-left:auto;font-size:0.7rem">↻ Synced from another entry</div>
         </div>
 
         <!-- Submission status -->
@@ -618,6 +623,7 @@
   const { db } = DY;
 
   let identity, leaders = [], roster = [], weeklyStats = [], termReview = null;
+  let wsSyncSaving = false;
   let archivedCount = 0, snapNP = [], snapLeaderEntries = [], snapNC = [];
 
   let allCampuses = [];
@@ -663,6 +669,38 @@
     loadWeeklyEntry(initDate);
     generateQR();
     loadSetup();
+    subscribeWeeklyStatsSync();
+  }
+
+  // ── Weekly-entry live sync ───────────────────────────────────────────────────
+  function subscribeWeeklyStatsSync() {
+    try {
+      db.channel(`ws-sync-${identity.campus_id}`)
+        .on('postgres_changes', {
+          event: '*', schema: 'public', table: 'weekly_stats',
+          filter: `campus_id=eq.${identity.campus_id}`
+        }, payload => {
+          if (wsSyncSaving) return;
+          const currentDate = document.getElementById('ws-date')?.value;
+          if (payload.new?.entry_date === currentDate) {
+            fillWSForm(payload.new);
+            const badge = document.getElementById('ws-sync-badge');
+            if (badge) {
+              badge.classList.remove('hidden');
+              clearTimeout(badge._t);
+              badge._t = setTimeout(() => badge.classList.add('hidden'), 3000);
+            }
+          }
+        })
+        .subscribe();
+    } catch (_) { /* realtime not available — visibility change handles refresh */ }
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        const date = document.getElementById('ws-date')?.value;
+        if (date) loadWeeklyEntry(date);
+      }
+    });
   }
 
   // ── Campus switcher ─────────────────────────────────────────────────────────
@@ -995,8 +1033,9 @@
 
   function fillWSForm(d) {
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? 0; };
-    set('ws-total-dept', d.total_in_department);
-    set('ws-youth-att',  d.youth_attendance);
+    set('ws-total-dept',     d.total_in_department);
+    set('ws-leaders-count',  d.leaders_count);
+    set('ws-youth-att',      d.youth_attendance);
     set('ws-first-time', d.salvations_first);
     set('ws-rededs',     d.salvations_rededs);
     set('ws-bibles',     d.bibles_given);
@@ -1012,7 +1051,7 @@
   }
 
   function clearWSForm() {
-    ['ws-total-dept','ws-youth-att','ws-first-time','ws-rededs','ws-bibles',
+    ['ws-total-dept','ws-leaders-count','ws-youth-att','ws-first-time','ws-rededs','ws-bibles',
      'ws-fresh','ws-water-bap','ws-hs-bap','ws-saints','ws-schools'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = 0;
@@ -1039,14 +1078,11 @@
   async function saveWeeklyStats() {
     const btn     = document.getElementById('ws-save-btn');
     setLoading(btn, true);
+    wsSyncSaving = true;
     const date    = document.getElementById('ws-date').value;
     const term    = document.getElementById('ws-term').value;
     const weekNum = parseInt(document.getElementById('ws-week').value) || 1;
     const noNight = document.getElementById('ws-no-night').checked;
-
-    const { count: leaderCount } = await db.from('leaders')
-      .select('*', { count: 'exact', head: true })
-      .eq('campus_id', identity.campus_id).eq('active', true);
 
     const payload = {
       campus_id:            identity.campus_id,
@@ -1055,8 +1091,8 @@
       week_number:          weekNum,
       no_youth_night:       noNight,
       total_in_department:  int('ws-total-dept'),
+      leaders_count:        int('ws-leaders-count'),
       youth_attendance:     int('ws-youth-att'),
-      leaders_count:        leaderCount ?? null,
       salvations_first:     int('ws-first-time'),
       salvations_rededs:    int('ws-rededs'),
       bibles_given:         int('ws-bibles'),
@@ -1069,6 +1105,7 @@
     };
     const { error } = await db.from('weekly_stats')
       .upsert(payload, { onConflict: 'campus_id,entry_date' });
+    wsSyncSaving = false;
     setLoading(btn, false);
     if (error) { showError('Save failed.', 'ws-error'); return; }
     document.getElementById('ws-saved').classList.remove('hidden');
