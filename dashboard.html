@@ -1098,7 +1098,7 @@
     // Build queries — single campus or all campuses
     let leadersQ = db.from('leaders').select('id, name, role, campus_id').eq('active', true).order('name');
     let rosterQ  = db.from('youth_roster').select('id, is_new_christian, water_baptised, category, campus_id').eq('active', true);
-    let archQ    = db.from('youth_roster').select('id', { count: 'exact', head: true }).eq('active', false);
+    let archQ    = db.from('youth_roster').select('id', { count: 'exact', head: true }).eq('category', 'archive');
     const yearFrom = `${snapYear}-01-01`;
     const yearTo   = `${snapYear}-12-31`;
     let statsQ   = db.from('weekly_stats').select('*').gte('entry_date', yearFrom).lte('entry_date', yearTo).order('entry_date', { ascending: false });
