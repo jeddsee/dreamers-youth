@@ -1315,8 +1315,9 @@
     const sum = arr => arr.reduce((a,b) => a+b, 0);
     const col = key => filteredStats.map(w => w[key] ?? 0);
 
-    // Attendance — real avg comes from leader_entries youth_attendance sums per day
-    const avgAtt     = avgAttendanceFromEntries(getFilteredLeaderEntries());
+    // Attendance — average youth_attendance from weekly_stats (pastor's weekly entry)
+    const attVals    = filteredStats.map(w => w.youth_attendance).filter(v => v != null);
+    const avgAtt     = attVals.length ? Math.round(attVals.reduce((a,b) => a+b, 0) / attVals.length) : 0;
     const latestDept = weeklyStats.find(w => w.total_in_department != null);
     const deptTotal  = latestDept ? latestDept.total_in_department : roster.length;
     const leaderCount = leaders.filter(l => l.role === 'leader' && l.active !== false).length;
@@ -1328,11 +1329,10 @@
     document.getElementById('snap-leader-count').textContent     = leaderCount || '—';
     document.getElementById('snap-youth-per-leader').textContent = leaderCount > 0 ? youthPerLeader : '—';
 
-    // New People — filtered to the selected period using visit_1_date
-    const filteredNP = getFilteredNP();
-    const v1 = filteredNP.length;
-    const v2 = filteredNP.filter(n => n.status === 'visit_2' || n.status === 'visit_3').length;
-    const v3 = filteredNP.filter(n => n.status === 'visit_3').length;
+    // New People — from weekly_stats first/second/third_timers (same source as weekly data table)
+    const v1 = sum(col('first_timers'));
+    const v2 = sum(col('second_timers'));
+    const v3 = sum(col('third_timers'));
     const retention = v1 > 0 ? Math.round((v2 + v3) / (v1 * 2) * 100) : 0;
     const npInPeriod = v1 + v2 + v3;
 
