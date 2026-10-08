@@ -48,7 +48,7 @@ function clearIdentity() {
 function requireIdentity(role = null) {
   const identity = getIdentity();
   if (!identity) { window.location.href = '/'; return null; }
-  if (role && identity.role !== role) { window.location.href = '/'; return null; }
+  if (role && identity.role !== role && !identity.is_admin) { window.location.href = '/'; return null; }
   return identity;
 }
 
