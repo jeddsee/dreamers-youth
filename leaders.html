@@ -714,6 +714,14 @@ function getLeaderMinYearNum(l) {
   return nums.length ? Math.min(...nums) : 99;
 }
 
+function leaderSortRank(l) {
+  if (l.role === 'pastor') return 300;
+  const yrs = getLeaderYears(l);
+  if (yrs.includes('DST'))       return 200;
+  if (yrs.includes('Volunteer')) return 100;
+  return getLeaderMinYearNum(l); // Year 7–12
+}
+
 function tenureLabel(joinedDate) {
   if (!joinedDate) return '—';
   const start = new Date(joinedDate + 'T00:00:00');
@@ -752,8 +760,8 @@ function renderTeamTable() {
     if (yearFilter.size > 0 && !getLeaderYears(l).some(y => yearFilter.has(y))) return false;
     return true;
   }).sort((a, b) => {
-      const yd = getLeaderMinYearNum(a.l) - getLeaderMinYearNum(b.l);
-      if (yd !== 0) return yd;
+      const rd = leaderSortRank(a.l) - leaderSortRank(b.l);
+      if (rd !== 0) return rd;
       const ga = a.l.gender || '', gb = b.l.gender || '';
       if (ga !== gb) return ga < gb ? -1 : 1;
       return (a.l.name || '').localeCompare(b.l.name || '');
