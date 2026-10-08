@@ -680,7 +680,8 @@
   let identity, leaders = [], roster = [], weeklyStats = [], termReview = null;
   let wsSyncSaving = false;
   let subLeaders = [], subEntryMap = new Map(), subNoNightCampuses = new Set(), subIsAll = false;
-  let subYearFilter = '', subGenderFilter = '';
+  let subYearFilters = new Set(), subGenderFilter = '';
+  const SUB_YL_EXCLUDE = new Set(['Volunteer', 'DST']);
   let archivedCount = 0, snapNP = [], snapLeaderEntries = [], snapNC = [];
 
   let allCampuses = [];
@@ -854,28 +855,20 @@
 
     const isAll = !campusId;
     let statsQ = db.from('weekly_stats').select('*').order('entry_date', { ascending: true });
-    let leQ2   = db.from('leader_entries').select('entry_date, term, campus_id, youth_attendance, connect_attendance, sunday_attendance, week_number');
-    let npQ2   = db.from('new_people').select('status, campus_id, created_at').not('status', 'in', '("archived")');
-    let ncQ2   = db.from('new_christians').select('decision_date, decision_type, campus_id').eq('archived', false);
+    let leQ2   = db.from('leader_entries').select('entry_date, term, campus_id, connect_attendance, sunday_attendance, week_number');
 
     if (isAll) {
       const ids = allCampuses.map(c => c.id);
       statsQ = statsQ.in('campus_id', ids);
       leQ2   = leQ2.in('campus_id', ids);
-      npQ2   = npQ2.in('campus_id', ids);
-      ncQ2   = ncQ2.in('campus_id', ids);
     } else {
       statsQ = statsQ.eq('campus_id', campusId);
       leQ2   = leQ2.eq('campus_id', campusId);
-      npQ2   = npQ2.eq('campus_id', campusId);
-      ncQ2   = ncQ2.eq('campus_id', campusId);
     }
 
-    const [statsRes2, leRes2, npRes2, ncRes2] = await Promise.all([statsQ, leQ2, npQ2, ncQ2]);
-    const rows    = statsRes2.data ?? [];
-    const leRows  = leRes2.data ?? [];
-    const npRows  = npRes2.data ?? [];
-    const ncRows  = ncRes2.data ?? [];
+    const [statsRes2, leRes2] = await Promise.all([statsQ, leQ2]);
+    const rows   = statsRes2.data ?? [];
+    const leRows = leRes2.data ?? [];
 
     const TERM_ORD = { T1: 100, T2: 200, T3: 300, T4: 400 };
     const twVal = (t, w) => (TERM_ORD[t] || 0) + (w || 0);
@@ -951,33 +944,20 @@
   }
 
   function renderYearCompResults(statsA, statsB, leA, leB, npA, npB, ncA, ncB, labelA, labelB, campusId) {
-    // Aggregate leader_entries by date then avg/sum — excludes dates with no data
-    const leByDate = (entries, field) => {
-      const byDate = {};
-      for (const e of entries) {
-        if (e[field] != null) byDate[e.entry_date] = (byDate[e.entry_date] ?? 0) + e[field];
-      }
-      return Object.values(byDate);
-    };
-    const leSum = (entries, field) => leByDate(entries, field).reduce((a,b)=>a+b,0);
-
-    const avgAttA = avgLeaderField(leA, 'youth_attendance'),    avgAttB = avgLeaderField(leB, 'youth_attendance');
-    const avgConA = avgLeaderField(leA, 'connect_attendance'),  avgConB = avgLeaderField(leB, 'connect_attendance');
-    const avgSunA = avgLeaderField(leA, 'sunday_attendance'),   avgSunB = avgLeaderField(leB, 'sunday_attendance');
-
-    // Skip nulls in avg/sum so missing weeks don't count as zero
+    // All stats sourced from weekly_stats to match weekly data table
     const nonNull = arr => arr.filter(x => x != null);
     const avg  = arr => { const v = nonNull(arr); return v.length ? Math.round(v.reduce((a,b)=>a+b,0)/v.length) : 0; };
     const sum  = arr => nonNull(arr).reduce((a,b)=>a+b,0);
     const colA = key => statsA.map(w => w[key]);
     const colB = key => statsB.map(w => w[key]);
 
-    // NP counts from new_people
-    const npCounts = (arr) => ({
-      v1: arr.length,
-      v2: arr.filter(n => n.status === 'visit_2' || n.status === 'visit_3').length,
-      v3: arr.filter(n => n.status === 'visit_3').length,
-    });
+    // Attendance — use weekly_stats.youth_attendance (same source as weekly data table)
+    const avgAttA = avg(colA('youth_attendance')), avgAttB = avg(colB('youth_attendance'));
+
+    // Connect & Sunday — aggregate from leader_entries (same as weekly data table)
+    const avgConA = avgLeaderField(leA, 'connect_attendance'),  avgConB = avgLeaderField(leB, 'connect_attendance');
+    const avgSunA = avgLeaderField(leA, 'sunday_attendance'),   avgSunB = avgLeaderField(leB, 'sunday_attendance');
+
     // Attendance % — avg of (youth / total_in_dept) per week
     const avgAttPct = (stats) => {
       const wks = stats.filter(w => w.total_in_department > 0);
@@ -990,9 +970,16 @@
     const yplA = avgLdrA > 0 ? Math.round(avgAttA / avgLdrA) : 0;
     const yplB = avgLdrB > 0 ? Math.round(avgAttB / avgLdrB) : 0;
 
-    const npcA = npCounts(npA), npcB = npCounts(npB);
-    const retA = npcA.v1 > 0 ? Math.round((npcA.v2 + npcA.v3) / (npcA.v1 * 2) * 100) : 0;
-    const retB = npcB.v1 > 0 ? Math.round((npcB.v2 + npcB.v3) / (npcB.v1 * 2) * 100) : 0;
+    // New People — from weekly_stats first/second/third_timers (same as weekly data table)
+    const v1A = sum(colA('first_timers')),  v1B = sum(colB('first_timers'));
+    const v2A = sum(colA('second_timers')), v2B = sum(colB('second_timers'));
+    const v3A = sum(colA('third_timers')),  v3B = sum(colB('third_timers'));
+    const retA = v1A > 0 ? Math.round(v3A / v1A * 100) : 0;
+    const retB = v1B > 0 ? Math.round(v3B / v1B * 100) : 0;
+
+    // Discipleship — from weekly_stats salvations fields
+    const ftA = sum(colA('salvations_first')),  ftB = sum(colB('salvations_first'));
+    const rdA = sum(colA('salvations_rededs')), rdB = sum(colB('salvations_rededs'));
 
     const campusLabel = campusId
       ? (allCampuses.find(c => c.id === campusId)?.name ?? '—')
@@ -1049,16 +1036,16 @@
 
       <span class="section-badge section-badge--red">New People</span>
       <div class="ycomp-grid mb-5">
-        ${card('Visit 1 (total)',  npcA.v1, npcB.v1)}
-        ${card('Visit 2+',        npcA.v2, npcB.v2)}
-        ${card('Visit 3',         npcA.v3, npcB.v3)}
-        ${card('Retention Rate',  retA,    retB, true)}
+        ${card('1st Timers',      v1A, v1B)}
+        ${card('2nd Timers',      v2A, v2B)}
+        ${card('3rd Timers',      v3A, v3B)}
+        ${card('Retention Rate',  retA, retB, true)}
       </div>
 
       <span class="section-badge section-badge--lime">Discipleship Metrics</span>
       <div class="ycomp-grid mb-5">
-        ${card('First-Time Decisions', ncA.filter(n => n.decision_type === 'first_time').length,   ncB.filter(n => n.decision_type === 'first_time').length)}
-        ${card('Rededications',        ncA.filter(n => n.decision_type === 'rededication').length, ncB.filter(n => n.decision_type === 'rededication').length)}
+        ${card('First-Time Decisions', ftA, ftB)}
+        ${card('Rededications',        rdA, rdB)}
         ${card('Bibles Given',         sum(colA('bibles_given')),      sum(colB('bibles_given')))}
         ${card('Fresh Start',          sum(colA('fresh_start')),       sum(colB('fresh_start')))}
         ${card('Water Baptisms',       sum(colA('water_baptisms')),    sum(colB('water_baptisms')))}
@@ -1083,16 +1070,22 @@
   }
 
   function sortYearLevels(a, b) {
-    const ORDER = ['Year 7','Year 8','Year 9','Year 10','Year 11','Year 12','SAF','Volunteer'];
+    const ORDER = ['Year 7','Year 8','Year 9','Year 10','Year 11','Year 12','SAF'];
     const ai = ORDER.indexOf(a), bi = ORDER.indexOf(b);
     if (ai !== -1 && bi !== -1) return ai - bi;
     return ai !== -1 ? -1 : bi !== -1 ? 1 : a.localeCompare(b);
   }
 
   function setSubYearFilter(btn) {
-    document.querySelectorAll('#snap-sub-year-pills .snap-sub-pill').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    subYearFilter = btn.dataset.syl;
+    const yl = btn.dataset.syl;
+    if (yl === '') {
+      subYearFilters.clear();
+    } else {
+      subYearFilters.has(yl) ? subYearFilters.delete(yl) : subYearFilters.add(yl);
+    }
+    document.querySelectorAll('#snap-sub-year-pills .snap-sub-pill').forEach(b => {
+      b.classList.toggle('active', b.dataset.syl === '' ? subYearFilters.size === 0 : subYearFilters.has(b.dataset.syl));
+    });
     renderSubmissionChips();
   }
 
@@ -1128,7 +1121,7 @@
 
     // Apply year-level and gender filters to displayed leaders
     let displayed = subLeaders;
-    if (subYearFilter) displayed = displayed.filter(l => getLeaderYearLevels(l).includes(subYearFilter));
+    if (subYearFilters.size > 0) displayed = displayed.filter(l => getLeaderYearLevels(l).some(yl => subYearFilters.has(yl)));
     if (subGenderFilter) displayed = displayed.filter(l => l.gender === subGenderFilter);
 
     const makeChip = (l) => {
@@ -1371,11 +1364,13 @@
     subIsAll = isAll;
     subNoNightCampuses = noNightCampuses;
     subEntryMap = new Map(activeLeaders.map((l, i) => [l.id, !!entryRes[i]?.data]));
-    subYearFilter = '';
+    subYearFilters = new Set();
     subGenderFilter = '';
 
-    // Populate year-level filter pills from available data
-    const availableYLs = [...new Set(leaderOnly.flatMap(getLeaderYearLevels))].sort(sortYearLevels);
+    // Populate year-level filter pills from available data (exclude Volunteer, DST)
+    const availableYLs = [...new Set(leaderOnly.flatMap(getLeaderYearLevels))]
+      .filter(yl => !SUB_YL_EXCLUDE.has(yl))
+      .sort(sortYearLevels);
     document.getElementById('snap-sub-year-pills').innerHTML =
       `<button class="snap-sub-pill active" data-syl="" onclick="setSubYearFilter(this)">All years</button>` +
       availableYLs.map(yl => `<button class="snap-sub-pill" data-syl="${escHtml(yl)}" onclick="setSubYearFilter(this)">${escHtml(yl)}</button>`).join('');
