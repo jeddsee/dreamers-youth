@@ -564,10 +564,6 @@
               </select>
             </div>
           </div>
-          <div class="ycomp-filter-group">
-            <label class="ycomp-filter-label">Campus</label>
-            <select id="ycomp-campus" class="ycomp-select"></select>
-          </div>
           <button class="btn btn--primary" onclick="runYearComparison()" style="height:44px;padding:0 var(--s-6);align-self:flex-end">Compare</button>
         </div>
 
@@ -827,11 +823,6 @@
     selA.innerHTML = years.map(y => `<option${y === curYear ? ' selected' : ''}>${y}</option>`).join('');
     selB.innerHTML = years.map(y => `<option${y === curYear - 1 ? ' selected' : ''}>${y}</option>`).join('');
 
-    const selC = document.getElementById('ycomp-campus');
-    selC.innerHTML = `<option value="">All campuses</option>` +
-      allCampuses.map(c => `<option value="${c.id}">${escHtml(c.name)}</option>`).join('');
-    selC.value = identity?.campus_id ?? '';
-
     ['ycomp-from-term-a','ycomp-from-week-a','ycomp-to-term-a','ycomp-to-week-a',
      'ycomp-from-term-b','ycomp-from-week-b','ycomp-to-term-b','ycomp-to-week-b'].forEach(id => {
       const el = document.getElementById(id); if (el) el.value = '';
@@ -850,21 +841,20 @@
     const fromWeekB  = parseInt(document.getElementById('ycomp-from-week-b').value) || 0;
     const toTermB    = document.getElementById('ycomp-to-term-b').value;
     const toWeekB    = parseInt(document.getElementById('ycomp-to-week-b').value) || 0;
-    const campusId   = document.getElementById('ycomp-campus').value;
+    const campusId = identity?.campus_id ?? null;
 
     document.getElementById('ycomp-loading').classList.remove('hidden');
 
-    const isAll = !campusId;
     let statsQ = db.from('weekly_stats').select('*').order('entry_date', { ascending: true });
     let leQ2   = db.from('leader_entries').select('entry_date, term, campus_id, connect_attendance, sunday_attendance, week_number');
 
-    if (isAll) {
+    if (campusId) {
+      statsQ = statsQ.eq('campus_id', campusId);
+      leQ2   = leQ2.eq('campus_id', campusId);
+    } else {
       const ids = allCampuses.map(c => c.id);
       statsQ = statsQ.in('campus_id', ids);
       leQ2   = leQ2.in('campus_id', ids);
-    } else {
-      statsQ = statsQ.eq('campus_id', campusId);
-      leQ2   = leQ2.eq('campus_id', campusId);
     }
 
     const [statsRes2, leRes2] = await Promise.all([statsQ, leQ2]);
