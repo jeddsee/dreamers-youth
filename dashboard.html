@@ -1271,7 +1271,7 @@
     const mostRecentDate = mostRecentYouthNight(new Date(), identity.youth_night_dow);
 
     // Build queries — single campus or all campuses
-    let leadersQ = db.from('leaders').select('id, name, role, campus_id, year_level, year_levels, gender').eq('active', true).order('name');
+    let leadersQ = db.from('leaders').select('id, name, role, campus_id, year_level, year_levels, gender, left_date').eq('active', true).order('name');
     let rosterQ  = db.from('youth_roster').select('id, is_new_christian, water_baptised, category, campus_id').eq('active', true);
     let archQ    = db.from('youth_roster').select('id', { count: 'exact', head: true }).eq('category', 'archive');
     const yearFrom = `${snapYear}-01-01`;
@@ -1328,6 +1328,7 @@
     // Submission status — exclude leaders with no year level or only excluded year levels
     const leaderOnly = leaders.filter(l => {
       if (l.role !== 'leader') return false;
+      if (l.left_date) return false;
       const yls = getLeaderYearLevels(l);
       return yls.length > 0 && yls.some(yl => !SUB_YL_EXCLUDE.has(yl));
     });
