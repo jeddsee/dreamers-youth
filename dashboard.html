@@ -830,6 +830,7 @@
     const selC = document.getElementById('ycomp-campus');
     selC.innerHTML = `<option value="">All campuses</option>` +
       allCampuses.map(c => `<option value="${c.id}">${escHtml(c.name)}</option>`).join('');
+    selC.value = identity?.campus_id ?? '';
 
     ['ycomp-from-term-a','ycomp-from-week-a','ycomp-to-term-a','ycomp-to-week-a',
      'ycomp-from-term-b','ycomp-from-week-b','ycomp-to-term-b','ycomp-to-week-b'].forEach(id => {
