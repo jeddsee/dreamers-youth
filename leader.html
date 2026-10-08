@@ -461,16 +461,6 @@
       <div style="padding:var(--s-5)">
         <h2 style="font-size:var(--text-lg);margin-bottom:var(--s-4)">My New Christians</h2>
         <div id="nc-error" class="error-banner hidden" style="margin-bottom:var(--s-4)"></div>
-        <!-- Overdue NC comments -->
-        <div id="overdue-nc-section" class="overdue-section hidden">
-          <div class="overdue-header" onclick="toggleOverdue('overdue-nc-section')">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#92400E" stroke-width="2"><circle cx="8" cy="8" r="7"/><line x1="8" y1="4" x2="8" y2="8.5"/><circle cx="8" cy="11" r="0.5" fill="#92400E"/></svg>
-            Overdue Comments
-            <span class="overdue-count" id="overdue-nc-count">0</span>
-            <svg class="overdue-chevron" id="overdue-nc-chevron" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4,6 8,10 12,6"/></svg>
-          </div>
-          <div class="overdue-list hidden" id="overdue-nc-list"></div>
-        </div>
       </div>
       <div id="nc-loading" class="loading-overlay"><div class="spinner"></div> Loading…</div>
       <div id="nc-empty" class="empty-state hidden">
@@ -1412,40 +1402,28 @@
     updateCommentsBanner();
   }
 
+  function ncDaysOverdue(nc) {
+    if (!nc.decision_date) return null;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const deadline = tuesdayAfterFriday(nc.decision_date);
+    const decisionMs = new Date(nc.decision_date + 'T00:00:00').getTime();
+    const comments = (ncComments[nc.id] ?? []).map(c => c.created_at);
+    const lastCommentMs = comments
+      .map(ts => new Date(ts).getTime())
+      .filter(t => t >= decisionMs)
+      .reduce((max, t) => Math.max(max, t), 0);
+    let baseline = deadline;
+    if (lastCommentMs > 0) {
+      const lcd = new Date(lastCommentMs); lcd.setHours(0, 0, 0, 0);
+      if (lcd.getTime() > deadline.getTime()) baseline = lcd;
+    }
+    if (today <= baseline) return null;
+    return Math.floor((today.getTime() - baseline.getTime()) / 86400000);
+  }
+
   function renderOverdueNCs(ncs) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const overdue = ncs.filter(nc => {
-      if (!nc.decision_date) return false;
-      const deadline = tuesdayAfterFriday(nc.decision_date);
-      if (today <= deadline) return false;
-      const comments = (ncComments[nc.id] ?? []).map(c => c.created_at);
-      const visitMs = new Date(nc.decision_date + 'T00:00:00').getTime();
-      const deadlineMs = deadline.getTime() + 86399999;
-      return !comments.some(ts => {
-        const t = new Date(ts).getTime();
-        return t >= visitMs && t <= deadlineMs;
-      });
-    });
-
-    overdueNCCount = overdue.length;
+    overdueNCCount = ncs.filter(nc => ncDaysOverdue(nc) != null).length;
     updateCommentsBanner();
-
-    const section = document.getElementById('overdue-nc-section');
-    const countEl = document.getElementById('overdue-nc-count');
-    const listEl  = document.getElementById('overdue-nc-list');
-    if (!overdue.length) { section.classList.add('hidden'); return; }
-    section.classList.remove('hidden');
-    countEl.textContent = overdue.length;
-    listEl.innerHTML = overdue.map(nc => {
-      const deadline = tuesdayAfterFriday(nc.decision_date);
-      const daysOverdue = Math.floor((today.getTime() - deadline.getTime()) / 86400000);
-      return `<div class="overdue-item">
-        <span class="overdue-item__name">${escHtml(nc.name)}</span>
-        <span class="overdue-item__meta">${daysOverdue}d overdue</span>
-      </div>`;
-    }).join('');
   }
 
   // ── NP Comments ──────────────────────────────────────────────────────────
@@ -1694,11 +1672,15 @@
     const decisionLabel = t => ({ first_time: 'First Time', rededication: 'Rededication', water_baptism: 'Water Baptism' }[t] ?? t ?? '—');
     const step = (done, label) => `<span class="nc-step ${done ? 'nc-step--done' : ''}">${label}</span>`;
 
-    list.innerHTML = ncs.map(nc => `
-      <div class="np-card">
+    list.innerHTML = ncs.map(nc => {
+      const daysOD = ncDaysOverdue(nc);
+      const overduePill = daysOD != null ? `<span class="np-overdue-pill">${daysOD}d overdue</span>` : '';
+      const cardClass = daysOD != null ? 'np-card np-card--overdue' : 'np-card';
+      return `
+      <div class="${cardClass}">
         <div class="np-card__header">
           <div>
-            <div class="np-card__name">${escHtml(nc.name)}</div>
+            <div class="np-card__name">${escHtml(nc.name)}${overduePill}</div>
             <div class="np-card__meta">${decisionLabel(nc.decision_type)}${nc.decision_date ? ' · ' + formatDate(nc.decision_date) : ''}</div>
           </div>
           <button class="btn btn--ghost btn--sm" onclick="openNCEditModal('${nc.id}')">Edit</button>
@@ -1722,7 +1704,7 @@
           </div>
         </div>
       </div>
-    `).join('');
+    `; }).join('');
     list.classList.remove('hidden');
     ncs.forEach(nc => renderNCComments(nc.id));
   }
