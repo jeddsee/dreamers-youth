@@ -1419,7 +1419,7 @@
     const v1 = sum(col('first_timers'));
     const v2 = sum(col('second_timers'));
     const v3 = sum(col('third_timers'));
-    const retention = v1 > 0 ? Math.round((v2 + v3) / (v1 * 2) * 100) : 0;
+    const retention = v1 > 0 ? Math.round(v3 / v1 * 100) : 0;
     const npInPeriod = v1 + v2 + v3;
 
     document.getElementById('snap-np-cards').innerHTML = [
