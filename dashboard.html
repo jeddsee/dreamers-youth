@@ -937,7 +937,6 @@
     const leSum = (entries, field) => leByDate(entries, field).reduce((a,b)=>a+b,0);
 
     const avgAttA = avgLeaderField(leA, 'youth_attendance'),    avgAttB = avgLeaderField(leB, 'youth_attendance');
-    const sumAttA = leSum(leA, 'youth_attendance'),             sumAttB = leSum(leB, 'youth_attendance');
     const avgConA = avgLeaderField(leA, 'connect_attendance'),  avgConB = avgLeaderField(leB, 'connect_attendance');
     const avgSunA = avgLeaderField(leA, 'sunday_attendance'),   avgSunB = avgLeaderField(leB, 'sunday_attendance');
 
@@ -954,6 +953,18 @@
       v2: arr.filter(n => n.status === 'visit_2' || n.status === 'visit_3').length,
       v3: arr.filter(n => n.status === 'visit_3').length,
     });
+    // Attendance % — avg of (youth / total_in_dept) per week
+    const avgAttPct = (stats) => {
+      const wks = stats.filter(w => w.total_in_department > 0);
+      if (!wks.length) return 0;
+      return Math.round(wks.reduce((s, w) => s + (w.youth_attendance || 0) / w.total_in_department, 0) / wks.length * 100);
+    };
+    const attPctA = avgAttPct(statsA), attPctB = avgAttPct(statsB);
+    const avgDeptA = avg(colA('total_in_department')), avgDeptB = avg(colB('total_in_department'));
+    const avgLdrA  = avg(colA('leaders_count')),       avgLdrB  = avg(colB('leaders_count'));
+    const yplA = avgLdrA > 0 ? Math.round(avgAttA / avgLdrA) : 0;
+    const yplB = avgLdrB > 0 ? Math.round(avgAttB / avgLdrB) : 0;
+
     const npcA = npCounts(npA), npcB = npCounts(npB);
     const retA = npcA.v1 > 0 ? Math.round((npcA.v2 + npcA.v3) / (npcA.v1 * 2) * 100) : 0;
     const retB = npcB.v1 > 0 ? Math.round((npcB.v2 + npcB.v3) / (npcB.v1 * 2) * 100) : 0;
@@ -1004,8 +1015,11 @@
 
       <span class="section-badge section-badge--dark">Attendance</span>
       <div class="ycomp-grid mb-5">
-        ${card('Avg Attendance',   avgAttA, avgAttB)}
-        ${card('Total Attendance', sumAttA, sumAttB)}
+        ${card('Avg Attendance',    avgAttA,  avgAttB)}
+        ${card('Attendance %',      attPctA,  attPctB, true)}
+        ${card('Avg Total in Dept', avgDeptA, avgDeptB)}
+        ${card('Avg Leaders',       avgLdrA,  avgLdrB)}
+        ${card('Youth per Leader',  yplA,     yplB)}
       </div>
 
       <span class="section-badge section-badge--red">New People</span>
