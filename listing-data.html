@@ -834,17 +834,17 @@
     });
   }
 
-  // Returns the YYYY-MM-DD of the overdue entry date if we're past the Thursday 9pm deadline,
-  // otherwise null. Only relevant for the current year.
+  // Returns the YYYY-MM-DD of the overdue entry date only during the window
+  // Thursday 9pm → Friday midnight (i.e. before the youth night starts).
   function getOverdueDate() {
     const dow = identity.youth_night_dow ?? 5;
     const now = new Date();
     const entryDateStr = nextYouthNight(now, dow);
     const nextNight = new Date(entryDateStr + 'T00:00:00');
     const due = new Date(nextNight);
-    due.setDate(due.getDate() - 1); // day before youth night
-    due.setHours(21, 0, 0, 0);     // at 9pm
-    return now > due ? entryDateStr : null;
+    due.setDate(due.getDate() - 1); // Thursday
+    due.setHours(21, 0, 0, 0);     // 9pm
+    return now > due && now < nextNight ? entryDateStr : null;
   }
 
   // Build lookup: termKey → entry_date → leaderId → entry
