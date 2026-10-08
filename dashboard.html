@@ -1466,10 +1466,10 @@
     const yearLevelLeaders = leaders.filter(l => {
       if (l.role !== 'leader') return false;
       const yls = Array.isArray(l.year_levels) && l.year_levels.length ? l.year_levels : (l.year_level ? [l.year_level] : []);
-      return yls.some(yl => /^Year \d+$/.test(yl));
+      return yls.length > 0;
     });
     const attPct     = deptTotal > 0 ? Math.round(avgAtt / deptTotal * 100) : 0;
-    const youthPerLeader = yearLevelLeaders.length > 0 ? Math.round(avgAtt / yearLevelLeaders.length) : '—';
+    const youthPerLeader = yearLevelLeaders.length > 0 ? Math.round(deptTotal / yearLevelLeaders.length) : '—';
     document.getElementById('snap-avg-att').textContent          = avgAtt;
     document.getElementById('snap-total-dept').textContent       = deptTotal;
     document.getElementById('snap-att-pct').textContent          = deptTotal > 0 ? `${attPct}%` : '—';
