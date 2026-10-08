@@ -856,13 +856,12 @@
       }
       return Object.values(byDate);
     };
-    const leAvg = (entries, field) => { const v = leByDate(entries, field); return v.length ? Math.round(v.reduce((a,b)=>a+b,0)/v.length) : 0; };
     const leSum = (entries, field) => leByDate(entries, field).reduce((a,b)=>a+b,0);
 
-    const avgAttA = leAvg(leA, 'youth_attendance'),    avgAttB = leAvg(leB, 'youth_attendance');
-    const sumAttA = leSum(leA, 'youth_attendance'),    sumAttB = leSum(leB, 'youth_attendance');
-    const avgConA = leAvg(leA, 'connect_attendance'),  avgConB = leAvg(leB, 'connect_attendance');
-    const avgSunA = leAvg(leA, 'sunday_attendance'),   avgSunB = leAvg(leB, 'sunday_attendance');
+    const avgAttA = avgLeaderField(leA, 'youth_attendance'),    avgAttB = avgLeaderField(leB, 'youth_attendance');
+    const sumAttA = leSum(leA, 'youth_attendance'),             sumAttB = leSum(leB, 'youth_attendance');
+    const avgConA = avgLeaderField(leA, 'connect_attendance'),  avgConB = avgLeaderField(leB, 'connect_attendance');
+    const avgSunA = avgLeaderField(leA, 'sunday_attendance'),   avgSunB = avgLeaderField(leB, 'sunday_attendance');
 
     // Skip nulls in avg/sum so missing weeks don't count as zero
     const nonNull = arr => arr.filter(x => x != null);
@@ -1105,7 +1104,7 @@
     let statsQ   = db.from('weekly_stats').select('*').gte('entry_date', yearFrom).lte('entry_date', yearTo).order('entry_date', { ascending: false });
     let npQ      = db.from('new_people').select('status, campus_id, created_at, visit_1_date').not('status', 'in', '("archived")').gte('visit_1_date', yearFrom).lte('visit_1_date', yearTo);
     let ncQ      = db.from('new_christians').select('decision_date, decision_type, campus_id').gte('decision_date', yearFrom).lte('decision_date', yearTo);
-    let leQ      = db.from('leader_entries').select('entry_date, term, campus_id, youth_attendance').not('youth_attendance', 'is', null).gte('entry_date', yearFrom).lte('entry_date', yearTo);
+    let leQ      = db.from('leader_entries').select('entry_date, term, campus_id, youth_attendance, connect_attendance, sunday_attendance').gte('entry_date', yearFrom).lte('entry_date', yearTo);
 
     // Update year display
     document.getElementById('snap-year-display').textContent = snapYear;
@@ -1272,15 +1271,20 @@
     return filterByPeriod(snapNC, n => n.decision_date);
   }
 
-  // Sum youth_attendance per entry_date across leaders, then average those daily totals
-  function avgAttendanceFromEntries(entries) {
+  // Sum a leader_entries field per entry_date across leaders, then average those daily totals
+  function avgLeaderField(entries, field) {
     const byDate = {};
     for (const e of entries) {
-      if (e.youth_attendance == null) continue;
-      byDate[e.entry_date] = (byDate[e.entry_date] ?? 0) + e.youth_attendance;
+      if (e[field] == null) continue;
+      byDate[e.entry_date] = (byDate[e.entry_date] ?? 0) + e[field];
     }
     const sums = Object.values(byDate);
     return sums.length ? Math.round(sums.reduce((a, b) => a + b, 0) / sums.length) : 0;
+  }
+
+  // Sum youth_attendance per entry_date across leaders, then average those daily totals
+  function avgAttendanceFromEntries(entries) {
+    return avgLeaderField(entries, 'youth_attendance');
   }
 
   function setSnapPeriod(period, btn) {
@@ -1379,10 +1383,11 @@
       card('Contributor',      contributor,   'stat-card--contributor') +
       card('Ready to Archive', archivedCount, archivedCount > 0 ? 'stat-card--fill-red' : '');
 
-    // Connect & Sunday
+    // Connect & Sunday — connect/sunday from leader_entries sums (matches weekly-data view)
+    const filteredLE = getFilteredLeaderEntries();
     document.getElementById('snap-connect-cards').innerHTML = [
-      { label: 'Avg Connect Att.', value: avg(col('connect_attendance')) },
-      { label: 'Avg Sunday Att.',  value: avg(col('sunday_attendance')) },
+      { label: 'Avg Connect Att.', value: avgLeaderField(filteredLE, 'connect_attendance') },
+      { label: 'Avg Sunday Att.',  value: avgLeaderField(filteredLE, 'sunday_attendance') },
       { label: 'Avg Saints Att.',  value: avg(col('saints_attendance')) },
       { label: 'School Engagements',  value: sum(col('schools_visited')) },
     ].map(c => `<div class="stat-card"><div class="stat-card__label">${c.label}</div><div class="stat-card__value">${c.value}</div></div>`).join('');
