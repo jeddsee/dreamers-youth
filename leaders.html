@@ -234,6 +234,8 @@
         </div>
       </div>
 
+      <p id="team-count" style="font-size:0.8rem;font-weight:600;color:var(--c-text-muted);margin:0 0 8px 2px;"></p>
+
       <div class="card card--flush leaders-table-wrap mb-6">
         <table class="leaders-table">
           <thead>
@@ -729,6 +731,8 @@ function renderTeamTable() {
   const leaders = allLeaders;
 
   if (!leaders.length) {
+    const countEl = document.getElementById('team-count');
+    if (countEl) countEl.textContent = '0 leaders';
     tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--c-text-muted);padding:var(--s-6)">No leaders set up yet.</td></tr>';
     return;
   }
@@ -754,6 +758,9 @@ function renderTeamTable() {
       if (ga !== gb) return ga < gb ? -1 : 1;
       return (a.l.name || '').localeCompare(b.l.name || '');
     });
+
+  const countEl = document.getElementById('team-count');
+  if (countEl) countEl.textContent = `${rows.length} leader${rows.length !== 1 ? 's' : ''}`;
 
   if (!rows.length) {
     tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:var(--c-text-muted);padding:var(--s-6)">No leaders match this filter.</td></tr>`;
