@@ -245,10 +245,10 @@
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5" cy="4" r="2.5"/><circle cx="11" cy="4" r="2.5"/><path d="M1 13c0-2.2 1.8-4 4-4h2"/><path d="M9 9h2c2.2 0 4 1.8 4 4"/><line x1="11" y1="11" x2="11" y2="15"/><line x1="9" y1="13" x2="13" y2="13"/></svg>
         Leaders
       </a>
-      <a class="sidebar-nav-item hidden" id="my-listing-link" href="listing-data.html">
+      <button class="sidebar-nav-item hidden" id="my-listing-link" onclick="goMyListing()">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="1"/><line x1="5" y1="6" x2="11" y2="6"/><line x1="5" y1="9" x2="9" y2="9"/></svg>
         My Listing
-      </a>
+      </button>
     </div>
 
     <div class="sidebar-section">
@@ -780,9 +780,7 @@
       document.getElementById('pastor-entry-form').hidden = true;
       document.getElementById('admin-entry-form').classList.remove('hidden');
       document.getElementById('entry-nav-label').textContent = 'My attendance';
-      const myListingLink = document.getElementById('my-listing-link');
-      myListingLink.classList.remove('hidden');
-      myListingLink.href = `listing-data.html?leader=${encodeURIComponent(identity.leader_id)}`;
+      document.getElementById('my-listing-link').classList.remove('hidden');
       const dow = identity.youth_night_dow ?? 5;
       const adminDate = nextYouthNight(new Date(), dow);
       document.getElementById('admin-entry-date').value = adminDate;
@@ -2007,6 +2005,7 @@
     return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
   function capitalize(s) { return s ? s[0].toUpperCase() + s.slice(1) : ''; }
+  function goMyListing() { window.location.href = `listing-data.html?leader=${encodeURIComponent(identity.leader_id)}`; }
   function logout() { DY.clearIdentity(); window.location.href = '/'; }
 
   init();
