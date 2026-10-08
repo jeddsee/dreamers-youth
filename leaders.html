@@ -244,6 +244,7 @@
               <th>Year Level</th>
               <th>Youth</th>
               <th>On team</th>
+              <th>Policy</th>
               <th></th>
             </tr>
           </thead>
@@ -657,7 +658,7 @@ async function init() {
   document.getElementById('rv-year').value = new Date().getFullYear();
 
   const [leadersRes, youthRes] = await Promise.all([
-    db.from('leaders').select('id, name, role, year_level, year_levels, gender, joined_date, left_date, is_admin').eq('campus_id', identity.campus_id).eq('active', true).order('name'),
+    db.from('leaders').select('id, name, role, year_level, year_levels, gender, joined_date, left_date, is_admin, policy_signed_at, policy_signed_name').eq('campus_id', identity.campus_id).eq('active', true).order('name'),
     db.from('youth_roster').select('id, name, leader_id, year_level, gender, category, water_baptised, hs_baptised, serving, active, created_at').eq('campus_id', identity.campus_id),
   ]);
   allLeaders = leadersRes.data ?? [];
@@ -745,7 +746,7 @@ function renderTeamTable() {
   if (!leaders.length) {
     const countEl = document.getElementById('team-count');
     if (countEl) countEl.textContent = '0 leaders';
-    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--c-text-muted);padding:var(--s-6)">No leaders set up yet.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--c-text-muted);padding:var(--s-6)">No leaders set up yet.</td></tr>';
     return;
   }
 
@@ -775,7 +776,7 @@ function renderTeamTable() {
   if (countEl) countEl.textContent = `${rows.length} leader${rows.length !== 1 ? 's' : ''}`;
 
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:var(--c-text-muted);padding:var(--s-6)">No leaders match this filter.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--c-text-muted);padding:var(--s-6)">No leaders match this filter.</td></tr>`;
     return;
   }
 
@@ -790,11 +791,18 @@ function renderTeamTable() {
     const rolePill = l.role === 'pastor'
       ? `<span class="badge badge--blue" style="font-size:0.6rem;margin-left:6px">Pastor</span>`
       : '';
+    const policySigned = l.policy_signed_at
+      ? `<span style="display:inline-flex;align-items:center;gap:4px;color:#16a34a;font-size:var(--text-xs);font-weight:600" title="Signed by ${escHtml(l.policy_signed_name)} on ${new Date(l.policy_signed_at).toLocaleDateString('en-AU')}">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="8" cy="8" r="7"/><polyline points="5,8 7,10.5 11,5.5"/></svg>
+          ${new Date(l.policy_signed_at).toLocaleDateString('en-AU', {day:'numeric',month:'short',year:'numeric'})}
+        </span>`
+      : `<span style="font-size:var(--text-xs);color:var(--c-text-muted)">Not signed</span>`;
     return `<tr${rowStyle}>
       <td class="fw-semibold">${escHtml(l.name)}${rolePill}${inactivePill}</td>
       <td>${escHtml(getLeaderYearsLabel(l))}</td>
       <td class="fw-semibold">${inactive ? '—' : youth.length}</td>
       <td style="color:var(--c-text-muted);font-size:var(--text-sm)"${sinceStr}>${tenure}</td>
+      <td>${policySigned}</td>
       <td style="text-align:right"><button class="btn btn--ghost btn--sm" onclick="openEditLeaderModal('${escHtml(l.id)}')">Edit</button></td>
     </tr>`;
   }).join('');

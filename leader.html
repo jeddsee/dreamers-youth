@@ -294,6 +294,31 @@
       margin-bottom: var(--s-4);
     }
 
+    /* ── Guidelines / Policy signing ── */
+    .policy-section { padding: var(--s-5); max-width: 520px; }
+    .policy-download-box {
+      display: flex; align-items: center; gap: var(--s-3);
+      background: var(--c-surface); border: 1px solid var(--c-border);
+      border-radius: var(--r-lg); padding: var(--s-4); margin-bottom: var(--s-5);
+    }
+    .policy-download-box svg { flex-shrink: 0; color: #dc2626; }
+    .policy-download-box a { font-weight: 600; font-size: var(--text-sm); color: var(--c-primary); }
+    .policy-signed-banner {
+      display: flex; align-items: flex-start; gap: var(--s-3);
+      background: #f0fdf4; border: 1px solid #86efac;
+      border-radius: var(--r-lg); padding: var(--s-4); margin-bottom: var(--s-5);
+      font-size: var(--text-sm);
+    }
+    .policy-signed-banner svg { flex-shrink: 0; color: #16a34a; margin-top: 2px; }
+    .sig-canvas-wrap {
+      border: 1.5px solid var(--c-border); border-radius: var(--r-md);
+      background: #fff; cursor: crosshair; touch-action: none;
+      display: block; width: 100%; margin-bottom: var(--s-3);
+    }
+    .sig-canvas-wrap canvas { display: block; width: 100%; height: 100px; }
+    .sig-field { margin-bottom: var(--s-3); }
+    .sig-label { font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--c-text-muted); display: block; margin-bottom: var(--s-1); }
+
     /* Overdue comments */
     .overdue-section {
       margin: 0 0 var(--s-4);
@@ -372,6 +397,14 @@
       <button class="sidebar-nav-item hidden" data-nav="term-review" id="term-nav">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 13L8 3l6 10H2z"/></svg>
         Term review
+      </button>
+    </div>
+
+    <div class="sidebar-section">
+      <span class="sidebar-section__label">Documents</span>
+      <button class="sidebar-nav-item" data-nav="guidelines">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 2H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V6z"/><polyline points="9,2 9,6 13,6"/></svg>
+        Guidelines
       </button>
     </div>
 
@@ -489,6 +522,55 @@
         </div>
         <div class="sticky-footer" id="term-footer">
           <button id="term-submit" class="btn btn--primary btn--full">Submit term review</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="section-guidelines" class="hidden">
+      <div class="policy-section">
+        <h2 style="font-size:var(--text-lg);margin-bottom:var(--s-4)">Pastoral Management System Guidelines</h2>
+
+        <div class="policy-download-box">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline fill="none" stroke="#fff" stroke-width="1.5" points="14,2 14,8 20,8"/><line fill="none" stroke="#fff" stroke-width="1.5" x1="12" y1="18" x2="12" y2="12"/><polyline fill="none" stroke="#fff" stroke-width="1.5" points="9,15 12,18 15,15"/></svg>
+          <div>
+            <div style="font-size:var(--text-xs);color:var(--c-text-muted);margin-bottom:2px">PDF Document</div>
+            <a href="Dreamers%20Youth%20Pastoral%20Management%20System%20Guidelines.pdf" download target="_blank">Download Guidelines PDF</a>
+          </div>
+        </div>
+
+        <div id="policy-signed-banner" class="policy-signed-banner hidden">
+          <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="7"/><polyline points="5,8 7,10.5 11,5.5"/></svg>
+          <div>
+            <div style="font-weight:700;margin-bottom:2px">Guidelines signed</div>
+            <div id="policy-signed-detail" style="color:var(--c-text-muted)"></div>
+          </div>
+        </div>
+
+        <div id="policy-sign-form">
+          <p style="font-size:var(--text-sm);color:var(--c-text-secondary);margin-bottom:var(--s-4)">
+            Please download and read the guidelines above, then sign below to confirm you have read and agree to adhere to them.
+          </p>
+
+          <div class="sig-field">
+            <label class="sig-label">Full name</label>
+            <input type="text" id="sig-name" class="input" placeholder="Type your full name">
+          </div>
+
+          <div class="sig-field">
+            <label class="sig-label">Signature <span style="font-weight:400;text-transform:none;letter-spacing:0">(draw below)</span></label>
+            <div class="sig-canvas-wrap">
+              <canvas id="sig-canvas" height="100"></canvas>
+            </div>
+            <button class="btn btn--ghost btn--sm" onclick="clearSigCanvas()" style="font-size:var(--text-xs)">Clear</button>
+          </div>
+
+          <div class="sig-field">
+            <label class="sig-label">Date</label>
+            <input type="text" id="sig-date" class="input" readonly style="background:var(--c-bg);color:var(--c-text-muted)">
+          </div>
+
+          <div id="policy-sign-error" class="error-banner hidden" style="margin-bottom:var(--s-3)"></div>
+          <button class="btn btn--primary" id="policy-sign-btn" onclick="submitPolicy()">Sign &amp; Submit</button>
         </div>
       </div>
     </section>
@@ -801,6 +883,7 @@
     window.location.hash = tab;
 
     if (tab === 'new-people') markNPViewed();
+    if (tab === 'guidelines') loadPolicyStatus();
   }
 
   // ── Roster ─────────────────────────────────────────────────────────────────
@@ -2208,6 +2291,93 @@
   function logout() {
     DY.clearIdentity();
     window.location.href = '/';
+  }
+
+  // ── Guidelines / Policy signing ──────────────────────────────────────────
+  let sigCtx, sigDrawing = false;
+
+  function initSigCanvas() {
+    const canvas = document.getElementById('sig-canvas');
+    if (!canvas || canvas._sigInited) return;
+    canvas._sigInited = true;
+    canvas.width = canvas.offsetWidth || 480;
+    sigCtx = canvas.getContext('2d');
+    sigCtx.strokeStyle = '#111';
+    sigCtx.lineWidth = 2;
+    sigCtx.lineCap = 'round';
+    sigCtx.lineJoin = 'round';
+
+    const pos = (e) => {
+      const r = canvas.getBoundingClientRect();
+      const src = e.touches ? e.touches[0] : e;
+      return { x: (src.clientX - r.left) * (canvas.width / r.width), y: (src.clientY - r.top) * (canvas.height / r.height) };
+    };
+    canvas.addEventListener('mousedown', e => { sigDrawing = true; sigCtx.beginPath(); const p = pos(e); sigCtx.moveTo(p.x, p.y); });
+    canvas.addEventListener('mousemove', e => { if (!sigDrawing) return; const p = pos(e); sigCtx.lineTo(p.x, p.y); sigCtx.stroke(); });
+    canvas.addEventListener('mouseup', () => sigDrawing = false);
+    canvas.addEventListener('mouseleave', () => sigDrawing = false);
+    canvas.addEventListener('touchstart', e => { e.preventDefault(); sigDrawing = true; sigCtx.beginPath(); const p = pos(e); sigCtx.moveTo(p.x, p.y); }, { passive: false });
+    canvas.addEventListener('touchmove', e => { e.preventDefault(); if (!sigDrawing) return; const p = pos(e); sigCtx.lineTo(p.x, p.y); sigCtx.stroke(); }, { passive: false });
+    canvas.addEventListener('touchend', () => sigDrawing = false);
+  }
+
+  function clearSigCanvas() {
+    const canvas = document.getElementById('sig-canvas');
+    if (sigCtx) sigCtx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  function isSigCanvasBlank() {
+    const canvas = document.getElementById('sig-canvas');
+    const data = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+    return !data.some(v => v !== 0);
+  }
+
+  async function loadPolicyStatus() {
+    const { data } = await db.from('leaders')
+      .select('policy_signed_at, policy_signed_name')
+      .eq('id', identity.leader_id)
+      .single();
+    if (data?.policy_signed_at) {
+      showPolicySigned(data.policy_signed_name, data.policy_signed_at);
+    } else {
+      document.getElementById('sig-date').value = new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
+      initSigCanvas();
+    }
+  }
+
+  function showPolicySigned(name, at) {
+    document.getElementById('policy-sign-form').classList.add('hidden');
+    const banner = document.getElementById('policy-signed-banner');
+    banner.classList.remove('hidden');
+    const date = new Date(at).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
+    document.getElementById('policy-signed-detail').textContent = `Signed by ${name} on ${date}`;
+  }
+
+  async function submitPolicy() {
+    const name = document.getElementById('sig-name').value.trim();
+    const errEl = document.getElementById('policy-sign-error');
+    errEl.classList.add('hidden');
+    if (!name) { errEl.textContent = 'Please enter your full name.'; errEl.classList.remove('hidden'); return; }
+    if (isSigCanvasBlank()) { errEl.textContent = 'Please draw your signature.'; errEl.classList.remove('hidden'); return; }
+
+    const canvas = document.getElementById('sig-canvas');
+    const signature = canvas.toDataURL('image/png');
+    const btn = document.getElementById('policy-sign-btn');
+    btn.disabled = true; btn.textContent = 'Saving…';
+
+    const { error } = await db.from('leaders').update({
+      policy_signed_name: name,
+      policy_signed_at: new Date().toISOString(),
+      policy_signature: signature,
+    }).eq('id', identity.leader_id);
+
+    if (error) {
+      errEl.textContent = 'Could not save. Please try again.';
+      errEl.classList.remove('hidden');
+      btn.disabled = false; btn.textContent = 'Sign & Submit';
+      return;
+    }
+    showPolicySigned(name, new Date().toISOString());
   }
 
   init();
