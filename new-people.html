@@ -685,14 +685,12 @@
     if (error) { showError('Could not load new people.'); return; }
     allNP = data ?? [];
 
-    // Load comments for active NPs to compute overdue
-    const activeIds = allNP
-      .filter(n => n.status !== 'activated' && n.status !== 'archived')
-      .map(n => n.id);
-    if (activeIds.length) {
+    // Load comments for all NPs (overdue calc + latest contact date)
+    const allIds = allNP.map(n => n.id);
+    if (allIds.length) {
       const { data: cmtData } = await db.from('np_comments')
         .select('np_id, created_at')
-        .in('np_id', activeIds);
+        .in('np_id', allIds);
       npCommentsMap = {};
       (cmtData ?? []).forEach(c => {
         if (!npCommentsMap[c.np_id]) npCommentsMap[c.np_id] = [];
@@ -866,9 +864,10 @@
   }
 
   function latestVisitDate(np) {
-    const dates = [np.visit_1_date, np.visit_2_date, np.visit_3_date].filter(Boolean);
-    if (!dates.length) return '—';
-    return formatDate(dates.sort().at(-1));
+    const comments = npCommentsMap[np.id] ?? [];
+    if (!comments.length) return '—';
+    const latest = comments.map(ts => new Date(ts)).sort((a, b) => b - a)[0];
+    return formatDate(latest.toISOString().split('T')[0]);
   }
 
   // ── Detail modal ────────────────────────────────────────────────────────────
