@@ -36,15 +36,15 @@
   --c-danger-text:    #8c0000;
 
   /* Categories */
-  --c-contributor:       #ff3500;
-  --c-contributor-light: #fff2ee;
-  --c-contributor-text:  #cc2a00;
+  --c-contributor:       #00a86b;
+  --c-contributor-light: #edfff7;
+  --c-contributor-text:  #006b43;
   --c-connected:         #0000ff;
   --c-connected-light:   #e8e8ff;
   --c-connected-text:    #0000b3;
-  --c-community:         #00a86b;
-  --c-community-light:   #edfff7;
-  --c-community-text:    #006b43;
+  --c-community:         #ff3500;
+  --c-community-light:   #fff2ee;
+  --c-community-text:    #cc2a00;
   --c-archived:          #94A3B8;
   --c-archived-light:    #F8FAFC;
   --c-archived-text:     #475569;
