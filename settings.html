@@ -277,28 +277,6 @@
         </div>
       </div>
 
-      <div class="card mb-6">
-        <div class="card__header">
-          <h3>Guidelines signatures</h3>
-          <span id="sig-summary" class="badge badge--neutral" style="margin-left:auto"></span>
-        </div>
-        <div class="card__body" style="padding:0">
-          <div id="sig-loading" style="padding:var(--s-5);color:var(--c-text-muted);font-size:var(--text-sm)">Loading…</div>
-          <div id="sig-empty" class="hidden" style="padding:var(--s-5);color:var(--c-text-muted);font-size:var(--text-sm)">No leaders found.</div>
-          <table id="sig-table" class="leaders-table hidden">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Year level</th>
-                <th>Signed date</th>
-                <th style="text-align:right">Action</th>
-              </tr>
-            </thead>
-            <tbody id="sig-tbody"></tbody>
-          </table>
-        </div>
-      </div>
-
       <h2 style="font-size:var(--text-2xl);font-weight:800;letter-spacing:-0.02em;margin-bottom:var(--s-6);margin-top:var(--s-8)">Registration QR Codes</h2>
 
       <div class="card mb-6">
@@ -362,97 +340,6 @@ function showErr(msg) {
 }
 function hideErr() {
   document.getElementById('ts-error').classList.add('hidden');
-}
-
-let allSigLeaders = [];
-
-async function loadGuidelineSignatures() {
-  const { data, error } = await db.from('leaders')
-    .select('id, name, year_level, year_levels, guidelines_signed_date')
-    .eq('campus_id', identity.campus_id)
-    .eq('active', true)
-    .is('left_date', null)
-    .order('name');
-  document.getElementById('sig-loading').classList.add('hidden');
-  if (error || !data?.length) {
-    document.getElementById('sig-empty').classList.remove('hidden');
-    return;
-  }
-  const EXCL = new Set(['Volunteer', 'DST', 'pastor']);
-  allSigLeaders = data.filter(l => {
-    const yls = l.year_levels?.length ? l.year_levels : (l.year_level ? [l.year_level] : []);
-    return yls.length > 0 && !yls.every(y => EXCL.has(y));
-  });
-  renderSigTable();
-}
-
-function renderSigTable() {
-  const tbody = document.getElementById('sig-tbody');
-  const signed = allSigLeaders.filter(l => l.guidelines_signed_date);
-  const total  = allSigLeaders.length;
-  document.getElementById('sig-summary').textContent = `${signed.length} / ${total} signed`;
-  document.getElementById('sig-summary').className = signed.length === total && total > 0
-    ? 'badge badge--success' : 'badge badge--neutral';
-
-  if (!allSigLeaders.length) {
-    document.getElementById('sig-empty').classList.remove('hidden');
-    return;
-  }
-  document.getElementById('sig-table').classList.remove('hidden');
-
-  const sorted = [...allSigLeaders].sort((a, b) => {
-    if (!!a.guidelines_signed_date === !!b.guidelines_signed_date)
-      return a.name.localeCompare(b.name);
-    return a.guidelines_signed_date ? 1 : -1; // unsigned first
-  });
-
-  tbody.innerHTML = sorted.map(l => {
-    const yls = (l.year_levels?.length ? l.year_levels : (l.year_level ? [l.year_level] : [])).join(', ');
-    const signedDate = l.guidelines_signed_date;
-    const formattedDate = signedDate ? formatDate(signedDate) : '';
-    const signed = !!signedDate;
-    return `<tr id="sig-row-${l.id}">
-      <td class="fw-semibold" style="display:flex;align-items:center;gap:var(--s-2)">
-        ${signed
-          ? '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#00a86b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,8 6,12 13,4"/></svg>'
-          : '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#ccc" stroke-width="2" stroke-linecap="round"><circle cx="8" cy="8" r="6"/></svg>'}
-        ${escHtml(l.name)}
-      </td>
-      <td style="color:var(--c-text-muted);font-size:var(--text-sm)">${escHtml(yls)}</td>
-      <td>
-        ${signed
-          ? `<span style="font-size:var(--text-sm)">${escHtml(formattedDate)}</span>`
-          : '<span style="color:var(--c-text-muted);font-size:var(--text-sm)">Not signed</span>'}
-      </td>
-      <td style="text-align:right">
-        ${signed
-          ? `<button class="btn btn--ghost btn--sm" onclick="clearSignature('${l.id}')">Clear</button>`
-          : `<button class="btn btn--primary btn--sm" onclick="recordSignature('${l.id}')">Mark as signed</button>`}
-      </td>
-    </tr>`;
-  }).join('');
-}
-
-async function recordSignature(leaderId) {
-  const today = new Date().toISOString().split('T')[0];
-  const { error } = await db.from('leaders')
-    .update({ guidelines_signed_date: today })
-    .eq('id', leaderId);
-  if (error) { alert('Could not save. Try again.'); return; }
-  const l = allSigLeaders.find(x => x.id === leaderId);
-  if (l) l.guidelines_signed_date = today;
-  renderSigTable();
-}
-
-async function clearSignature(leaderId) {
-  if (!confirm('Clear this signature? The leader will need to sign again.')) return;
-  const { error } = await db.from('leaders')
-    .update({ guidelines_signed_date: null })
-    .eq('id', leaderId);
-  if (error) { alert('Could not clear. Try again.'); return; }
-  const l = allSigLeaders.find(x => x.id === leaderId);
-  if (l) l.guidelines_signed_date = null;
-  renderSigTable();
 }
 
 // ── Pastor policy signing ────────────────────────────────────────────────────
@@ -540,7 +427,7 @@ async function init() {
   // Default year to current
   document.getElementById('ts-year').value = new Date().getFullYear();
 
-  await Promise.all([loadCampusDow(), loadTermSettings(), loadGuidelineSignatures(), loadPastorPolicyStatus()]);
+  await Promise.all([loadCampusDow(), loadTermSettings(), loadPastorPolicyStatus()]);
 
   document.getElementById('page-loading').classList.add('hidden');
   document.getElementById('page-content').classList.remove('hidden');
