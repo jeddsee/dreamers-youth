@@ -716,7 +716,7 @@
         .eq('campus_id', ldCampus)
         .eq('active', true),
       db.from('leader_entries')
-        .select('id, leader_id, term, entry_date, attendance_listing, sunday_attendance, connect_attendance, youth_attendance')
+        .select('id, leader_id, term, entry_date, attendance_listing, sunday_attendance, connect_attendance, youth_attendance, expected_attendance')
         .eq('campus_id', ldCampus)
         .like('term', `%${ldYear}%`),
       db.from('term_settings')
@@ -870,10 +870,10 @@
     return al.filter(r => r.status === 'yes' || r.status === 'maybe').length;
   }
 
-  // Expected attendance for a given entry: attendance_listing length from the submitted entry.
-  // Returns null if no entry was saved for that week — never falls back to roster count.
+  // Expected attendance: prefer manual override, fall back to attendance_listing length.
   function expectedCount(entry) {
     if (!entry) return null;
+    if (entry.expected_attendance != null) return entry.expected_attendance;
     const al = entry.attendance_listing;
     if (Array.isArray(al) && al.length > 0) return al.length;
     return null;
@@ -911,9 +911,10 @@
     }
   }
 
-  function saveYouthAttendance(input)   { saveAttendanceField(input, 'youth_attendance');   }
-  function saveSundayAttendance(input)  { saveAttendanceField(input, 'sunday_attendance');  }
-  function saveConnectAttendance(input) { saveAttendanceField(input, 'connect_attendance'); }
+  function saveYouthAttendance(input)    { saveAttendanceField(input, 'youth_attendance');    }
+  function saveSundayAttendance(input)   { saveAttendanceField(input, 'sunday_attendance');   }
+  function saveConnectAttendance(input)  { saveAttendanceField(input, 'connect_attendance');  }
+  function saveExpectedAttendance(input) { saveAttendanceField(input, 'expected_attendance'); }
 
   // ─── Render ───
   function renderAll() {
@@ -1150,15 +1151,21 @@
       const label = leaderLabel(leader);
       tbodyRows += `<tr class="leader-row"><td colspan="${colspan}">${label}</td></tr>`;
 
-      // Expected (per-week from attendance_listing — only for submitted weeks)
+      // Expected (editable override; falls back to attendance_listing length)
       {
+        const esc = s => String(s).replace(/"/g, '&quot;');
         const displayCells = displayDates.map((date, idx) => {
           if (noNightWeeks[termKey]?.has(idx + 1)) return `<td class="td-week"><span class="cell-val empty">—</span></td>`;
-          const entry = lookup[termKey]?.[date]?.[leader.id] ?? null;
-          const v = expectedCount(entry);
-          return v == null
-            ? `<td class="td-week"><span class="cell-val empty"></span></td>`
-            : `<td class="td-week"><span class="cell-val">${v}</span></td>`;
+          const entry  = lookup[termKey]?.[date]?.[leader.id] ?? null;
+          const v      = expectedCount(entry);
+          const valStr = v != null ? String(v) : '';
+          return `<td class="td-week"><input type="number" class="cell-input"
+            value="${esc(valStr)}"
+            data-leader-id="${esc(leader.id)}"
+            data-entry-date="${esc(date)}"
+            data-term="${esc(termKey)}"
+            onchange="saveExpectedAttendance(this)"
+            min="0" max="999" placeholder=""></td>`;
         }).join('');
         const emptyCells = Array.from({length: emptyWeekCount}, () =>
           `<td class="td-week"><span class="cell-val empty"></span></td>`
