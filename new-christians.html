@@ -342,6 +342,10 @@
                 <input type="checkbox" id="e-hs-bap" style="accent-color:var(--c-primary);width:18px;height:18px">
                 Baptised in the Holy Spirit
               </label>
+              <label style="display:flex;align-items:center;gap:var(--s-2);cursor:pointer;font-size:var(--text-sm)">
+                <input type="checkbox" id="e-wants-bap" style="accent-color:var(--c-primary);width:18px;height:18px">
+                Wants to be baptised
+              </label>
             </div>
           </div>
           <div class="form-grid form-grid--2">
@@ -613,9 +617,10 @@
       const isNP = npNameSet.has(nc.name.trim().toLowerCase());
       tr.innerHTML = `
         <td>
-          <div style="display:flex;align-items:center;gap:var(--s-2)">
+          <div style="display:flex;align-items:center;gap:var(--s-2);flex-wrap:wrap">
             <strong>${escHtml(nc.name)}</strong>
             ${isNP ? '<span class="badge badge--connected" style="font-size:10px;padding:1px 6px">NP</span>' : ''}
+            ${nc.wants_baptism ? '<span class="badge" style="font-size:10px;padding:1px 6px;background:#e8f4ff;color:#0055cc;border:1px solid #b3d4ff">Wants baptism</span>' : ''}
           </div>
           <span class="text-xs text-muted">${escHtml(nc.year_level || '')} ${escHtml(nc.gender || '')}</span>
         </td>
@@ -649,6 +654,7 @@
     document.getElementById('e-fs').checked   = nc.fresh_start_started;
     document.getElementById('e-fsc').checked  = nc.fresh_start_completed;
     document.getElementById('e-hs-bap').checked = !!nc.hs_baptised;
+    document.getElementById('e-wants-bap').checked = !!nc.wants_baptism;
     document.getElementById('e-status').value = nc.follow_up_status || 'in_progress';
     document.getElementById('e-notes').value  = nc.notes || '';
 
@@ -684,6 +690,7 @@
       fresh_start_started:  document.getElementById('e-fs').checked,
       fresh_start_completed:document.getElementById('e-fsc').checked,
       hs_baptised:          document.getElementById('e-hs-bap').checked,
+      wants_baptism:        document.getElementById('e-wants-bap').checked,
       follow_up_status:     document.getElementById('e-status').value || 'in_progress',
       notes:                document.getElementById('e-notes').value.trim() || null,
     };
