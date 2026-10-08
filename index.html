@@ -211,7 +211,7 @@
       campusSelect.disabled = true;
       const { data, error } = await db
         .from('leaders')
-        .select('id, name, role')
+        .select('id, name, role, year_level, year_levels')
         .eq('campus_id', campusId)
         .eq('active', true)
         .is('left_date', null)
@@ -220,8 +220,12 @@
 
       if (error) { showError('Could not load leaders for this campus.'); return; }
 
-      // Sort alphabetically (DB already orders but ensure consistency)
-      leaders = (data ?? []).sort((a, b) => a.name.localeCompare(b.name));
+      const EXCLUDE_YL = new Set(['Volunteer', 'DST']);
+      leaders = (data ?? []).filter(l => {
+        if (l.role === 'pastor') return true;
+        const yls = l.year_levels?.length ? l.year_levels : (l.year_level ? [l.year_level] : []);
+        return yls.some(yl => !EXCLUDE_YL.has(yl));
+      }).sort((a, b) => a.name.localeCompare(b.name));
       leaderGroup.style.display = '';
       leaderSearch.focus();
     });
