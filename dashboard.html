@@ -1325,8 +1325,12 @@
         .map(w => w.campus_id)
     );
 
-    // Submission status — cache results, populate filters, then render
-    const leaderOnly = leaders.filter(l => l.role === 'leader');
+    // Submission status — exclude leaders with no year level or only excluded year levels
+    const leaderOnly = leaders.filter(l => {
+      if (l.role !== 'leader') return false;
+      const yls = getLeaderYearLevels(l);
+      return yls.length > 0 && yls.some(yl => !SUB_YL_EXCLUDE.has(yl));
+    });
     const activeLeaders = leaderOnly.filter(l => !noNightCampuses.has(l.campus_id));
     const entryRes = await Promise.all(
       activeLeaders.map(l =>
@@ -1351,8 +1355,8 @@
       availableYLs.map(yl => `<button class="snap-sub-pill" data-syl="${escHtml(yl)}" onclick="setSubYearFilter(this)">${escHtml(yl)}</button>`).join('');
     document.getElementById('snap-sub-gender-pills').innerHTML =
       `<button class="snap-sub-pill active" data-sgender="" onclick="setSubGenderFilter(this)">All genders</button>` +
-      `<button class="snap-sub-pill" data-sgender="male" onclick="setSubGenderFilter(this)">Male</button>` +
-      `<button class="snap-sub-pill" data-sgender="female" onclick="setSubGenderFilter(this)">Female</button>`;
+      `<button class="snap-sub-pill" data-sgender="Male" onclick="setSubGenderFilter(this)">Male</button>` +
+      `<button class="snap-sub-pill" data-sgender="Female" onclick="setSubGenderFilter(this)">Female</button>`;
     document.getElementById('snap-sub-filters').classList.toggle('hidden', !leaderOnly.length);
 
     renderSubmissionChips();
