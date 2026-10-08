@@ -1009,10 +1009,13 @@
 
   function renderCampusSwitcher() {
     const el = document.getElementById('sidebar-campus-switcher');
-    const btns = allCampuses.map(c =>
+    const visible = identity.is_admin
+      ? allCampuses.filter(c => c.id === identity.campus_id)
+      : allCampuses;
+    const btns = visible.map(c =>
       `<button class="campus-switcher-btn${snapCampusId === c.id ? ' active' : ''}" onclick="selectCampus('${c.id}')">${escHtml(c.name)}</button>`
     );
-    if (allCampuses.length > 1) {
+    if (!identity.is_admin && allCampuses.length > 1) {
       btns.push(`<button class="campus-switcher-btn campus-switcher-btn--all${snapCampusId === 'all' ? ' active' : ''}" onclick="selectCampus('all')">All Campuses</button>`);
     }
     el.innerHTML = btns.join('');

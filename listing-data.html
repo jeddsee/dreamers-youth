@@ -563,10 +563,12 @@
 
     // Load campuses and build sidebar switcher
     const { data: campusData } = await db.from('campuses').select('id, name').eq('archived', false).order('name');
-    const allCampuses = campusData ?? [];
+    const visibleCampuses = identity.is_admin
+      ? (campusData ?? []).filter(c => c.id === identity.campus_id)
+      : (campusData ?? []);
     const switcher = document.getElementById('sidebar-campus-switcher');
     if (switcher) {
-      allCampuses.forEach(c => {
+      visibleCampuses.forEach(c => {
         const btn = document.createElement('button');
         btn.className = 'campus-switcher-btn' + (ldCampus === c.id ? ' active' : '');
         btn.textContent = c.name;
