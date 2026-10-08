@@ -511,26 +511,35 @@
     if (wdCampus !== 'all') q = q.eq('campus_id', wdCampus);
 
     let leq = db.from('leader_entries')
-      .select('entry_date, connect_attendance, sunday_attendance, youth_attendance')
+      .select('leader_id, entry_date, connect_attendance, sunday_attendance, youth_attendance')
       .like('term', `%${wdYear}%`);
     if (wdCampus !== 'all') leq = leq.eq('campus_id', wdCampus);
 
     let ldrq = db.from('leaders')
-      .select('id', { count: 'exact', head: true })
-      .eq('active', true)
-      .or('year_level.not.is.null,year_levels.not.is.null');
+      .select('id, year_level, year_levels')
+      .eq('active', true);
     if (wdCampus !== 'all') ldrq = ldrq.eq('campus_id', wdCampus);
 
-    const [{ data: curr }, { data: leData }, { count: assignedCount }] = await Promise.all([q, leq, ldrq]);
-    wdAssignedLeaders = assignedCount ?? 0;
+    const [{ data: curr }, { data: leData }, { data: ldrData }] = await Promise.all([q, leq, ldrq]);
+
+    // Leaders with any year level assigned (for ratio stat)
+    const getYrs = l => Array.isArray(l.year_levels) && l.year_levels.length ? l.year_levels : (l.year_level ? [l.year_level] : []);
+    const ldrArr = ldrData ?? [];
+    wdAssignedLeaders = ldrArr.filter(l => getYrs(l).length > 0).length;
+
+    // Leaders excluded from listing data (Volunteer / DST — no youth assigned)
+    const excludedLeaderIds = new Set(
+      ldrArr.filter(l => getYrs(l).some(y => y === 'Volunteer' || y === 'DST')).map(l => l.id)
+    );
+
     await loadTermSettings();
 
     wdStats = curr ?? [];
 
-    // Build entry_date → summed connect/sunday/youth from leader entries
+    // Build entry_date → summed connect/sunday/youth from listing leaders only
     ldEntriesMap = {};
     for (const e of (leData ?? [])) {
-      if (!e.entry_date) continue;
+      if (!e.entry_date || excludedLeaderIds.has(e.leader_id)) continue;
       if (!ldEntriesMap[e.entry_date]) ldEntriesMap[e.entry_date] = { connect: null, sunday: null, youth: null };
       if (e.connect_attendance != null)
         ldEntriesMap[e.entry_date].connect = (ldEntriesMap[e.entry_date].connect ?? 0) + e.connect_attendance;
