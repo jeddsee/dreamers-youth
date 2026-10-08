@@ -1390,16 +1390,21 @@
     if (!visitStr) return null;
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const deadline = tuesdayAfterFriday(visitStr);
-    if (today <= deadline) return null;
-    const comments = (npComments[np.id] ?? []).map(c => c.created_at);
     const visitMs = new Date(visitStr + 'T00:00:00').getTime();
-    const deadlineMs = deadline.getTime() + 86399999;
-    const hasComment = comments.some(ts => {
-      const t = new Date(ts).getTime();
-      return t >= visitMs && t <= deadlineMs;
-    });
-    if (hasComment) return null;
-    return Math.floor((today.getTime() - deadline.getTime()) / 86400000);
+    const comments = (npComments[np.id] ?? []).map(c => c.created_at);
+    // Most recent comment timestamp on or after the latest visit date
+    const lastCommentMs = comments
+      .map(ts => new Date(ts).getTime())
+      .filter(t => t >= visitMs)
+      .reduce((max, t) => Math.max(max, t), 0);
+    // Overdue baseline = max(deadline, last comment date) so late comments push it forward
+    let baseline = deadline;
+    if (lastCommentMs > 0) {
+      const lcd = new Date(lastCommentMs); lcd.setHours(0, 0, 0, 0);
+      if (lcd.getTime() > deadline.getTime()) baseline = lcd;
+    }
+    if (today <= baseline) return null;
+    return Math.floor((today.getTime() - baseline.getTime()) / 86400000);
   }
 
   function renderOverdueNPs() {

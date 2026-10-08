@@ -465,54 +465,48 @@
 
         <div class="ycomp-filter-bar">
           <div class="ycomp-filter-group">
-            <label class="ycomp-filter-label">Year A</label>
-            <select id="ycomp-year-a" class="ycomp-select"></select>
+            <label class="ycomp-filter-label">Time Period A</label>
+            <div style="display:flex;gap:var(--s-2)">
+              <select id="ycomp-year-a" class="ycomp-select"></select>
+              <select id="ycomp-term-a" class="ycomp-select" style="min-width:90px">
+                <option value="">All terms</option>
+                <option value="T1">Term 1</option>
+                <option value="T2">Term 2</option>
+                <option value="T3">Term 3</option>
+                <option value="T4">Term 4</option>
+              </select>
+              <select id="ycomp-week-a" class="ycomp-select" style="min-width:80px">
+                <option value="">All wks</option>
+                <option value="1">Wk 1</option><option value="2">Wk 2</option><option value="3">Wk 3</option>
+                <option value="4">Wk 4</option><option value="5">Wk 5</option><option value="6">Wk 6</option>
+                <option value="7">Wk 7</option><option value="8">Wk 8</option><option value="9">Wk 9</option>
+                <option value="10">Wk 10</option><option value="11">Wk 11</option><option value="12">Wk 12</option>
+              </select>
+            </div>
           </div>
           <div class="ycomp-filter-group">
-            <label class="ycomp-filter-label">Year B</label>
-            <select id="ycomp-year-b" class="ycomp-select"></select>
+            <label class="ycomp-filter-label">Time Period B</label>
+            <div style="display:flex;gap:var(--s-2)">
+              <select id="ycomp-year-b" class="ycomp-select"></select>
+              <select id="ycomp-term-b" class="ycomp-select" style="min-width:90px">
+                <option value="">All terms</option>
+                <option value="T1">Term 1</option>
+                <option value="T2">Term 2</option>
+                <option value="T3">Term 3</option>
+                <option value="T4">Term 4</option>
+              </select>
+              <select id="ycomp-week-b" class="ycomp-select" style="min-width:80px">
+                <option value="">All wks</option>
+                <option value="1">Wk 1</option><option value="2">Wk 2</option><option value="3">Wk 3</option>
+                <option value="4">Wk 4</option><option value="5">Wk 5</option><option value="6">Wk 6</option>
+                <option value="7">Wk 7</option><option value="8">Wk 8</option><option value="9">Wk 9</option>
+                <option value="10">Wk 10</option><option value="11">Wk 11</option><option value="12">Wk 12</option>
+              </select>
+            </div>
           </div>
           <div class="ycomp-filter-group">
             <label class="ycomp-filter-label">Campus</label>
             <select id="ycomp-campus" class="ycomp-select"></select>
-          </div>
-          <div class="ycomp-filter-group">
-            <label class="ycomp-filter-label">From</label>
-            <div style="display:flex;gap:var(--s-2)">
-              <select id="ycomp-from-term" class="ycomp-select" style="min-width:90px">
-                <option value="">Any term</option>
-                <option value="T1">Term 1</option>
-                <option value="T2">Term 2</option>
-                <option value="T3">Term 3</option>
-                <option value="T4">Term 4</option>
-              </select>
-              <select id="ycomp-from-week" class="ycomp-select" style="min-width:80px">
-                <option value="">Any wk</option>
-                <option value="1">Wk 1</option><option value="2">Wk 2</option><option value="3">Wk 3</option>
-                <option value="4">Wk 4</option><option value="5">Wk 5</option><option value="6">Wk 6</option>
-                <option value="7">Wk 7</option><option value="8">Wk 8</option><option value="9">Wk 9</option>
-                <option value="10">Wk 10</option><option value="11">Wk 11</option><option value="12">Wk 12</option>
-              </select>
-            </div>
-          </div>
-          <div class="ycomp-filter-group">
-            <label class="ycomp-filter-label">To</label>
-            <div style="display:flex;gap:var(--s-2)">
-              <select id="ycomp-to-term" class="ycomp-select" style="min-width:90px">
-                <option value="">Any term</option>
-                <option value="T1">Term 1</option>
-                <option value="T2">Term 2</option>
-                <option value="T3">Term 3</option>
-                <option value="T4">Term 4</option>
-              </select>
-              <select id="ycomp-to-week" class="ycomp-select" style="min-width:80px">
-                <option value="">Any wk</option>
-                <option value="1">Wk 1</option><option value="2">Wk 2</option><option value="3">Wk 3</option>
-                <option value="4">Wk 4</option><option value="5">Wk 5</option><option value="6">Wk 6</option>
-                <option value="7">Wk 7</option><option value="8">Wk 8</option><option value="9">Wk 9</option>
-                <option value="10">Wk 10</option><option value="11">Wk 11</option><option value="12">Wk 12</option>
-              </select>
-            </div>
           </div>
           <button class="btn btn--primary" onclick="runYearComparison()" style="height:44px;padding:0 var(--s-6);align-self:flex-end">Compare</button>
         </div>
@@ -741,28 +735,21 @@
     selC.innerHTML = `<option value="">All campuses</option>` +
       allCampuses.map(c => `<option value="${c.id}">${escHtml(c.name)}</option>`).join('');
 
-    document.getElementById('ycomp-from-term').value = '';
-    document.getElementById('ycomp-from-week').value = '';
-    document.getElementById('ycomp-to-term').value   = '';
-    document.getElementById('ycomp-to-week').value   = '';
+    document.getElementById('ycomp-term-a').value = '';
+    document.getElementById('ycomp-week-a').value = '';
+    document.getElementById('ycomp-term-b').value = '';
+    document.getElementById('ycomp-week-b').value = '';
     document.getElementById('ycomp-results').classList.add('hidden');
   }
 
   async function runYearComparison() {
     const yearA    = document.getElementById('ycomp-year-a').value;
+    const termA    = document.getElementById('ycomp-term-a').value;
+    const weekA    = parseInt(document.getElementById('ycomp-week-a').value) || 0;
     const yearB    = document.getElementById('ycomp-year-b').value;
+    const termB    = document.getElementById('ycomp-term-b').value;
+    const weekB    = parseInt(document.getElementById('ycomp-week-b').value) || 0;
     const campusId = document.getElementById('ycomp-campus').value;
-    const fromTerm = document.getElementById('ycomp-from-term').value; // e.g. "T2" or ""
-    const fromWeek = parseInt(document.getElementById('ycomp-from-week').value) || 0;
-    const toTerm   = document.getElementById('ycomp-to-term').value;
-    const toWeek   = parseInt(document.getElementById('ycomp-to-week').value) || 0;
-
-    // Convert term+week to a comparable integer: T1=100, T2=200, etc.
-    const TERM_ORD = { T1: 100, T2: 200, T3: 300, T4: 400 };
-    const twVal = (t, w) => (TERM_ORD[t] || 0) + (w || 0);
-    const fromVal = fromTerm ? twVal(fromTerm, fromWeek || 1)  : 0;
-    const toVal   = toTerm   ? twVal(toTerm,   toWeek   || 99) : 9999;
-    const hasRange = !!(fromTerm || toTerm);
 
     document.getElementById('ycomp-loading').classList.remove('hidden');
 
@@ -791,24 +778,24 @@
     const npRows  = npRes2.data ?? [];
     const ncRows  = ncRes2.data ?? [];
 
-    const partitionStats = (year) => rows.filter(w => {
+    const partitionStats = (year, term, week) => rows.filter(w => {
       if (!w.term || w.no_youth_night) return false;
       const [t, y] = w.term.split(' ');
       if (y !== year) return false;
-      if (hasRange) {
-        const v = twVal(t, w.week_number || 0);
-        if (v < fromVal || v > toVal) return false;
+      if (term) {
+        if (t !== term) return false;
+        if (week && w.week_number !== week) return false;
       }
       return true;
     });
 
-    const partitionLE = (year) => leRows.filter(e => {
+    const partitionLE = (year, term, week) => leRows.filter(e => {
       if (!e.term) return false;
       const [t, y] = e.term.split(' ');
       if (y !== year) return false;
-      if (hasRange) {
-        const v = twVal(t, e.week_number || 0);
-        if (v < fromVal || v > toVal) return false;
+      if (term) {
+        if (t !== term) return false;
+        if (week && e.week_number !== week) return false;
       }
       return true;
     });
@@ -818,36 +805,38 @@
       return String(d.getFullYear()) === year;
     });
 
-    const partitionNC = (year) => ncRows.filter(n => {
+    const partitionNC = (year, term) => ncRows.filter(n => {
       if (!n.decision_date || !n.decision_date.startsWith(year)) return false;
-      if (hasRange) {
+      if (term) {
         const termFull = DY.termFromDate(n.decision_date);
         const t = termFull ? termFull.split(' ')[0] : null;
-        if (!t) return false;
-        const v = twVal(t, 0);
-        if (v < fromVal || v > toVal) return false;
+        if (!t || t !== term) return false;
       }
       return true;
     });
 
-    const statsA = partitionStats(yearA);
-    const statsB = partitionStats(yearB);
-    const leA    = partitionLE(yearA);
-    const leB    = partitionLE(yearB);
+    const statsA = partitionStats(yearA, termA, weekA);
+    const statsB = partitionStats(yearB, termB, weekB);
+    const leA    = partitionLE(yearA, termA, weekA);
+    const leB    = partitionLE(yearB, termB, weekB);
     const npA    = partitionNP(yearA);
     const npB    = partitionNP(yearB);
-    const ncA    = partitionNC(yearA);
-    const ncB    = partitionNC(yearB);
+    const ncA    = partitionNC(yearA, termA);
+    const ncB    = partitionNC(yearB, termB);
 
-    const rangeLabel = hasRange
-      ? `${fromTerm}${fromWeek ? ' Wk' + fromWeek : ''} → ${toTerm || ''}${toWeek ? ' Wk' + toWeek : ''}`
-      : 'All terms';
+    const makePeriodLabel = (year, term, week) => {
+      if (term && week) return `${term} ${year} Wk ${week}`;
+      if (term) return `${term} ${year}`;
+      return year;
+    };
+    const labelA = makePeriodLabel(yearA, termA, weekA);
+    const labelB = makePeriodLabel(yearB, termB, weekB);
 
     document.getElementById('ycomp-loading').classList.add('hidden');
-    renderYearCompResults(statsA, statsB, leA, leB, npA, npB, ncA, ncB, yearA, yearB, rangeLabel, campusId);
+    renderYearCompResults(statsA, statsB, leA, leB, npA, npB, ncA, ncB, labelA, labelB, campusId);
   }
 
-  function renderYearCompResults(statsA, statsB, leA, leB, npA, npB, ncA, ncB, yearA, yearB, rangeLabel, campusId) {
+  function renderYearCompResults(statsA, statsB, leA, leB, npA, npB, ncA, ncB, labelA, labelB, campusId) {
     // Aggregate leader_entries by date then avg/sum — excludes dates with no data
     const leByDate = (entries, field) => {
       const byDate = {};
@@ -901,12 +890,12 @@
         <div class="ycomp-card__row">
           <div class="ycomp-card__primary">
             <span class="ycomp-card__val">${vA}${sfx}</span>
-            <span class="ycomp-card__yr">${yearA}</span>
+            <span class="ycomp-card__yr">${labelA}</span>
           </div>
           <span class="ycomp-card__vs">vs</span>
           <div class="ycomp-card__secondary">
             <span class="ycomp-card__val">${vB}${sfx}</span>
-            <span class="ycomp-card__yr">${yearB}</span>
+            <span class="ycomp-card__yr">${labelB}</span>
           </div>
           <div class="ycomp-card__delta">
             <span class="ycomp-pct-badge ycomp-pct-badge--${badgeCls}">${pctLabel}</span>
@@ -919,8 +908,8 @@
     const el = document.getElementById('ycomp-results');
     el.innerHTML = `
       <div class="ycomp-summary">
-        Comparing <strong>${yearA}</strong> vs <strong>${yearB}</strong>
-        &mdash; ${escHtml(rangeLabel)} &mdash; ${escHtml(campusLabel)}
+        Comparing <strong>${escHtml(labelA)}</strong> vs <strong>${escHtml(labelB)}</strong>
+        &mdash; ${escHtml(campusLabel)}
         &mdash; <span class="text-muted">${weeksMsg(statsA)} / ${weeksMsg(statsB)}</span>
       </div>
 
