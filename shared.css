@@ -1181,6 +1181,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   margin-bottom: var(--s-6);
 }
 .ycomp-filter-group { display: flex; flex-direction: column; gap: var(--s-2); }
+.ycomp-range-sep { font-size: 0.7rem; font-weight: 600; color: var(--c-text-muted); white-space: nowrap; }
 .ycomp-filter-label {
   font-size: 0.65rem;
   font-weight: 700;
