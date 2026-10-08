@@ -374,6 +374,7 @@
   let wdStats     = [];
   let allCampuses = [];
   let editMode    = false;
+  let wdAssignedLeaders = null; // active leaders with a year level assigned
 
   // Fields that come directly from weekly_stats and can be overridden
   const WD_EDITABLE = new Set([
@@ -513,7 +514,14 @@
       .like('term', `%${wdYear}%`);
     if (wdCampus !== 'all') leq = leq.eq('campus_id', wdCampus);
 
-    const [{ data: curr }, { data: leData }] = await Promise.all([q, leq]);
+    let ldrq = db.from('leaders')
+      .select('id', { count: 'exact', head: true })
+      .eq('active', true)
+      .or('year_level.not.is.null,year_levels.not.is.null');
+    if (wdCampus !== 'all') ldrq = ldrq.eq('campus_id', wdCampus);
+
+    const [{ data: curr }, { data: leData }, { count: assignedCount }] = await Promise.all([q, leq, ldrq]);
+    wdAssignedLeaders = assignedCount ?? 0;
     await loadTermSettings();
 
     wdStats = curr ?? [];
@@ -789,13 +797,13 @@
             };
             const wkRatios = weekData.map(wd => {
               if (!wd || wd.no_youth_night) return wd;
-              return { ...wd, _ratio: fmtRatio(wd.leaders_count, wd.total_in_department) };
+              return { ...wd, _ratio: fmtRatio(wdAssignedLeaders, wd.youth_attendance) };
             });
             const validRatios = wkRatios.filter(w => w && !w.no_youth_night && w._ratio != null);
             summaryStr = validRatios.length
               ? fmtRatio(
-                  avgField(weekData.filter(w => w && !w.no_youth_night), 'leaders_count'),
-                  avgField(weekData.filter(w => w && !w.no_youth_night), 'total_in_department')
+                  wdAssignedLeaders,
+                  avgField(weekData.filter(w => w && !w.no_youth_night), 'youth_attendance')
                 ) ?? '—'
               : '—';
             summaryCls = summaryStr === '—' ? ' dash' : '';
