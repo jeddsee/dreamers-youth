@@ -899,36 +899,10 @@
       });
     };
 
-    const partitionNP = (year) => npRows.filter(n => {
-      const d = new Date(n.created_at);
-      return String(d.getFullYear()) === year;
-    });
-
-    const partitionNC = (year, fromTerm, fromWeek, toTerm, toWeek) => {
-      const fromVal  = fromTerm ? twVal(fromTerm, fromWeek || 1) : 0;
-      const toVal    = toTerm   ? twVal(toTerm,   toWeek   || 99) : 9999;
-      const hasRange = !!(fromTerm || toTerm);
-      return ncRows.filter(n => {
-        if (!n.decision_date || !n.decision_date.startsWith(year)) return false;
-        if (hasRange) {
-          const termFull = DY.termFromDate(n.decision_date);
-          const t = termFull ? termFull.split(' ')[0] : null;
-          if (!t) return false;
-          const v = twVal(t, 0);
-          if (v < fromVal || v > toVal) return false;
-        }
-        return true;
-      });
-    };
-
     const statsA = partitionStats(yearA, fromTermA, fromWeekA, toTermA, toWeekA);
     const statsB = partitionStats(yearB, fromTermB, fromWeekB, toTermB, toWeekB);
     const leA    = partitionLE(yearA, fromTermA, fromWeekA, toTermA, toWeekA);
     const leB    = partitionLE(yearB, fromTermB, fromWeekB, toTermB, toWeekB);
-    const npA    = partitionNP(yearA);
-    const npB    = partitionNP(yearB);
-    const ncA    = partitionNC(yearA, fromTermA, fromWeekA, toTermA, toWeekA);
-    const ncB    = partitionNC(yearB, fromTermB, fromWeekB, toTermB, toWeekB);
 
     const makePeriodLabel = (year, fromTerm, fromWeek, toTerm, toWeek) => {
       if (!fromTerm && !toTerm) return year;
@@ -940,10 +914,10 @@
     const labelB = makePeriodLabel(yearB, fromTermB, fromWeekB, toTermB, toWeekB);
 
     document.getElementById('ycomp-loading').classList.add('hidden');
-    renderYearCompResults(statsA, statsB, leA, leB, npA, npB, ncA, ncB, labelA, labelB, campusId);
+    renderYearCompResults(statsA, statsB, leA, leB, labelA, labelB, campusId);
   }
 
-  function renderYearCompResults(statsA, statsB, leA, leB, npA, npB, ncA, ncB, labelA, labelB, campusId) {
+  function renderYearCompResults(statsA, statsB, leA, leB, labelA, labelB, campusId) {
     // All stats sourced from weekly_stats to match weekly data table
     const nonNull = arr => arr.filter(x => x != null);
     const avg  = arr => { const v = nonNull(arr); return v.length ? Math.round(v.reduce((a,b)=>a+b,0)/v.length) : 0; };
