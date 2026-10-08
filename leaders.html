@@ -551,6 +551,10 @@
         <div>
           <button type="button" id="el-inactive-btn" class="btn btn--sm btn--outline" onclick="toggleLeaderInactive()" style="font-size:var(--text-xs)"></button>
         </div>
+        <label style="display:flex;align-items:center;gap:var(--s-2);font-size:var(--text-sm);cursor:pointer">
+          <input type="checkbox" id="el-is-admin">
+          <span>Admin access — grants leader access to the full dashboard</span>
+        </label>
       </div>
       <div id="el-error" class="error-banner hidden mt-3"></div>
     </div>
@@ -653,7 +657,7 @@ async function init() {
   document.getElementById('rv-year').value = new Date().getFullYear();
 
   const [leadersRes, youthRes] = await Promise.all([
-    db.from('leaders').select('id, name, role, year_level, year_levels, gender, joined_date, left_date').eq('campus_id', identity.campus_id).eq('active', true).order('name'),
+    db.from('leaders').select('id, name, role, year_level, year_levels, gender, joined_date, left_date, is_admin').eq('campus_id', identity.campus_id).eq('active', true).order('name'),
     db.from('youth_roster').select('id, name, leader_id, year_level, gender, category, water_baptised, hs_baptised, serving, active, created_at').eq('campus_id', identity.campus_id),
   ]);
   allLeaders = leadersRes.data ?? [];
@@ -807,9 +811,10 @@ function openEditLeaderModal(leaderId) {
   document.querySelectorAll('#el-year-checks input[type=checkbox]').forEach(cb => {
     cb.checked = elYears.includes(cb.value);
   });
-  document.getElementById('el-role').value   = l.role ?? 'leader';
-  document.getElementById('el-joined').value = l.joined_date ?? '';
-  document.getElementById('el-left').value   = l.left_date ?? '';
+  document.getElementById('el-role').value      = l.role ?? 'leader';
+  document.getElementById('el-is-admin').checked = !!l.is_admin;
+  document.getElementById('el-joined').value    = l.joined_date ?? '';
+  document.getElementById('el-left').value      = l.left_date ?? '';
   document.getElementById('el-inactive-btn').textContent =
     l.left_date ? 'Clear inactive / Rejoin team' : 'Mark as inactive (set today as end date)';
   hideError('el-error');
@@ -847,6 +852,7 @@ async function submitEditLeader() {
     year_levels: elChecked.length ? elChecked : null,
     gender:      document.getElementById('el-gender').value || null,
     role:        document.getElementById('el-role').value,
+    is_admin:    document.getElementById('el-is-admin').checked,
     joined_date: document.getElementById('el-joined').value || null,
     left_date:   document.getElementById('el-left').value   || null,
   };

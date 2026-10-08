@@ -583,6 +583,13 @@
     }
 
     await loadData();
+
+    // Apply ?leader= URL param (used when admin leaders link to their own listing)
+    const urlLeader = new URLSearchParams(window.location.search).get('leader');
+    if (urlLeader) {
+      const matched = allLeaders.find(l => l.id === urlLeader);
+      if (matched) selectLeader(matched);
+    }
   }
 
   // ─── Filter toggles ───

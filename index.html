@@ -211,7 +211,7 @@
       campusSelect.disabled = true;
       const { data, error } = await db
         .from('leaders')
-        .select('id, name, role, year_level, year_levels')
+        .select('id, name, role, year_level, year_levels, is_admin')
         .eq('campus_id', campusId)
         .eq('active', true)
         .is('left_date', null)
@@ -301,9 +301,11 @@
         leader_id:    selectedLeader.id,
         leader_name:  selectedLeader.name,
         role:         selectedLeader.role,
+        is_admin:     !!selectedLeader.is_admin,
         youth_night_dow,
       });
-      window.location.href = selectedLeader.role === 'pastor' ? 'dashboard.html' : 'leader.html';
+      const goDashboard = selectedLeader.role === 'pastor' || selectedLeader.is_admin;
+      window.location.href = goDashboard ? 'dashboard.html' : 'leader.html';
     });
   </script>
 </body>
