@@ -1096,7 +1096,7 @@
     const mostRecentDate = mostRecentYouthNight(new Date(), identity.youth_night_dow);
 
     // Build queries — single campus or all campuses
-    let leadersQ = db.from('leaders').select('id, name, role, campus_id').eq('active', true).order('name');
+    let leadersQ = db.from('leaders').select('id, name, role, campus_id, year_level, year_levels').eq('active', true).order('name');
     let rosterQ  = db.from('youth_roster').select('id, is_new_christian, water_baptised, category, campus_id').eq('active', true);
     let archQ    = db.from('youth_roster').select('id', { count: 'exact', head: true }).eq('category', 'archive');
     const yearFrom = `${snapYear}-01-01`;
@@ -1324,9 +1324,14 @@
     const avgAtt     = attVals.length ? Math.round(attVals.reduce((a,b) => a+b, 0) / attVals.length) : 0;
     const latestDept = weeklyStats.find(w => w.total_in_department != null);
     const deptTotal  = latestDept ? latestDept.total_in_department : roster.length;
-    const leaderCount = leaders.filter(l => l.role === 'leader' && l.active !== false).length;
+    const leaderCount = leaders.filter(l => l.role === 'leader').length;
+    const yearLevelLeaders = leaders.filter(l => {
+      if (l.role !== 'leader') return false;
+      const yls = Array.isArray(l.year_levels) && l.year_levels.length ? l.year_levels : (l.year_level ? [l.year_level] : []);
+      return yls.some(yl => /^Year \d+$/.test(yl));
+    });
     const attPct     = deptTotal > 0 ? Math.round(avgAtt / deptTotal * 100) : 0;
-    const youthPerLeader = leaderCount > 0 ? Math.round(avgAtt / leaderCount) : '—';
+    const youthPerLeader = yearLevelLeaders.length > 0 ? Math.round(avgAtt / yearLevelLeaders.length) : '—';
     document.getElementById('snap-avg-att').textContent          = avgAtt;
     document.getElementById('snap-total-dept').textContent       = deptTotal;
     document.getElementById('snap-att-pct').textContent          = deptTotal > 0 ? `${attPct}%` : '—';
