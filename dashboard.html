@@ -2005,7 +2005,7 @@
     return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
   function capitalize(s) { return s ? s[0].toUpperCase() + s.slice(1) : ''; }
-  function goMyListing() { window.location.href = `listing-data.html?leader=${encodeURIComponent(identity.leader_id)}`; }
+  function goMyListing() { window.location.href = 'leader.html'; }
   function logout() { DY.clearIdentity(); window.location.href = '/'; }
 
   init();
