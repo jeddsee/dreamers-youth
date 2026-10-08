@@ -620,7 +620,12 @@
   // ─── Leader combobox ───
   function populateLeaderDropdown(query) {
     const list = document.getElementById('leader-dropdown');
-    const sorted = sortLeaders(allLeaders.filter(l => showInactive ? l.active === false : l.active !== false));
+    const sorted = sortLeaders(allLeaders.filter(l => {
+      if (showInactive ? l.active === false : l.active !== false) return false;
+      const yrs = getLeaderYears(l);
+      if (yrs.some(y => y === 'Volunteer' || y === 'DST')) return false;
+      return true;
+    }));
     const matches = query
       ? sorted.filter(l => l.name.toLowerCase().includes(query.toLowerCase()))
       : sorted;
