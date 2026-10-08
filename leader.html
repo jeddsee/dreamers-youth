@@ -1140,6 +1140,30 @@
     list.innerHTML = '';
     list.classList.remove('hidden');
 
+    // Leader themselves at the top
+    const leaderSaved = existing.find(r => r.youth_id === '_leader') ?? { status: '' };
+    const leaderRow = document.createElement('div');
+    leaderRow.className = 'entry-row entry-row--leader';
+    leaderRow.id = 'entry-_leader';
+    leaderRow.innerHTML = `
+      <span class="entry-row__name">${escHtml(identity.leader_name)} <span style="font-size:0.75em;opacity:0.6">(you)</span></span>
+      <div class="entry-row__right">
+        <div class="toggle-group">
+          <button type="button" class="toggle-btn ${leaderSaved.status==='yes'?'active-yes':''}"
+            data-status="yes" onclick="setStatus('_leader', 'yes', this)">Yes</button>
+          <button type="button" class="toggle-btn ${leaderSaved.status==='maybe'?'active-maybe':''}"
+            data-status="maybe" onclick="setStatus('_leader', 'maybe', this)">Maybe</button>
+          <button type="button" class="toggle-btn ${leaderSaved.status==='no'?'active-no':''}"
+            data-status="no" onclick="setStatus('_leader', 'no', this)">No</button>
+        </div>
+        <input type="text" class="reason-input ${leaderSaved.status==='yes'?'hidden':''}"
+          id="reason-_leader"
+          placeholder="Reason (required)"
+          value="${escHtml(leaderSaved.reason || '')}">
+      </div>
+    `;
+    list.appendChild(leaderRow);
+
     roster.forEach(youth => {
       const saved = existing.find(r => r.youth_id === youth.id) ?? { status: '' };
       const row = document.createElement('div');
@@ -1182,7 +1206,13 @@
     const btn = document.getElementById('weekly-submit');
     setLoading(btn, true);
 
-    const listing = roster.map(youth => {
+    const leaderEntryRow = document.getElementById('entry-_leader');
+    const leaderActive = leaderEntryRow?.querySelector('.toggle-btn.active-yes, .toggle-btn.active-maybe, .toggle-btn.active-no');
+    const leaderStatus = leaderActive?.dataset.status ?? '';
+    const leaderReason = document.getElementById('reason-_leader')?.value.trim() ?? '';
+    const leaderEntry  = { youth_id: '_leader', status: leaderStatus, reason: leaderReason || undefined };
+
+    const youthListing = roster.map(youth => {
       const row    = document.getElementById(`entry-${youth.id}`);
       const active = row?.querySelector('.toggle-btn.active-yes, .toggle-btn.active-maybe, .toggle-btn.active-no');
       const status = active?.dataset.status ?? '';
@@ -1190,10 +1220,13 @@
       return { youth_id: youth.id, status, reason: reason || undefined };
     });
 
-    // Require a reason for every non-yes marked youth
+    const listing = [leaderEntry, ...youthListing];
+
+    // Require a reason for every non-yes marked entry
     const missing = listing.filter(r => r.status && r.status !== 'yes' && !r.reason);
     if (missing.length) {
-      const names = missing.map(r => roster.find(y => y.id === r.youth_id)?.name ?? '').filter(Boolean);
+      const allNames = [{ id: '_leader', name: identity.leader_name }, ...roster.map(y => ({ id: y.id, name: y.name }))];
+      const names = missing.map(r => allNames.find(n => n.id === r.youth_id)?.name ?? '').filter(Boolean);
       showError(`Please add a reason for: ${names.join(', ')}`, 'weekly-error');
       setLoading(btn, false);
       return;
