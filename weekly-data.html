@@ -402,6 +402,7 @@
       { key: 'third_timers',  label: '3rd timers',  suppressOnNoNight: true },
     ]},
     { key: 'life', label: 'DISCIPLESHIP STEPS', rows: [
+      { key: '_new_christians',   label: 'New Christians',       computed: true, kind: 'new_christians', suppressOnNoNight: true },
       { key: 'salvations_first',  label: 'First-time decisions', suppressOnNoNight: true },
       { key: 'salvations_rededs', label: 'Rededications',        suppressOnNoNight: true },
       { key: 'bibles_given',      label: 'Bibles given'         },
@@ -811,6 +812,24 @@
               if (!wd) return '<td class="td-week"><span class="cell-val empty"></span></td>';
               if (wd.no_youth_night) return '<td class="td-week no-night"><span class="cell-val">—</span></td>';
               const val = wd._ratio;
+              return `<td class="td-week"><span class="cell-val${val == null ? ' empty' : ''}">${val ?? ''}</span></td>`;
+            }).join('');
+
+          } else if (row.kind === 'new_christians') {
+            // Per week: sum of first-time decisions + rededications
+            const wkNC = weekData.map(wd => {
+              if (!wd) return null;
+              const f = wd.salvations_first, r = wd.salvations_rededs;
+              if (f == null && r == null) return { ...wd, _new_christians: null };
+              return { ...wd, _new_christians: (f ?? 0) + (r ?? 0) };
+            });
+            const totalNC = sumField(wkNC, '_new_christians');
+            summaryStr = totalNC != null ? String(totalNC) : '—';
+            summaryCls = totalNC == null ? ' dash' : totalNC === 0 ? ' zero' : '';
+            wkCells = wkNC.map(wd => {
+              if (!wd) return '<td class="td-week"><span class="cell-val empty"></span></td>';
+              if (wd.no_youth_night) return '<td class="td-week no-night"><span class="cell-val">—</span></td>';
+              const val = wd._new_christians;
               return `<td class="td-week"><span class="cell-val${val == null ? ' empty' : ''}">${val ?? ''}</span></td>`;
             }).join('');
 
