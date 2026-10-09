@@ -807,12 +807,12 @@
             };
             const wkRatios = weekData.map(wd => {
               if (!wd || wd.no_youth_night) return wd;
-              return { ...wd, _ratio: fmtRatio(wdAssignedLeaders, wd.youth_attendance) };
+              return { ...wd, _ratio: fmtRatio(wd.leaders_count, wd.youth_attendance) };
             });
             const validRatios = wkRatios.filter(w => w && !w.no_youth_night && w._ratio != null);
             summaryStr = validRatios.length
               ? fmtRatio(
-                  wdAssignedLeaders,
+                  avgField(weekData.filter(w => w && !w.no_youth_night), 'leaders_count'),
                   avgField(weekData.filter(w => w && !w.no_youth_night), 'youth_attendance')
                 ) ?? '—'
               : '—';
