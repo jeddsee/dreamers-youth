@@ -171,6 +171,11 @@
     .app-layout { display: block; }
     body { background: #fff !important; }
     * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    /* Prevent cards and sections from splitting across pages */
+    .stat-card, .ycomp-card, .stat-tile, .snap-submission-card,
+    .stat-hero, .snap-leader-chip { break-inside: avoid; page-break-inside: avoid; }
+    .section-badge { break-after: avoid; page-break-after: avoid; }
+    .stat-card-grid, .ycomp-grid, .stat-hero { break-inside: avoid; page-break-inside: avoid; }
   }
   .snap-sub-filter-bar {
     padding: var(--s-3) var(--s-5);

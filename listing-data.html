@@ -336,8 +336,11 @@
       .wd-filter-bar, .btn, button, .snap-header-actions { display: none !important; }
       .app-layout { display: block; }
       .week-controls { display: none !important; }
-      .term-block { border-radius: 5px !important; margin-bottom: 6mm !important; break-inside: avoid; page-break-inside: avoid; overflow: visible !important; }
-      .term-header { height: 32px !important; background: #1500E8 !important; border-radius: 5px 5px 0 0 !important; }
+      .term-block { border-radius: 5px !important; margin-bottom: 6mm !important; overflow: visible !important; }
+      .term-header { height: 32px !important; background: #1500E8 !important; border-radius: 5px 5px 0 0 !important; break-after: avoid; page-break-after: avoid; }
+      .wd-table tr { break-inside: avoid; page-break-inside: avoid; }
+      .wd-table thead { break-after: avoid; page-break-after: avoid; }
+      .wd-table tr.section-row { break-after: avoid; page-break-after: avoid; }
       .table-wrap { overflow: visible !important; }
       .wd-table { width: 100% !important; table-layout: fixed !important; }
       .col-label { width: 140px !important; }
