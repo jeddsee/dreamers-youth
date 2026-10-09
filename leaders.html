@@ -1032,22 +1032,22 @@ function renderRoster() {
       </div>
       <table class="leaders-table" style="min-width:0;table-layout:fixed">
         <colgroup>
-          <col style="width:35%">
-          <col style="width:22%">
-          <col style="width:15%">
-          <col style="width:15%">
-          <col style="width:9%">
-          <col style="width:4%">
+          <col style="width:28%">
+          <col style="width:20%">
+          <col style="width:16%">
+          <col style="width:14%">
+          <col style="width:12%">
+          <col style="width:10%">
         </colgroup>
-        <thead><tr><th>Name</th><th>Category</th><th>Water Bap.</th><th>HS Bap.</th><th>Serving</th><th></th></tr></thead>
+        <thead><tr><th>Name</th><th>Category</th><th style="text-align:center">Water Bap.</th><th style="text-align:center">HS Bap.</th><th style="text-align:center">Serving</th><th></th></tr></thead>
         <tbody>${ys.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')).map(y => `
           <tr>
             <td class="fw-medium">${escHtml(y.name ?? '—')}</td>
             <td>${y.category ? `<span class="badge ${catBadge[y.category] ?? 'badge--neutral'}">${y.category}</span>` : '—'}</td>
-            <td>${y.water_baptised ? '<span class="check-yes">✓</span>' : '<span class="check-no">—</span>'}</td>
-            <td>${y.hs_baptised   ? '<span class="check-yes">✓</span>' : '<span class="check-no">—</span>'}</td>
-            <td>${y.serving       ? '<span class="check-yes">✓</span>' : '<span class="check-no">—</span>'}</td>
-            <td><button class="btn btn--ghost btn--sm" onclick="openEditYouthModal('${escHtml(y.id)}')">Edit</button></td>
+            <td style="text-align:center">${y.water_baptised ? '<span class="check-yes">✓</span>' : '<span class="check-no">—</span>'}</td>
+            <td style="text-align:center">${y.hs_baptised   ? '<span class="check-yes">✓</span>' : '<span class="check-no">—</span>'}</td>
+            <td style="text-align:center">${y.serving       ? '<span class="check-yes">✓</span>' : '<span class="check-no">—</span>'}</td>
+            <td style="text-align:right"><button class="btn btn--ghost btn--sm" onclick="openEditYouthModal('${escHtml(y.id)}')">Edit</button></td>
           </tr>`).join('')}
         </tbody>
       </table>
