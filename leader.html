@@ -1521,22 +1521,8 @@
   }
 
   function ncDaysOverdue(nc) {
-    if (!nc.decision_date) return null;
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const deadline = tuesdayAfterFriday(nc.decision_date);
-    const decisionMs = new Date(nc.decision_date + 'T00:00:00').getTime();
-    const comments = (ncComments[nc.id] ?? []).map(c => c.created_at);
-    const lastCommentMs = comments
-      .map(ts => new Date(ts).getTime())
-      .filter(t => t >= decisionMs)
-      .reduce((max, t) => Math.max(max, t), 0);
-    let baseline = deadline;
-    if (lastCommentMs > 0) {
-      const lcd = new Date(lastCommentMs); lcd.setHours(0, 0, 0, 0);
-      if (lcd.getTime() > deadline.getTime()) baseline = lcd;
-    }
-    if (today <= baseline) return null;
-    return Math.floor((today.getTime() - baseline.getTime()) / 86400000);
+    // Overdue only if there are no comments at all
+    return (ncComments[nc.id] ?? []).length === 0 ? true : null;
   }
 
   function renderOverdueNCs(ncs) {
@@ -1792,7 +1778,7 @@
 
     list.innerHTML = ncs.map(nc => {
       const daysOD = ncDaysOverdue(nc);
-      const overduePill = daysOD != null ? `<span class="np-overdue-pill">${daysOD}d overdue</span>` : '';
+      const overduePill = daysOD != null ? `<span class="np-overdue-pill">Overdue</span>` : '';
       const cardClass = daysOD != null ? 'np-card np-card--overdue' : 'np-card';
       return `
       <div class="${cardClass}">
