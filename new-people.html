@@ -849,7 +849,13 @@
       const tr = document.createElement('tr');
       if (daysOD != null) tr.classList.add('np-row--overdue');
       tr.innerHTML = `
-        <td><strong>${escHtml(np.name)}</strong>${overduePill}<br><span class="text-xs text-muted">${escHtml(np.school||'')} ${escHtml(np.year_level||'')}</span></td>
+        <td>
+          <div style="display:flex;align-items:center;gap:var(--s-2);flex-wrap:wrap">
+            <strong>${escHtml(np.name)}</strong>
+            ${overduePill}
+          </div>
+          <span class="text-xs text-muted">${escHtml(np.school||'')} ${escHtml(np.year_level||'')}</span>
+        </td>
         <td><span class="badge badge--${statusBadge(np.status)}">${statusLabel(np.status)}</span></td>
         <td class="text-sm">${escHtml(leader?.name || '—')}</td>
         <td class="text-xs">${np.visit_1_date ? formatDate(np.visit_1_date) : '—'}</td>
