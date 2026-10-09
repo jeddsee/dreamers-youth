@@ -375,9 +375,9 @@
         <span class="section-badge section-badge--red">New People in Period</span>
         <div class="card card--flush mb-5" id="rv-new-people"></div>
 
-        <button class="btn btn--secondary" onclick="exportReview()">Export PDF</button>
-
       </div><!-- /rv-output -->
+
+      <button class="btn btn--secondary hidden" id="rv-export-btn" onclick="exportReview()">Export PDF</button>
 
     </div><!-- /page-content -->
   </div><!-- /main-content -->
@@ -1117,6 +1117,7 @@ async function generateReport() {
 
   document.getElementById('rv-loading').classList.remove('hidden');
   document.getElementById('rv-output').classList.add('hidden');
+  document.getElementById('rv-export-btn').classList.add('hidden');
 
   const [entriesRes, youthRes, newPeopleRes] = await Promise.all([
     db.from('leader_entries')
@@ -1220,6 +1221,7 @@ async function generateReport() {
 
   document.getElementById('rv-loading').classList.add('hidden');
   document.getElementById('rv-output').classList.remove('hidden');
+  document.getElementById('rv-export-btn').classList.remove('hidden');
 }
 
 // ── Exports ────────────────────────────────────────────────────────────────────
@@ -1331,6 +1333,7 @@ function exportReview() {
   const to   = document.getElementById('rv-to').value;
 
   const win = window.open('', '_blank');
+  if (!win) { alert('Pop-ups are blocked. Please allow pop-ups for this page and try again.'); return; }
   win.document.write(`<!doctype html><html><head><meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Leader Review — ${escHtml(leaderName)}</title>
