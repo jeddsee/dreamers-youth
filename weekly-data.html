@@ -539,11 +539,12 @@
 
     wdStats = curr ?? [];
 
-    // Build entry_date → summed connect/sunday/youth from listing leaders only
+    // Build entry_date → summed connect/sunday/youth + leader count from listing leaders only
     ldEntriesMap = {};
     for (const e of (leData ?? [])) {
       if (!e.entry_date || excludedLeaderIds.has(e.leader_id)) continue;
-      if (!ldEntriesMap[e.entry_date]) ldEntriesMap[e.entry_date] = { connect: null, sunday: null, youth: null };
+      if (!ldEntriesMap[e.entry_date]) ldEntriesMap[e.entry_date] = { connect: null, sunday: null, youth: null, leaderIds: new Set() };
+      ldEntriesMap[e.entry_date].leaderIds.add(e.leader_id);
       if (e.connect_attendance != null)
         ldEntriesMap[e.entry_date].connect = (ldEntriesMap[e.entry_date].connect ?? 0) + e.connect_attendance;
       if (e.sunday_attendance != null)
@@ -569,19 +570,24 @@
       }
       agg[field] = total;
     }
-    // Override connect/sunday with sums from leader_entries (listing data)
+    // Override connect/sunday/leaders_count with sums from leader_entries (listing data)
     const entryDates = [...new Set(entries.map(e => e.entry_date).filter(Boolean))];
     let connectSum = null, sundaySum = null, youthSum = null;
+    const allLeaderIds = new Set();
     for (const date of entryDates) {
       const le = ldEntriesMap[date];
-      if (le?.connect != null) connectSum = (connectSum ?? 0) + le.connect;
-      if (le?.sunday  != null) sundaySum  = (sundaySum  ?? 0) + le.sunday;
-      if (le?.youth   != null) youthSum   = (youthSum   ?? 0) + le.youth;
+      if (!le) continue;
+      if (le.connect != null) connectSum = (connectSum ?? 0) + le.connect;
+      if (le.sunday  != null) sundaySum  = (sundaySum  ?? 0) + le.sunday;
+      if (le.youth   != null) youthSum   = (youthSum   ?? 0) + le.youth;
+      if (le.leaderIds) for (const id of le.leaderIds) allLeaderIds.add(id);
     }
     agg.connect_attendance = connectSum;
     agg.sunday_attendance  = sundaySum;
     // Youth attendance: use the pastor's weekly_stats entry if set; fall back to leader_entries sum
     agg.youth_attendance   = agg.youth_attendance ?? youthSum;
+    // Leaders count: derived from how many leaders actually submitted
+    if (allLeaderIds.size > 0) agg.leaders_count = allLeaderIds.size;
 
     return agg;
   }
