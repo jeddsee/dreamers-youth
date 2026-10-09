@@ -261,7 +261,10 @@
       <!-- ══ SECTION 2: LEADER LISTINGS ════════════════════════════════════════ -->
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--s-3);margin-bottom:var(--s-5)">
         <h2 style="font-size:var(--text-2xl);font-weight:800;letter-spacing:-0.02em;margin:0">Leader Listings</h2>
-        <button id="export-roster-btn" class="btn btn--secondary btn--sm hidden" onclick="exportRoster()">Export CSV</button>
+        <div id="export-roster-btns" class="hidden" style="display:none;gap:var(--s-2)">
+          <button class="btn btn--secondary btn--sm" onclick="exportRoster()">Export CSV</button>
+          <button class="btn btn--secondary btn--sm" onclick="exportRosterPDF()">Export PDF</button>
+        </div>
       </div>
 
       <div style="display:flex;flex-wrap:wrap;gap:var(--s-5);align-items:flex-start;margin-bottom:var(--s-5)">
@@ -969,7 +972,8 @@ function renderRoster() {
   const el     = document.getElementById('roster-results');
   const hasFilter = search || rosterYearFilter.size > 0 || rosterGenderFilter !== 'all';
 
-  document.getElementById('export-roster-btn').classList.toggle('hidden', !hasFilter);
+  const exportBtns = document.getElementById('export-roster-btns');
+  exportBtns.style.display = hasFilter ? 'flex' : 'none';
 
   if (!hasFilter) {
     lastRosterData = [];
@@ -1233,6 +1237,89 @@ function exportRoster() {
   a.download = 'leader-listings.csv';
   a.click();
   URL.revokeObjectURL(a.href);
+}
+
+function exportRosterPDF() {
+  if (!lastRosterData.length && !Object.keys(lastRosterLeaderMap).length) return;
+
+  // Build groups from lastRosterData
+  const groups = {};
+  for (const [id, name] of Object.entries(lastRosterLeaderMap)) {
+    groups[id] = { name, ys: [] };
+  }
+  lastRosterData.forEach(y => {
+    if (groups[y.leader_id]) groups[y.leader_id].ys.push(y);
+  });
+
+  const catColour = { contributor: '#006b43', connected: '#1d4ed8', community: '#cc2a00' };
+  const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  const groupsHtml = Object.entries(groups)
+    .sort((a, b) => a[1].name.localeCompare(b[1].name))
+    .map(([, { name: lName, ys }]) => {
+      const youthRows = ys.length
+        ? ys.sort((a, b) => a.name.localeCompare(b.name)).map(y => {
+            const cat = (y.category || '').toLowerCase();
+            const catColor = catColour[cat] || '#666';
+            return `<tr>
+              <td>${esc(y.name)}</td>
+              <td>${esc(y.year_level || '—')}</td>
+              <td>${esc(y.gender || '—')}</td>
+              <td style="color:${catColor};font-weight:600;text-transform:capitalize">${esc(y.category || '—')}</td>
+            </tr>`;
+          }).join('')
+        : `<tr><td colspan="4" style="color:#999;font-style:italic;text-align:center">No youth listed</td></tr>`;
+      return `
+        <div class="leader-group">
+          <div class="leader-heading">
+            <span class="leader-name">${esc(lName)}</span>
+            <span class="leader-count">${ys.length} youth</span>
+          </div>
+          <table>
+            <thead><tr><th>Name</th><th>Year</th><th>Gender</th><th>Category</th></tr></thead>
+            <tbody>${youthRows}</tbody>
+          </table>
+        </div>`;
+    }).join('');
+
+  const win = window.open('', '_blank');
+  const campus = document.getElementById('sidebar-campus')?.textContent ?? '';
+  const date   = new Date().toLocaleDateString('en-AU', { day:'numeric', month:'long', year:'numeric' });
+
+  win.document.write(`<!doctype html><html><head><meta charset="UTF-8">
+    <title>Leader Listings — ${esc(campus)}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: 'Outfit', system-ui, sans-serif; color: #111; background: #fff; padding: 36px 44px; font-size: 13px; line-height: 1.5; }
+      .report-header { margin-bottom: 32px; padding-bottom: 18px; border-bottom: 2px solid #111; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+      .report-eyebrow { font-size: 9px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: #888; margin-bottom: 6px; }
+      .report-title { font-size: 24px; font-weight: 800; line-height: 1.1; }
+      .report-meta { font-size: 11px; color: #888; text-align: right; }
+      .leader-group { margin-bottom: 28px; break-inside: avoid; }
+      .leader-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; background: #111; color: #fff; padding: 8px 14px; border-radius: 6px 6px 0 0; }
+      .leader-name { font-weight: 700; font-size: 14px; }
+      .leader-count { font-size: 11px; opacity: 0.7; }
+      table { width: 100%; border-collapse: collapse; }
+      thead tr { background: #f4f4f4; }
+      th { font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: #666; padding: 6px 12px; text-align: left; border-bottom: 1px solid #ddd; }
+      td { padding: 7px 12px; border-bottom: 1px solid #eee; font-size: 13px; }
+      tr:last-child td { border-bottom: none; }
+      @media print { body { padding: 0; } .leader-group { break-inside: avoid; } }
+    </style>
+  </head><body>
+    <div class="report-header">
+      <div>
+        <div class="report-eyebrow">Dreamers Youth</div>
+        <div class="report-title">Leader Listings</div>
+      </div>
+      <div class="report-meta">${esc(campus)}<br>${esc(date)}</div>
+    </div>
+    ${groupsHtml}
+    <script>window.onload=()=>window.print();<\/script>
+  </body></html>`);
+  win.document.close();
 }
 
 function exportReview() {
