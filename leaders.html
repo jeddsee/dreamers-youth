@@ -538,7 +538,7 @@
         </div>
         <div class="form-group">
           <label>Role</label>
-          <select id="el-role" class="select">
+          <select id="el-role" class="select" onchange="syncAdminRow()">
             <option value="leader">Leader</option>
             <option value="pastor">Pastor</option>
           </select>
@@ -556,10 +556,12 @@
         <div>
           <button type="button" id="el-inactive-btn" class="btn btn--sm btn--outline" onclick="toggleLeaderInactive()" style="font-size:var(--text-xs)"></button>
         </div>
-        <label style="display:flex;align-items:center;gap:var(--s-2);font-size:var(--text-sm);cursor:pointer">
-          <input type="checkbox" id="el-is-admin">
-          <span>Admin access — grants leader access to the full dashboard</span>
-        </label>
+        <div id="el-admin-row">
+          <label style="display:flex;align-items:center;gap:var(--s-2);font-size:var(--text-sm);cursor:pointer">
+            <input type="checkbox" id="el-is-admin">
+            <span>Admin access — grants leader access to the full dashboard</span>
+          </label>
+        </div>
       </div>
       <div id="el-error" class="error-banner hidden mt-3"></div>
     </div>
@@ -826,6 +828,7 @@ function openEditLeaderModal(leaderId) {
   });
   document.getElementById('el-role').value      = l.role ?? 'leader';
   document.getElementById('el-is-admin').checked = !!l.is_admin;
+  syncAdminRow();
   document.getElementById('el-joined').value    = l.joined_date ?? '';
   document.getElementById('el-left').value      = l.left_date ?? '';
   document.getElementById('el-inactive-btn').textContent =
@@ -837,6 +840,12 @@ function openEditLeaderModal(leaderId) {
 
 function closeEditLeaderModal() {
   document.getElementById('edit-leader-modal').classList.remove('open');
+}
+
+function syncAdminRow() {
+  const isPastor = document.getElementById('el-role').value === 'pastor';
+  document.getElementById('el-admin-row').hidden = isPastor;
+  if (isPastor) document.getElementById('el-is-admin').checked = false;
 }
 
 function toggleLeaderInactive() {
