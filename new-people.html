@@ -258,6 +258,7 @@
     <button class="filter-btn" data-status="activated">Activated</button>
     <button class="filter-btn" data-status="archived">Archived</button>
     <button class="filter-btn" data-status="unassigned">Unassigned</button>
+    <button class="filter-btn" data-status="overdue" style="color:#cc2a00;border-color:#fca5a5">Overdue</button>
     <button class="btn btn--primary btn--sm" style="margin-left:auto;flex-shrink:0" onclick="openAddModal()">+ Add</button>
   </div>
 
@@ -797,6 +798,8 @@
       rows = allNP.filter(np => !excluded.has(np.status));
     } else if (filter === 'unassigned') {
       rows = allNP.filter(np => !excluded.has(np.status) && !np.leader_id);
+    } else if (filter === 'overdue') {
+      rows = allNP.filter(np => !excluded.has(np.status) && npDaysOverdue(np) != null);
     } else {
       rows = allNP.filter(np => np.status === filter);
     }
@@ -829,10 +832,12 @@
       empty.querySelector('h3').textContent =
         filter === 'ready_to_activate' ? 'No unassigned people ready to activate' :
         filter === 'unassigned'        ? 'No unassigned new people' :
+        filter === 'overdue'           ? 'No overdue follow-up comments' :
         'No new people yet';
       empty.querySelector('p').textContent =
         filter === 'ready_to_activate' ? 'Everyone in Ready has a leader assigned — great work!' :
         filter === 'unassigned'        ? 'Everyone has a leader assigned.' :
+        filter === 'overdue'           ? 'All follow-up comments are up to date.' :
         'New visitors who self-register or are added manually will appear here.';
       empty.classList.remove('hidden');
       wrap.classList.add('hidden');

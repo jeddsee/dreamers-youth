@@ -179,6 +179,7 @@
   <div class="filter-bar" id="nc-filter-bar">
     <button class="filter-btn active" data-nc-assign="all">All</button>
     <button class="filter-btn" data-nc-assign="unassigned">Unassigned</button>
+    <button class="filter-btn" data-nc-assign="overdue" style="color:#cc2a00;border-color:#fca5a5">Overdue</button>
     <button class="btn btn--primary btn--sm" style="margin-left:auto;flex-shrink:0" onclick="openAddModal()">+ Add</button>
   </div>
 
@@ -485,6 +486,7 @@
     let rows = allNC;
     if (ncStatusFilter !== 'all') rows = rows.filter(nc => (nc.follow_up_status || 'in_progress') === ncStatusFilter);
     if (ncAssignFilter === 'unassigned') rows = rows.filter(nc => !nc.leader_id);
+    if (ncAssignFilter === 'overdue') rows = rows.filter(nc => !(ncCommentsMap[nc.id]?.length));
     if (ncYearFilter.size > 0) rows = rows.filter(nc => ncYearFilter.has(nc.year_level));
     if (ncGenderFilter) rows = rows.filter(nc => nc.gender === ncGenderFilter);
 
@@ -493,6 +495,10 @@
     const empty = document.getElementById('empty-state');
 
     if (!rows.length) {
+      const h3 = empty.querySelector('h3');
+      const p  = empty.querySelector('p');
+      if (h3) h3.textContent = ncAssignFilter === 'overdue' ? 'No overdue follow-up comments' : 'No new Christian records';
+      if (p)  p.textContent  = ncAssignFilter === 'overdue' ? 'All follow-up comments are up to date.' : 'Add NC records for youth who made decisions outside the new people pipeline.';
       empty.classList.remove('hidden');
       wrap.classList.add('hidden');
       return;
