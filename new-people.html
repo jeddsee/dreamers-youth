@@ -166,6 +166,19 @@
       white-space: nowrap;
     }
 
+    .np-coming-pill {
+      display: inline-block;
+      background: #dbeafe;
+      color: #1d4ed8;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: var(--r-full);
+      vertical-align: middle;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+
     .leader-search { position: relative; }
     .leader-search__list {
       position: absolute; top: calc(100% + 2px); left: 0; right: 0;
@@ -471,7 +484,12 @@
           <div id="detail-comments-list" class="stack--sm"></div>
           <div style="margin-top:var(--s-3)">
             <textarea id="detail-comment-input" class="textarea" rows="2" placeholder="Add a comment…"></textarea>
-            <button class="btn btn--primary btn--sm" style="margin-top:var(--s-2)" onclick="saveDetailComment()">Add comment</button>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:var(--s-2)">
+              <label style="display:flex;align-items:center;gap:var(--s-2);font-size:var(--text-sm);cursor:pointer;user-select:none">
+                <input type="checkbox" id="detail-coming"> Coming this week
+              </label>
+              <button class="btn btn--primary btn--sm" onclick="saveDetailComment()">Add comment</button>
+            </div>
           </div>
         </div>
       </div>
@@ -847,11 +865,15 @@
     wrap.classList.remove('hidden');
     tbody.innerHTML = '';
 
+    const todayStr = new Date().toISOString().slice(0, 10);
     rows.forEach(np => {
       const leader = leaders.find(l => l.id === np.leader_id);
       const daysOD = npDaysOverdue(np);
       const overduePill = daysOD != null
         ? `<span class="np-overdue-pill">${daysOD}d overdue</span>`
+        : '';
+      const comingPill = np.coming_week && np.coming_week >= todayStr
+        ? `<span class="np-coming-pill">Coming</span>`
         : '';
       const tr = document.createElement('tr');
       if (daysOD != null) tr.classList.add('np-row--overdue');
@@ -859,7 +881,7 @@
         <td>
           <div style="display:flex;align-items:center;gap:var(--s-2);flex-wrap:wrap">
             <strong>${escHtml(np.name)}</strong>
-            ${overduePill}
+            ${overduePill}${comingPill}
           </div>
           <span class="text-xs text-muted">${escHtml(np.school||'')} ${escHtml(np.year_level||'')}</span>
         </td>
@@ -1348,10 +1370,20 @@
     list.innerHTML = items.length ? items.join('') : '<span class="text-xs text-muted">No comments yet.</span>';
   }
 
+  function thisFriday() {
+    const d = new Date();
+    const day = d.getDay(); // 0=Sun .. 6=Sat
+    const daysToFriday = (5 - day + 7) % 7; // 0 if today is Friday
+    const f = new Date(d);
+    f.setDate(d.getDate() + daysToFriday);
+    return f.toISOString().slice(0, 10);
+  }
+
   async function saveDetailComment() {
     if (!currentNP) return;
-    const input = document.getElementById('detail-comment-input');
-    const text  = input.value.trim();
+    const input   = document.getElementById('detail-comment-input');
+    const comingCb = document.getElementById('detail-coming');
+    const text    = input.value.trim();
     if (!text) return;
     const lid = await resolveMyLeaderId();
     if (!lid) { alert('Could not identify your leader record.'); return; }
@@ -1362,6 +1394,15 @@
     input.value = '';
     detailComments.push(data);
     renderDetailComments();
+    if (comingCb?.checked) {
+      const week = thisFriday();
+      await db.from('new_people').update({ coming_week: week }).eq('id', currentNP.id);
+      currentNP.coming_week = week;
+      const idx = allNP.findIndex(n => n.id === currentNP.id);
+      if (idx >= 0) allNP[idx].coming_week = week;
+      comingCb.checked = false;
+      renderList();
+    }
   }
 
   function startEditDetailComment(id, currentText) {

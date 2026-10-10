@@ -532,6 +532,7 @@
   let rosterCount = {};   // leaderId → count of active youth
   let allEntries  = [];   // leader_entries rows
   let termSettingsMap = {}; // termNum → term_settings row
+  let npComingByDate = {};        // date → count of new people expected that week
   let noNightDates = new Set(); // entry_dates with no_youth_night = true (kept for fallback date building)
   let noNightByTerm = {};       // termKey → Set of no-night entry_dates
   let noNightWeeks  = {};       // termKey → Set of no-night week_numbers
@@ -742,7 +743,7 @@
   async function loadData() {
     document.getElementById('ld-terms').innerHTML = '<div class="wd-status">Loading…</div>';
 
-    const [leaderRes, rosterRes, entryRes, tsRes, wsRes] = await Promise.all([
+    const [leaderRes, rosterRes, entryRes, tsRes, wsRes, npRes] = await Promise.all([
       db.from('leaders')
         .select('id, name, year_level, year_levels, gender, active')
         .eq('campus_id', ldCampus)
@@ -765,6 +766,10 @@
         .eq('campus_id', ldCampus)
         .like('term', `%${ldYear}%`)
         .eq('no_youth_night', true),
+      db.from('new_people')
+        .select('coming_week')
+        .eq('campus_id', ldCampus)
+        .not('coming_week', 'is', null),
     ]);
 
     allLeaders = leaderRes.data ?? [];
@@ -776,6 +781,13 @@
     }
 
     allEntries = entryRes.data ?? [];
+
+    // Build map: date → count of new people expected that week
+    npComingByDate = {};
+    for (const row of (npRes?.data ?? [])) {
+      if (!row.coming_week) continue;
+      npComingByDate[row.coming_week] = (npComingByDate[row.coming_week] ?? 0) + 1;
+    }
 
     const noNightRows = wsRes.data ?? [];
     noNightDates  = new Set(noNightRows.map(r => r.entry_date).filter(Boolean));
@@ -1202,6 +1214,28 @@
         ${displayCells}${emptyCells}
         <td class="td-total">${currentTotal}</td>
       </tr>`;
+
+      // Expected New People row
+      {
+        const wkNP = displayDates.map((date, idx) => {
+          if (noNightWeeks[termKey]?.has(idx + 1)) return null;
+          const v = npComingByDate[date];
+          return v != null ? v : null;
+        });
+        const npCells = wkNP.map(v =>
+          v == null
+            ? `<td class="td-week"><span class="cell-val empty"></span></td>`
+            : `<td class="td-week"><span class="cell-val">${v}</span></td>`
+        ).join('');
+        const npEmptyCells = Array.from({length: emptyWeekCount}, () =>
+          `<td class="td-week"><span class="cell-val empty"></span></td>`
+        ).join('');
+        tbodyRows += `<tr class="data-row row-alt">
+          <td class="td-label">Expected New People</td>
+          ${npCells}${npEmptyCells}
+          <td class="td-total dash">—</td>
+        </tr>`;
+      }
     }
 
     // Summary: Youth Attendance per date
