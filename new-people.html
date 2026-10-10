@@ -85,6 +85,8 @@
       border-bottom: 1px solid var(--c-border);
       vertical-align: middle;
     }
+    .np-table th:first-child, .np-table td:first-child { padding-left: var(--s-5); }
+    .np-table th:last-child,  .np-table td:last-child  { padding-right: var(--s-5); }
     .np-table tr:last-child td { border-bottom: none; }
     .np-table tbody tr { cursor: pointer; transition: background var(--transition); background: var(--c-surface); }
     .np-table tbody tr:hover { background: var(--c-primary-light); }
@@ -297,7 +299,7 @@
     <p>New visitors who self-register or are added manually will appear here.</p>
   </div>
 
-  <div id="table-wrap" class="np-table-wrap hidden" style="padding:0 var(--s-2) var(--s-8)">
+  <div id="table-wrap" class="np-table-wrap hidden" style="padding:0 0 var(--s-8)">
     <table class="np-table">
       <thead>
         <tr>
