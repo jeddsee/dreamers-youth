@@ -150,6 +150,19 @@
       letter-spacing: 0.02em;
       white-space: nowrap;
     }
+    .np-coming-pill {
+      display: inline-block;
+      margin-left: var(--s-2);
+      background: #dbeafe;
+      color: #1d4ed8;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: var(--r-full);
+      vertical-align: middle;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
     .np-card__header {
       display: flex;
       align-items: flex-start;
@@ -1415,22 +1428,34 @@
     renderNPList();
   }
 
+  function thisFriday() {
+    const d = new Date();
+    const daysToFriday = (5 - d.getDay() + 7) % 7;
+    const f = new Date(d);
+    f.setDate(d.getDate() + daysToFriday);
+    return f.toISOString().slice(0, 10);
+  }
+
   function renderNPList() {
     const list = document.getElementById('np-list');
     list.innerHTML = '';
     list.classList.remove('hidden');
 
+    const todayStr = new Date().toISOString().slice(0, 10);
     newPeople.forEach(np => {
       const daysOD = npDaysOverdue(np);
       const overduePill = daysOD != null
         ? `<span class="np-overdue-pill">${daysOD}d overdue</span>`
+        : '';
+      const comingPill = np.coming_week && np.coming_week >= todayStr
+        ? `<span class="np-coming-pill">Coming</span>`
         : '';
       const card = document.createElement('div');
       card.className = daysOD != null ? 'np-card np-card--overdue' : 'np-card';
       card.innerHTML = `
         <div class="np-card__header">
           <div>
-            <div class="np-card__name">${escHtml(np.name)}${overduePill}</div>
+            <div class="np-card__name">${escHtml(np.name)}${overduePill}${comingPill}</div>
             <div class="np-card__meta">${[np.school, np.year_level].filter(Boolean).join(' · ')}</div>
           </div>
           <div style="display:flex;align-items:center;gap:var(--s-2)">
@@ -1461,9 +1486,14 @@
           <div class="np-comment__form">
             <textarea id="npc-input-${np.id}" placeholder="Add a comment…" rows="2"></textarea>
             <div class="np-comment__actions">
-              <button class="np-comment__hist-btn hidden" data-hist-btn="${np.id}"
-                onclick="toggleNPCommentHistory('${np.id}')">History</button>
-              <button class="btn btn--sm btn--primary" onclick="saveNPComment('${np.id}')">Save</button>
+              <label style="display:flex;align-items:center;gap:var(--s-2);font-size:var(--text-sm);cursor:pointer;user-select:none">
+                <input type="checkbox" id="npc-coming-${np.id}"> Coming this week
+              </label>
+              <div style="display:flex;gap:var(--s-2)">
+                <button class="np-comment__hist-btn hidden" data-hist-btn="${np.id}"
+                  onclick="toggleNPCommentHistory('${np.id}')">History</button>
+                <button class="btn btn--sm btn--primary" onclick="saveNPComment('${np.id}')">Save</button>
+              </div>
             </div>
           </div>
         </div>
@@ -1584,8 +1614,9 @@
   }
 
   async function saveNPComment(npId) {
-    const input = document.getElementById(`npc-input-${npId}`);
-    const comment = input.value.trim();
+    const input    = document.getElementById(`npc-input-${npId}`);
+    const comingCb = document.getElementById(`npc-coming-${npId}`);
+    const comment  = input.value.trim();
     if (!comment) return;
     const section = document.getElementById(`npc-${npId}`);
     const btn = section.querySelector('.btn--primary');
@@ -1601,6 +1632,14 @@
       renderNPComments(npId);
       const histEl = document.getElementById(`npc-hist-${npId}`);
       if (histEl && !histEl.classList.contains('hidden')) renderNPCommentHistory(npId);
+      if (comingCb?.checked) {
+        const week = thisFriday();
+        await db.from('new_people').update({ coming_week: week }).eq('id', npId);
+        const np = newPeople.find(n => n.id === npId);
+        if (np) np.coming_week = week;
+        comingCb.checked = false;
+        renderNPList();
+      }
     }
     btn.disabled = false;
     btn.textContent = 'Save';

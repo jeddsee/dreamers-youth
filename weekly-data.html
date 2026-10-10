@@ -378,6 +378,7 @@
   let allCampuses = [];
   let editMode    = false;
   let wdAssignedLeaders = null; // active leaders with a year level assigned
+  let npComingByDate = {}; // date string → count of new people expected that week
 
   // Fields that come directly from weekly_stats and can be overridden
   const WD_EDITABLE = new Set([
@@ -399,10 +400,11 @@
       { key: 'ratio',               label: 'Ratio',               computed: true, kind: 'ratio' },
     ]},
     { key: 'new_people', label: 'NEW PEOPLE', rows: [
-      { key: '_total_np',     label: 'Total NP',    computed: true, kind: 'total_np', suppressOnNoNight: true },
-      { key: 'first_timers',  label: '1st timers',  suppressOnNoNight: true },
-      { key: 'second_timers', label: '2nd timers',  suppressOnNoNight: true },
-      { key: 'third_timers',  label: '3rd timers',  suppressOnNoNight: true },
+      { key: '_total_np',     label: 'Total NP',          computed: true, kind: 'total_np',     suppressOnNoNight: true },
+      { key: 'first_timers',  label: '1st timers',        suppressOnNoNight: true },
+      { key: 'second_timers', label: '2nd timers',        suppressOnNoNight: true },
+      { key: 'third_timers',  label: '3rd timers',        suppressOnNoNight: true },
+      { key: '_expected_np',  label: 'Expected new people', computed: true, kind: 'expected_np', suppressOnNoNight: true },
     ]},
     { key: 'life', label: 'DISCIPLESHIP STEPS', rows: [
       { key: '_new_christians',   label: 'New Christians',       computed: true, kind: 'new_christians', suppressOnNoNight: true },
@@ -523,7 +525,10 @@
       .eq('active', true);
     if (wdCampus !== 'all') ldrq = ldrq.eq('campus_id', wdCampus);
 
-    const [{ data: curr }, { data: leData }, { data: ldrData }] = await Promise.all([q, leq, ldrq]);
+    let npq = db.from('new_people').select('coming_week').not('coming_week', 'is', null);
+    if (wdCampus !== 'all') npq = npq.eq('campus_id', wdCampus);
+
+    const [{ data: curr }, { data: leData }, { data: ldrData }, { data: npComingData }] = await Promise.all([q, leq, ldrq, npq]);
 
     // Leaders with any year level assigned (for ratio stat)
     const getYrs = l => Array.isArray(l.year_levels) && l.year_levels.length ? l.year_levels : (l.year_level ? [l.year_level] : []);
@@ -534,6 +539,12 @@
     const excludedLeaderIds = new Set(
       ldrArr.filter(l => getYrs(l).some(y => y === 'Volunteer' || y === 'DST')).map(l => l.id)
     );
+
+    // Build date → count of NPs expected that week
+    npComingByDate = {};
+    for (const row of (npComingData ?? [])) {
+      if (row.coming_week) npComingByDate[row.coming_week] = (npComingByDate[row.coming_week] ?? 0) + 1;
+    }
 
     await loadTermSettings();
 
@@ -863,6 +874,22 @@
               if (wd.no_youth_night) return '<td class="td-week no-night"><span class="cell-val">—</span></td>';
               const val = wd._total_np;
               return `<td class="td-week"><span class="cell-val${val == null ? ' empty' : ''}">${val ?? ''}</span></td>`;
+            }).join('');
+
+          } else if (row.kind === 'expected_np') {
+            // Per week: count of new_people with coming_week = entry_date
+            const total = weekData.reduce((s, wd) => {
+              if (!wd || wd.no_youth_night) return s;
+              return s + (npComingByDate[wd.entry_date] ?? 0);
+            }, 0);
+            const hasAny = weekData.some(wd => wd && !wd.no_youth_night && npComingByDate[wd.entry_date] != null);
+            summaryStr = hasAny ? String(total) : '—';
+            summaryCls = hasAny ? (total === 0 ? ' zero' : '') : ' dash';
+            wkCells = weekData.map(wd => {
+              if (!wd) return '<td class="td-week"><span class="cell-val empty"></span></td>';
+              if (wd.no_youth_night) return '<td class="td-week no-night"><span class="cell-val">—</span></td>';
+              const v = npComingByDate[wd.entry_date];
+              return `<td class="td-week"><span class="cell-val${v == null ? ' empty' : ''}">${v ?? ''}</span></td>`;
             }).join('');
           }
 
