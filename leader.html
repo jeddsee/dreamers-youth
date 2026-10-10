@@ -1384,10 +1384,17 @@
 
   async function updateLeadersCount(campusId, entryDate, term) {
     const [{ data: allLeaders }, { data: entries }] = await Promise.all([
-      db.from('leaders').select('id').eq('campus_id', campusId).eq('role', 'leader').is('left_date', null),
+      db.from('leaders').select('id, role, year_level, year_levels').eq('campus_id', campusId).is('left_date', null),
       db.from('leader_entries').select('leader_id').eq('campus_id', campusId).eq('entry_date', entryDate),
     ]);
-    const validIds = new Set((allLeaders ?? []).map(l => l.id));
+    const validIds = new Set((allLeaders ?? []).filter(l => {
+      if (l.role === 'leader') return true;
+      if (l.role === 'pastor') {
+        const yls = l.year_levels?.length ? l.year_levels : (l.year_level ? [l.year_level] : []);
+        return yls.length > 0;
+      }
+      return false;
+    }).map(l => l.id));
     const count = [...new Set((entries ?? []).map(e => e.leader_id))].filter(id => validIds.has(id)).length;
     if (count > 0) {
       await db.from('weekly_stats').upsert(

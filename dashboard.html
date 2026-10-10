@@ -420,14 +420,14 @@
 
         </div><!-- /pastor-entry-form -->
 
-        <!-- Admin leader attendance form (hidden for pastors) -->
+        <!-- Admin leader / pastor-with-year-level attendance form -->
         <div id="admin-entry-form" class="hidden">
-          <div class="entry-page-header">
+          <div class="entry-page-header" id="admin-entry-header">
             <h1>My attendance</h1>
             <p>Mark attendance for your group</p>
           </div>
 
-          <div style="margin-bottom:var(--s-4)">
+          <div id="admin-date-row" style="margin-bottom:var(--s-4)">
             <label class="entry-field-label" for="admin-entry-date">Youth night date</label>
             <input type="date" id="admin-entry-date" class="input" style="max-width:200px;margin-top:var(--s-2)"
               onchange="loadAdminWeeklyEntry()">
@@ -795,6 +795,21 @@
       generateQR();
       loadSetup();
       subscribeWeeklyStatsSync();
+      // Pastor with year level: also show attendance entry synced to weekly stats date
+      if ((identity.year_levels ?? []).length > 0) {
+        const attForm = document.getElementById('admin-entry-form');
+        attForm.classList.remove('hidden');
+        // Add a visual divider / heading so the two sections are distinct
+        const divider = document.createElement('div');
+        divider.className = 'entry-section';
+        divider.innerHTML = '<div class="entry-section-label">My attendance</div><p style="font-size:var(--text-sm);color:var(--c-text-secondary);margin-top:var(--s-1)">Mark attendance for your group — this feeds into the listing data table.</p>';
+        document.getElementById('pastor-entry-form').after(divider);
+        // Hide the separate date picker — date is driven by the weekly stats week selector above
+        document.getElementById('admin-date-row').style.display = 'none';
+        document.getElementById('admin-entry-header').style.display = 'none';
+        document.getElementById('admin-entry-date').value = initDate;
+        loadAdminRoster().then(() => loadAdminWeeklyEntry());
+      }
     }
   }
 
@@ -969,6 +984,30 @@
       showError('Could not save. Try again.', 'admin-entry-error');
     } else {
       document.getElementById('admin-entry-saved-badge').classList.remove('hidden');
+      // Refresh leaders count in weekly_stats so weekly-data reflects this submission
+      syncLeadersCount(date, term);
+    }
+  }
+
+  async function syncLeadersCount(entryDate, term) {
+    const [{ data: allLeaders }, { data: entries }] = await Promise.all([
+      db.from('leaders').select('id, role, year_level, year_levels').eq('campus_id', identity.campus_id).is('left_date', null),
+      db.from('leader_entries').select('leader_id').eq('campus_id', identity.campus_id).eq('entry_date', entryDate),
+    ]);
+    const validIds = new Set((allLeaders ?? []).filter(l => {
+      if (l.role === 'leader') return true;
+      if (l.role === 'pastor') {
+        const yls = l.year_levels?.length ? l.year_levels : (l.year_level ? [l.year_level] : []);
+        return yls.length > 0;
+      }
+      return false;
+    }).map(l => l.id));
+    const count = [...new Set((entries ?? []).map(e => e.leader_id))].filter(id => validIds.has(id)).length;
+    if (count > 0) {
+      await db.from('weekly_stats').upsert(
+        { campus_id: identity.campus_id, entry_date: entryDate, term, leaders_count: count },
+        { onConflict: 'campus_id,entry_date' }
+      );
     }
   }
 
@@ -1408,6 +1447,10 @@
     const date = termWeekToDate(term, week);
     document.getElementById('ws-date').value = date;
     loadWeeklyEntry(date);
+    if ((identity.year_levels ?? []).length > 0) {
+      document.getElementById('admin-entry-date').value = date;
+      loadAdminWeeklyEntry();
+    }
   }
 
   async function loadWeeklyEntry(date) {
@@ -1573,7 +1616,7 @@
 
     // Submission status — exclude leaders with no year level or only excluded year levels
     const leaderOnly = leaders.filter(l => {
-      if (l.role !== 'leader') return false;
+      if (l.role !== 'leader' && l.role !== 'pastor') return false;
       if (l.left_date) return false;
       const yls = getLeaderYearLevels(l);
       return yls.length > 0 && yls.some(yl => !SUB_YL_EXCLUDE.has(yl));

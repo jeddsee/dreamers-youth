@@ -295,6 +295,9 @@
       const youth_night_dow = parseInt(campusSelect.selectedOptions[0]?.dataset.dow ?? '5', 10);
       if (!campusId || !selectedLeader) return;
 
+      const yls = selectedLeader.year_levels?.length
+        ? selectedLeader.year_levels
+        : (selectedLeader.year_level ? [selectedLeader.year_level] : []);
       setIdentity({
         campus_id:    campusId,
         campus_name:  campusName,
@@ -302,6 +305,7 @@
         leader_name:  selectedLeader.name,
         role:         selectedLeader.role,
         is_admin:     !!selectedLeader.is_admin,
+        year_levels:  yls,
         youth_night_dow,
       });
       const goDashboard = selectedLeader.role === 'pastor' || selectedLeader.is_admin;
