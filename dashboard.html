@@ -1412,11 +1412,18 @@
 
   async function loadWeeklyEntry(date) {
     document.getElementById('ws-saved').classList.add('hidden');
-    const { data } = await db.from('weekly_stats')
-      .select('*').eq('campus_id', identity.campus_id).eq('entry_date', date).maybeSingle();
-    if (!data) { clearWSForm(); return; }
-    fillWSForm(data);
-    document.getElementById('ws-saved').classList.remove('hidden');
+    const [{ data }, { data: leData }] = await Promise.all([
+      db.from('weekly_stats').select('*').eq('campus_id', identity.campus_id).eq('entry_date', date).maybeSingle(),
+      db.from('leader_entries').select('leader_id').eq('campus_id', identity.campus_id).eq('entry_date', date),
+    ]);
+    if (!data) { clearWSForm(); } else { fillWSForm(data); document.getElementById('ws-saved').classList.remove('hidden'); }
+    // Auto-fill leaders count from submissions (excludes Volunteer/DST via leaderOnly)
+    const validLeaderIds = new Set((leaderOnly ?? []).map(l => l.id));
+    const submittedCount = [...new Set((leData ?? []).map(e => e.leader_id))].filter(id => validLeaderIds.has(id)).length;
+    if (submittedCount > 0) {
+      const el = document.getElementById('ws-leaders-count');
+      if (el) el.value = submittedCount;
+    }
   }
 
   function fillWSForm(d) {
