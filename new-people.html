@@ -1103,11 +1103,27 @@
 
   async function unactivateCurrentNP() {
     if (!currentNP) return;
-    if (!confirm(`Move ${currentNP.name} back to New People?`)) return;
+    if (!confirm(`Move ${currentNP.name} back to New People? This will also remove them from the youth roster.`)) return;
     const status = statusFromVisits(currentNP);
-    const { error } = await db.from('new_people').update({ status }).eq('id', currentNP.id);
-    if (error) { showError('Unactivate failed.', 'detail-error'); return; }
+
+    // Find matching youth_roster entry created at activation and deactivate it
+    const { data: rosterEntry } = await db.from('youth_roster')
+      .select('id')
+      .eq('campus_id', currentNP.campus_id)
+      .eq('name', currentNP.name)
+      .eq('leader_id', currentNP.leader_id)
+      .eq('active', true)
+      .maybeSingle();
+
+    const [npRes] = await Promise.all([
+      db.from('new_people').update({ status, activated_date: null }).eq('id', currentNP.id),
+      rosterEntry
+        ? db.from('youth_roster').update({ active: false }).eq('id', rosterEntry.id)
+        : Promise.resolve({ error: null }),
+    ]);
+    if (npRes.error) { showError('Unactivate failed.', 'detail-error'); return; }
     currentNP.status = status;
+    currentNP.activated_date = null;
     const idx = allNP.findIndex(n => n.id === currentNP.id);
     if (idx !== -1) allNP[idx] = { ...currentNP };
     renderTable(currentFilter);
