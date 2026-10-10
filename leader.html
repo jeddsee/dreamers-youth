@@ -1343,6 +1343,8 @@
       recentEntries = data ?? [];
       // Hide overdue banner once submitted
       document.getElementById('att-overdue-banner').classList.add('hidden');
+      // Sync leaders_count in weekly_stats so weekly-data reflects submissions
+      updateLeadersCount(identity.campus_id, currentEntryDate, term);
     }
   });
 
@@ -1365,6 +1367,21 @@
       el.classList.add('hidden');
     });
     document.getElementById('entry-saved-badge').classList.add('hidden');
+  }
+
+  async function updateLeadersCount(campusId, entryDate, term) {
+    const [{ data: allLeaders }, { data: entries }] = await Promise.all([
+      db.from('leaders').select('id').eq('campus_id', campusId).eq('role', 'leader').is('left_date', null),
+      db.from('leader_entries').select('leader_id').eq('campus_id', campusId).eq('entry_date', entryDate),
+    ]);
+    const validIds = new Set((allLeaders ?? []).map(l => l.id));
+    const count = [...new Set((entries ?? []).map(e => e.leader_id))].filter(id => validIds.has(id)).length;
+    if (count > 0) {
+      await db.from('weekly_stats').upsert(
+        { campus_id: campusId, entry_date: entryDate, term, leaders_count: count },
+        { onConflict: 'campus_id,entry_date' }
+      );
+    }
   }
 
   // ── New People ─────────────────────────────────────────────────────────────
