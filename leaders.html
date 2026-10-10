@@ -981,7 +981,7 @@ function renderRoster() {
     return;
   }
 
-  const allRoleLeaders = allLeaders.filter(l => l.role === 'leader' && !l.left_date);
+  const allRoleLeaders = allLeaders.filter(l => !l.left_date && (l.role === 'leader' || (l.role === 'pastor' && getLeaderYears(l).length > 0)));
   const matchedLeaders = search
     ? allRoleLeaders.filter(l => l.name.toLowerCase().includes(search))
     : allRoleLeaders;
@@ -1060,7 +1060,7 @@ function initRvLeaderCombobox() {
   const inp  = document.getElementById('rv-leader-search');
   const list = document.getElementById('rv-leader-list');
   const hid  = document.getElementById('rv-leader');
-  const activeLeaders = allLeaders.filter(l => l.role === 'leader' && !l.left_date);
+  const activeLeaders = allLeaders.filter(l => !l.left_date && (l.role === 'leader' || (l.role === 'pastor' && getLeaderYears(l).length > 0)));
 
   function renderList(query) {
     const q = query.trim().toLowerCase();

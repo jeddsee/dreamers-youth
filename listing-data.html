@@ -656,6 +656,7 @@
     const sorted = sortLeaders(allLeaders.filter(l => {
       if (showInactive ? l.active === false : l.active !== false) return false;
       const yrs = getLeaderYears(l);
+      if (l.role === 'pastor' && !yrs.length) return false;
       if (yrs.some(y => y === 'Volunteer' || y === 'DST')) return false;
       return true;
     }));
@@ -745,9 +746,9 @@
 
     const [leaderRes, rosterRes, entryRes, tsRes, wsRes, npRes] = await Promise.all([
       db.from('leaders')
-        .select('id, name, year_level, year_levels, gender, active')
+        .select('id, name, role, year_level, year_levels, gender, active')
         .eq('campus_id', ldCampus)
-        .eq('role', 'leader')
+        .in('role', ['leader', 'pastor'])
         .order('name'),
       db.from('youth_roster')
         .select('leader_id')
@@ -1068,6 +1069,7 @@
       if (showInactive ? l.active !== false : l.active === false) return false;
       if (leaderFilter && l.id !== leaderFilter) return false;
       const yrs = getLeaderYears(l);
+      if (l.role === 'pastor' && !yrs.length) return false;
       if (yrs.some(y => y === 'Volunteer' || y === 'DST')) return false;
       if (yearLevelFilter.size > 0 && !yrs.some(y => yearLevelFilter.has(y))) return false;
       if (genderFilter.size > 0 && !genderFilter.has(l.gender)) return false;
@@ -1106,6 +1108,7 @@
       if (showInactive ? l.active !== false : l.active === false) return false;
       if (leaderFilter && l.id !== leaderFilter) return false;
       const yrs = getLeaderYears(l);
+      if (l.role === 'pastor' && !yrs.length) return false;
       if (yrs.some(y => y === 'Volunteer' || y === 'DST')) return false;
       if (yearLevelFilter.size > 0 && !yrs.some(y => yearLevelFilter.has(y))) return false;
       if (genderFilter.size > 0 && !genderFilter.has(l.gender)) return false;
