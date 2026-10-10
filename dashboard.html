@@ -1712,20 +1712,21 @@
     const attVals    = filteredStats.map(w => w.youth_attendance).filter(v => v != null);
     const avgAtt     = attVals.length ? Math.round(attVals.reduce((a,b) => a+b, 0) / attVals.length) : 0;
     const latestDept = weeklyStats.find(w => w.total_in_department != null);
-    const deptTotal  = latestDept ? latestDept.total_in_department : roster.length;
+    const deptTotal  = latestDept ? latestDept.total_in_department : 0;
     const leaderCount = leaders.filter(l => l.role === 'leader').length;
+    const EXCLUDED_YLS = ['Volunteer', 'DST'];
     const yearLevelLeaders = leaders.filter(l => {
-      if (l.role !== 'leader') return false;
+      if (l.role !== 'leader' || l.left_date) return false;
       const yls = Array.isArray(l.year_levels) && l.year_levels.length ? l.year_levels : (l.year_level ? [l.year_level] : []);
-      return yls.length > 0;
+      return yls.length > 0 && yls.some(yl => !EXCLUDED_YLS.includes(yl));
     });
     const attPct     = deptTotal > 0 ? Math.round(avgAtt / deptTotal * 100) : 0;
     const youthPerLeader = yearLevelLeaders.length > 0 ? Math.round(deptTotal / yearLevelLeaders.length) : '—';
     document.getElementById('snap-avg-att').textContent          = avgAtt;
-    document.getElementById('snap-total-dept').textContent       = deptTotal;
+    document.getElementById('snap-total-dept').textContent       = deptTotal || '—';
     document.getElementById('snap-att-pct').textContent          = deptTotal > 0 ? `${attPct}%` : '—';
     document.getElementById('snap-leader-count').textContent     = leaderCount || '—';
-    document.getElementById('snap-youth-per-leader').textContent = leaderCount > 0 ? youthPerLeader : '—';
+    document.getElementById('snap-youth-per-leader').textContent = yearLevelLeaders.length > 0 ? youthPerLeader : '—';
 
     // New People — from weekly_stats first/second/third_timers (same source as weekly data table)
     const v1 = sum(col('first_timers'));
