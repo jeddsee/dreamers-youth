@@ -106,7 +106,23 @@
 
     /* Overdue row styling */
     tr.nc-row--overdue td:first-child { border-left: 3px solid #cc2a00; }
-    tr.nc-row--overdue { background: #fff5f2 !important; }
+    tr.nc-row--overdue { background: #fff5f5 !important; }
+    tr.nc-row--overdue:hover { background: #ffeded !important; }
+
+    .np-overdue-pill {
+      display: inline-block;
+      background: #fee2e2;
+      color: #b91c1c;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: var(--r-full);
+      vertical-align: middle;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+    .np-table tbody tr.nc-row--overdue { background: #fff5f5; }
+    .np-table tbody tr.nc-row--overdue:hover { background: #ffeded; }
   </style>
 </head>
 <body>
@@ -520,9 +536,9 @@
         <td>
           <div style="display:flex;align-items:center;gap:var(--s-2);flex-wrap:wrap">
             <strong>${escHtml(nc.name)}</strong>
-            ${isOverdue ? '<span class="badge" style="font-size:10px;padding:1px 6px;background:#fee2e2;color:#cc2a00;border:1px solid #fca5a5">Overdue</span>' : ''}
-            ${isNP ? '<span class="badge badge--connected" style="font-size:10px;padding:1px 6px">NP</span>' : ''}
-            ${nc.wants_baptism ? '<span class="badge" style="font-size:10px;padding:1px 6px;background:#e8f4ff;color:#0055cc;border:1px solid #b3d4ff">Wants baptism</span>' : ''}
+            ${isOverdue ? '<span class="np-overdue-pill">Overdue</span>' : ''}
+            ${isNP ? '<span class="badge badge--connected">NP</span>' : ''}
+            ${nc.wants_baptism ? '<span class="badge badge--neutral">Wants baptism</span>' : ''}
           </div>
           <span class="text-xs text-muted">${escHtml(nc.year_level || '')} ${escHtml(nc.gender || '')}</span>
         </td>
