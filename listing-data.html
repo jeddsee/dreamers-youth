@@ -945,6 +945,10 @@
       const idx = allEntries.findIndex(e => e.leader_id === leaderId && e.entry_date === entryDate);
       if (idx !== -1) allEntries[idx][field] = val;
       else allEntries.push({ leader_id: leaderId, campus_id: ldCampus, entry_date: entryDate, term, [field]: val });
+      if (input.dataset.field) {
+        updateRowAvg(input);
+        updateSummaryRow(input);
+      }
     }
   }
 
@@ -952,6 +956,65 @@
   function saveSundayAttendance(input)   { saveAttendanceField(input, 'sunday_attendance');   }
   function saveConnectAttendance(input)  { saveAttendanceField(input, 'connect_attendance');  }
   function saveExpectedAttendance(input) { saveAttendanceField(input, 'expected_attendance'); }
+
+  function updateRowAvg(input) {
+    const tr = input.closest('tr');
+    if (!tr) return;
+    const inputs = [...tr.querySelectorAll('input.cell-input')];
+    const vals = inputs.map(i => { const v = parseInt(i.value, 10); return isNaN(v) ? null : v; });
+    const a = avg(vals);
+    const totalCell = tr.querySelector('.td-total');
+    if (totalCell) {
+      totalCell.textContent = fmtAvg(a);
+      totalCell.className = `td-total avg${a == null ? ' dash' : ''}`;
+    }
+  }
+
+  const SUMMARY_LABELS = {
+    youth_attendance:   'Youth Attendance',
+    sunday_attendance:  'Sunday',
+    connect_attendance: 'Connect Groups',
+  };
+
+  function updateSummaryRow(input) {
+    const field = input.dataset.field;
+    const summaryLabel = SUMMARY_LABELS[field];
+    if (!summaryLabel) return;
+    const tr = input.closest('tr');
+    const table = tr?.closest('table');
+    if (!table) return;
+    const td = input.closest('td');
+    const colIdx = [...tr.cells].indexOf(td);
+    const summaryRow = [...table.querySelectorAll('tr')].find(r => {
+      const lbl = r.querySelector('.td-label');
+      return lbl && lbl.textContent.trim() === summaryLabel;
+    });
+    if (!summaryRow) return;
+    const entryDate = input.dataset.entryDate;
+    const allInputs = [...table.querySelectorAll(`input.cell-input[data-entry-date="${CSS.escape(entryDate)}"][data-field="${field}"]`)];
+    const dateSum = allInputs.reduce((s, i) => {
+      const v = parseInt(i.value, 10);
+      return isNaN(v) ? s : (s == null ? v : s + v);
+    }, null);
+    const summaryCell = summaryRow.cells[colIdx];
+    if (summaryCell) {
+      const span = summaryCell.querySelector('.cell-val');
+      if (span) {
+        span.textContent = fmtVal(dateSum);
+        span.className = `cell-val${dateSum == null ? ' empty' : ''}`;
+      }
+    }
+    const allDateVals = [...summaryRow.querySelectorAll('.td-week .cell-val')].map(span => {
+      const v = parseInt(span.textContent, 10);
+      return isNaN(v) ? null : v;
+    });
+    const a = avg(allDateVals);
+    const totalCell = summaryRow.querySelector('.td-total');
+    if (totalCell) {
+      totalCell.textContent = fmtAvg(a);
+      totalCell.className = `td-total avg${a == null ? ' dash' : ''}`;
+    }
+  }
 
   // Returns true if the entry was created after Thursday 9pm of the entry_date week (entry_date is a Friday)
   function isLateExpected(entry) {
@@ -1266,6 +1329,7 @@
             data-leader-id="${esc(leader.id)}"
             data-entry-date="${esc(date)}"
             data-term="${esc(termKey)}"
+            data-field="youth_attendance"
             onchange="saveYouthAttendance(this)"
             min="0" max="999" placeholder="${isOverdue ? '!' : ''}">
             <button class="late-toggle" title="Mark as late submission"
@@ -1303,6 +1367,7 @@
             data-leader-id="${esc(leader.id)}"
             data-entry-date="${esc(date)}"
             data-term="${esc(termKey)}"
+            data-field="sunday_attendance"
             onchange="saveSundayAttendance(this)"
             min="0" max="999" placeholder="">
             <button class="late-toggle" title="Mark as late submission"
@@ -1339,6 +1404,7 @@
             data-leader-id="${esc(leader.id)}"
             data-entry-date="${esc(date)}"
             data-term="${esc(termKey)}"
+            data-field="connect_attendance"
             onchange="saveConnectAttendance(this)"
             min="0" max="999" placeholder="">
             <button class="late-toggle" title="Mark as late submission"
