@@ -768,7 +768,7 @@
         .like('term', `%${ldYear}%`)
         .eq('no_youth_night', true),
       db.from('new_people')
-        .select('coming_week')
+        .select('coming_week, leader_id')
         .eq('campus_id', ldCampus)
         .not('coming_week', 'is', null),
     ]);
@@ -783,11 +783,15 @@
 
     allEntries = entryRes.data ?? [];
 
-    // Build map: date → count of new people expected that week
+    // Build map: date → { total: N, byLeader: { leaderId: N } }
     npComingByDate = {};
     for (const row of (npRes?.data ?? [])) {
       if (!row.coming_week) continue;
-      npComingByDate[row.coming_week] = (npComingByDate[row.coming_week] ?? 0) + 1;
+      if (!npComingByDate[row.coming_week]) npComingByDate[row.coming_week] = { total: 0, byLeader: {} };
+      npComingByDate[row.coming_week].total++;
+      if (row.leader_id) {
+        npComingByDate[row.coming_week].byLeader[row.leader_id] = (npComingByDate[row.coming_week].byLeader[row.leader_id] ?? 0) + 1;
+      }
     }
 
     const noNightRows = wsRes.data ?? [];
@@ -1222,8 +1226,10 @@
       {
         const wkNP = displayDates.map((date, idx) => {
           if (noNightWeeks[termKey]?.has(idx + 1)) return null;
-          const v = npComingByDate[date];
-          return v != null ? v : null;
+          const entry = npComingByDate[date];
+          if (!entry) return null;
+          if (leaderFilter) return entry.byLeader[leaderFilter] ?? null;
+          return entry.total;
         });
         const npCells = wkNP.map(v =>
           v == null
@@ -1233,10 +1239,12 @@
         const npEmptyCells = Array.from({length: emptyWeekCount}, () =>
           `<td class="td-week"><span class="cell-val empty"></span></td>`
         ).join('');
+        const npTotal = wkNP.reduce((s, v) => v != null ? s + v : s, 0);
+        const npHasAny = wkNP.some(v => v != null);
         tbodyRows += `<tr class="data-row row-alt">
           <td class="td-label">Expected New People</td>
           ${npCells}${npEmptyCells}
-          <td class="td-total dash">—</td>
+          <td class="td-total${npHasAny ? '' : ' dash'}">${npHasAny ? npTotal : '—'}</td>
         </tr>`;
       }
     }

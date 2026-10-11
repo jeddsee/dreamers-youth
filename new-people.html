@@ -322,6 +322,7 @@
           <th>Leader</th>
           <th>Visit 1</th><th>Visit 2</th><th>Visit 3</th>
           <th>Latest contact</th>
+          <th>Coming</th>
           <th></th>
         </tr>
       </thead>
@@ -881,7 +882,7 @@
         <td>
           <div style="display:flex;align-items:center;gap:var(--s-2);flex-wrap:wrap">
             <strong>${escHtml(np.name)}</strong>
-            ${overduePill}${comingPill}
+            ${overduePill}
           </div>
           <span class="text-xs text-muted">${escHtml(np.school||'')} ${escHtml(np.year_level||'')}</span>
         </td>
@@ -891,6 +892,7 @@
         <td class="text-xs">${np.visit_2_date ? formatDate(np.visit_2_date) : '—'}</td>
         <td class="text-xs">${np.visit_3_date ? formatDate(np.visit_3_date) : '—'}</td>
         <td class="text-xs">${latestVisitDate(np)}</td>
+        <td>${np.coming_week && np.coming_week >= todayStr ? '<span class="np-coming-pill">Coming</span>' : ''}</td>
         <td>${np.is_new_christian ? '<span class="badge badge--success">NC</span>' : ''}</td>
       `;
       tr.addEventListener('click', () => openDetailModal(np));
