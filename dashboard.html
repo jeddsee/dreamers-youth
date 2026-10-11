@@ -444,7 +444,7 @@
           <div id="admin-entry-empty" class="empty-state hidden"><p>No youth on your roster yet.</p></div>
           <div id="admin-entry-saved-badge" class="badge badge--success hidden" style="margin-bottom:var(--s-3)">Attendance saved</div>
           <div id="admin-weekly-list" class="card card--flush hidden"></div>
-          <div id="admin-weekly-footer" class="hidden" style="display:none;gap:var(--s-3);margin-top:var(--s-4)">
+          <div id="admin-weekly-footer" class="hidden" style="gap:var(--s-3);margin-top:var(--s-4);display:flex;flex-direction:column">
             <button id="admin-weekly-submit" class="btn btn--primary" style="width:100%" onclick="submitAdminEntry()">Save attendance</button>
           </div>
         </div><!-- /admin-entry-form -->
@@ -841,7 +841,7 @@
     document.getElementById('admin-no-night-msg').classList.add('hidden');
     document.getElementById('admin-entry-empty').classList.add('hidden');
     document.getElementById('admin-weekly-list').classList.add('hidden');
-    document.getElementById('admin-weekly-footer').style.display = 'none';
+    document.getElementById('admin-weekly-footer').classList.add('hidden');
     document.getElementById('admin-entry-saved-badge').classList.add('hidden');
     document.getElementById('admin-entry-loading').classList.remove('hidden');
 
@@ -926,7 +926,7 @@
     });
 
     const footer = document.getElementById('admin-weekly-footer');
-    footer.style.display = 'flex';
+    footer.classList.remove('hidden');
   }
 
   function setAdminStatus(youthId, status, btn) {
