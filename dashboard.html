@@ -230,9 +230,13 @@
 
     <div class="sidebar-section" id="sidebar-entry-section">
       <span class="sidebar-section__label">Data Entry</span>
-      <button class="sidebar-nav-item" data-nav="entry">
+      <button class="sidebar-nav-item" id="weekly-entry-nav" data-nav="entry">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="5" x2="8" y2="11"/><line x1="5" y1="8" x2="11" y2="8"/></svg>
-        <span id="entry-nav-label">Weekly entry</span>
+        Weekly entry
+      </button>
+      <button class="sidebar-nav-item hidden" id="my-att-nav" data-nav="my-attendance">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1z"/><path d="M6 8l2 2 4-4"/></svg>
+        My attendance
       </button>
     </div>
 
@@ -984,30 +988,6 @@
       showError('Could not save. Try again.', 'admin-entry-error');
     } else {
       document.getElementById('admin-entry-saved-badge').classList.remove('hidden');
-      // Refresh leaders count in weekly_stats so weekly-data reflects this submission
-      syncLeadersCount(date, term);
-    }
-  }
-
-  async function syncLeadersCount(entryDate, term) {
-    const [{ data: allLeaders }, { data: entries }] = await Promise.all([
-      db.from('leaders').select('id, role, year_level, year_levels').eq('campus_id', identity.campus_id).is('left_date', null),
-      db.from('leader_entries').select('leader_id').eq('campus_id', identity.campus_id).eq('entry_date', entryDate),
-    ]);
-    const validIds = new Set((allLeaders ?? []).filter(l => {
-      if (l.role === 'leader') return true;
-      if (l.role === 'pastor') {
-        const yls = l.year_levels?.length ? l.year_levels : (l.year_level ? [l.year_level] : []);
-        return yls.length > 0;
-      }
-      return false;
-    }).map(l => l.id));
-    const count = [...new Set((entries ?? []).map(e => e.leader_id))].filter(id => validIds.has(id)).length;
-    if (count > 0) {
-      await db.from('weekly_stats').upsert(
-        { campus_id: identity.campus_id, entry_date: entryDate, term, leaders_count: count },
-        { onConflict: 'campus_id,entry_date' }
-      );
     }
   }
 
