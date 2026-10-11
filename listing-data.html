@@ -1069,11 +1069,12 @@
   function renderAll() {
     const terms = termFilter.size > 0 ? [...termFilter].sort() : [1,2,3,4];
 
+    const pastorIds = new Set(allEntries.map(e => e.leader_id));
     const filteredLeaders = sortLeaders(allLeaders.filter(l => {
       if (showInactive ? l.active !== false : l.active === false) return false;
       if (leaderFilter && l.id !== leaderFilter) return false;
       const yrs = getLeaderYears(l);
-      if (l.role === 'pastor' && !yrs.length) return false;
+      if (l.role === 'pastor' && !yrs.length && !pastorIds.has(l.id)) return false;
       if (yrs.some(y => y === 'Volunteer' || y === 'DST')) return false;
       if (yearLevelFilter.size > 0 && !yrs.some(y => yearLevelFilter.has(y))) return false;
       if (genderFilter.size > 0 && !genderFilter.has(l.gender)) return false;
@@ -1108,11 +1109,12 @@
   function renderTerm(termNum) {
     const el = document.getElementById('ld-block-' + termNum);
     if (!el) return;
+    const pastorIds = new Set(allEntries.map(e => e.leader_id));
     const filteredLeaders = sortLeaders(allLeaders.filter(l => {
       if (showInactive ? l.active !== false : l.active === false) return false;
       if (leaderFilter && l.id !== leaderFilter) return false;
       const yrs = getLeaderYears(l);
-      if (l.role === 'pastor' && !yrs.length) return false;
+      if (l.role === 'pastor' && !yrs.length && !pastorIds.has(l.id)) return false;
       if (yrs.some(y => y === 'Volunteer' || y === 'DST')) return false;
       if (yearLevelFilter.size > 0 && !yrs.some(y => yearLevelFilter.has(y))) return false;
       if (genderFilter.size > 0 && !genderFilter.has(l.gender)) return false;
