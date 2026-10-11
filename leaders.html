@@ -636,6 +636,7 @@ let identity, allLeaders = [], allYouth = [];
 let genderFilter = 'all', yearFilter = new Set(), showInactiveLeaders = false;
 let rosterYearFilter = new Set(), rosterGenderFilter = 'all';
 let lastRosterData = [], lastRosterLeaderMap = {};
+let attendanceByLeader = {}, nextNightDate = '';
 
 function escHtml(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -667,12 +668,17 @@ async function init() {
 
   document.getElementById('rv-year').value = new Date().getFullYear();
 
-  const [leadersRes, youthRes] = await Promise.all([
+  nextNightDate = nextYouthNight(new Date(), identity.youth_night_dow ?? 5);
+
+  const [leadersRes, youthRes, attRes] = await Promise.all([
     db.from('leaders').select('id, name, role, year_level, year_levels, gender, joined_date, left_date, is_admin, policy_signed_at, policy_signed_name').eq('campus_id', identity.campus_id).eq('active', true).order('name'),
     db.from('youth_roster').select('id, name, leader_id, year_level, gender, category, water_baptised, hs_baptised, serving, active, created_at').eq('campus_id', identity.campus_id),
+    db.from('leader_entries').select('leader_id, attendance_listing').eq('campus_id', identity.campus_id).eq('entry_date', nextNightDate),
   ]);
   allLeaders = leadersRes.data ?? [];
   allYouth   = youthRes.data ?? [];
+  attendanceByLeader = {};
+  (attRes.data ?? []).forEach(e => { attendanceByLeader[e.leader_id] = e.attendance_listing ?? []; });
 
   // Init searchable leader combobox for review (active leaders only, no left_date)
   initRvLeaderCombobox();
@@ -1032,14 +1038,15 @@ function renderRoster() {
       </div>
       <table class="leaders-table" style="min-width:0;table-layout:fixed">
         <colgroup>
-          <col style="width:28%">
-          <col style="width:20%">
-          <col style="width:16%">
+          <col style="width:22%">
           <col style="width:14%">
-          <col style="width:12%">
-          <col style="width:10%">
+          <col style="width:11%">
+          <col style="width:11%">
+          <col style="width:9%">
+          <col style="width:25%">
+          <col style="width:8%">
         </colgroup>
-        <thead><tr><th>Name</th><th>Category</th><th style="text-align:center">Water Bap.</th><th style="text-align:center">HS Bap.</th><th style="text-align:center">Serving</th><th></th></tr></thead>
+        <thead><tr><th>Name</th><th>Category</th><th style="text-align:center">Water Bap.</th><th style="text-align:center">HS Bap.</th><th style="text-align:center">Serving</th><th style="text-align:center">Next night <span style="font-weight:400;font-size:9px;opacity:0.7">${escHtml(nextNightDate)}</span></th><th></th></tr></thead>
         <tbody>${ys.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')).map(y => `
           <tr>
             <td class="fw-medium">${escHtml(y.name ?? '—')}</td>
@@ -1047,12 +1054,28 @@ function renderRoster() {
             <td style="text-align:center">${y.water_baptised ? '<span class="check-yes">✓</span>' : '<span class="check-no">—</span>'}</td>
             <td style="text-align:center">${y.hs_baptised   ? '<span class="check-yes">✓</span>' : '<span class="check-no">—</span>'}</td>
             <td style="text-align:center">${y.serving       ? '<span class="check-yes">✓</span>' : '<span class="check-no">—</span>'}</td>
+            ${attStatusCell(y.leader_id, y.id)}
             <td style="text-align:right"><button class="btn btn--ghost btn--sm" onclick="openEditYouthModal('${escHtml(y.id)}')">Edit</button></td>
           </tr>`).join('')}
         </tbody>
       </table>
     </div>
   `).join('');
+}
+
+function attStatusCell(leaderId, youthId) {
+  const listing = attendanceByLeader[leaderId]; // undefined = leader hasn't submitted
+  if (!listing) return '<td style="text-align:center"><span style="font-size:10px;color:var(--c-text-muted);font-style:italic">Unsubmitted</span></td>';
+  const row = listing.find(r => r.youth_id === youthId);
+  if (!row || !row.status) return '<td style="text-align:center"><span style="font-size:10px;color:var(--c-text-muted)">—</span></td>';
+  const colors = { yes: ['#d1fae5','#065f46'], maybe: ['#fef3c7','#92400e'], no: ['#fee2e2','#991b1b'] };
+  const [bg, fg] = colors[row.status] ?? ['#f3f4f6','#374151'];
+  const label = row.status === 'yes' ? 'Yes' : row.status === 'maybe' ? 'Maybe' : 'No';
+  const tip = row.reason ? ` title="${escHtml(row.reason)}"` : '';
+  const reasonText = row.reason
+    ? `<br><span style="font-size:9px;color:var(--c-text-muted);display:block;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(row.reason)}">${escHtml(row.reason)}</span>`
+    : '';
+  return `<td style="text-align:center"><span style="display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;background:${bg};color:${fg}"${tip}>${label}</span>${reasonText}</td>`;
 }
 
 // ── Review ─────────────────────────────────────────────────────────────────────
