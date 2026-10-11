@@ -1623,16 +1623,43 @@
     document.getElementById('snap-content').classList.remove('hidden');
   }
 
+  const STATS_NUMERIC_FIELDS = [
+    'youth_attendance','total_in_department','leaders_count',
+    'first_timers','second_timers','third_timers',
+    'salvations_first','salvations_rededs','bibles_given','fresh_start',
+    'water_baptisms','hs_baptisms','saints_attendance','schools_visited',
+  ];
+
+  // When viewing all campuses, merge per-campus rows into one row per date by summing.
+  function aggregateStatsByDate(stats) {
+    const byDate = new Map();
+    for (const w of stats) {
+      if (!byDate.has(w.entry_date)) {
+        byDate.set(w.entry_date, { ...w });
+      } else {
+        const agg = byDate.get(w.entry_date);
+        for (const f of STATS_NUMERIC_FIELDS) {
+          if (w[f] != null) agg[f] = (agg[f] ?? 0) + w[f];
+        }
+      }
+    }
+    return [...byDate.values()].sort((a, b) => a.entry_date.localeCompare(b.entry_date));
+  }
+
   function getFilteredStats() {
     const active = weeklyStats.filter(w => !w.no_youth_night);
+    let filtered;
     if (snapPeriod === 'year') {
-      return active; // already filtered to snapYear at query time
-    }
-    if (['t1','t2','t3','t4'].includes(snapPeriod)) {
+      filtered = active;
+    } else if (['t1','t2','t3','t4'].includes(snapPeriod)) {
       const label = `${snapPeriod.toUpperCase()} ${snapYear}`; // e.g. 'T1 2026'
-      return active.filter(w => w.term === label);
+      filtered = active.filter(w => w.term === label);
+    } else {
+      filtered = active;
     }
-    return active;
+    // For all-campus view, aggregate per-campus rows into one row per date
+    if (snapCampusId === 'all') filtered = aggregateStatsByDate(filtered);
+    return filtered;
   }
 
   function getFilteredLeaderEntries() {
@@ -1720,8 +1747,20 @@
     // Attendance — average youth_attendance from weekly_stats (pastor's weekly entry)
     const attVals    = filteredStats.map(w => w.youth_attendance).filter(v => v != null);
     const avgAtt     = attVals.length ? Math.round(attVals.reduce((a,b) => a+b, 0) / attVals.length) : 0;
-    const latestDept = weeklyStats.find(w => w.total_in_department != null);
-    const deptTotal  = latestDept ? latestDept.total_in_department : 0;
+    let deptTotal;
+    if (isAll) {
+      // Sum the most-recent total_in_department per campus (weeklyStats ordered desc by date)
+      const perCampus = {};
+      for (const w of weeklyStats) {
+        if (w.total_in_department != null && !perCampus[w.campus_id]) {
+          perCampus[w.campus_id] = w.total_in_department;
+        }
+      }
+      deptTotal = Object.values(perCampus).reduce((s, v) => s + v, 0);
+    } else {
+      const latestDept = weeklyStats.find(w => w.total_in_department != null);
+      deptTotal = latestDept ? latestDept.total_in_department : 0;
+    }
     const leaderCount = leaders.filter(l => l.role === 'leader').length;
     const EXCLUDED_YLS = ['Volunteer', 'DST'];
     const yearLevelLeaders = leaders.filter(l => {
