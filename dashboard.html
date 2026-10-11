@@ -232,7 +232,7 @@
       <span class="sidebar-section__label">Data Entry</span>
       <button class="sidebar-nav-item" id="weekly-entry-nav" data-nav="entry">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="5" x2="8" y2="11"/><line x1="5" y1="8" x2="11" y2="8"/></svg>
-        Weekly entry
+        <span id="entry-nav-label">Weekly entry</span>
       </button>
     </div>
 
@@ -784,6 +784,7 @@
       // Admin leader view
       document.getElementById('pastor-entry-form').hidden = true;
       document.getElementById('admin-entry-form').classList.remove('hidden');
+      document.getElementById('entry-nav-label').textContent = 'My attendance';
       document.getElementById('my-listing-link').classList.remove('hidden');
       const dow = identity.youth_night_dow ?? 5;
       const adminDate = nextYouthNight(new Date(), dow);
