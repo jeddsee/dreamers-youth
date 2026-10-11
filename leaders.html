@@ -680,6 +680,23 @@ async function init() {
   attendanceByLeader = {};
   (attRes.data ?? []).forEach(e => { attendanceByLeader[e.leader_id] = e.attendance_listing ?? []; });
 
+  // Live-update next-night column when any leader submits
+  try {
+    db.channel(`att-sync-${identity.campus_id}`)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'leader_entries',
+        filter: `campus_id=eq.${identity.campus_id}`
+      }, payload => {
+        if (payload.new?.entry_date !== nextNightDate) return;
+        const lid = payload.new.leader_id;
+        if (lid) {
+          attendanceByLeader[lid] = payload.new.attendance_listing ?? [];
+          renderRoster();
+        }
+      })
+      .subscribe();
+  } catch (_) {}
+
   // Init searchable leader combobox for review (active leaders only, no left_date)
   initRvLeaderCombobox();
 
@@ -1534,7 +1551,7 @@ function openEditYouthModal(youthId) {
   // Populate leader dropdown
   const leaderSel = document.getElementById('ey-leader');
   leaderSel.innerHTML = '<option value="">Unassigned</option>' +
-    allLeaders.filter(l => l.role === 'leader').map(l =>
+    allLeaders.filter(l => !l.left_date && (l.role === 'leader' || (l.role === 'pastor' && getLeaderYears(l).length > 0))).map(l =>
       `<option value="${escHtml(l.id)}"${l.id === y.leader_id ? ' selected' : ''}>${escHtml(l.name)}</option>`
     ).join('');
   hideError('ey-error');

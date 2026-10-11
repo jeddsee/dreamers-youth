@@ -920,16 +920,17 @@
     if (entry.youth_attendance != null) return entry.youth_attendance;
     const al = entry.attendance_listing;
     if (!Array.isArray(al) || !al.length) return null;
-    if (!al.some(r => r.status === 'yes' || r.status === 'maybe' || r.status === 'no')) return null;
-    return al.filter(r => r.status === 'yes' || r.status === 'maybe').length;
+    const youthOnly = al.filter(r => r.youth_id !== '_leader');
+    if (!youthOnly.some(r => r.status === 'yes' || r.status === 'maybe' || r.status === 'no')) return null;
+    return youthOnly.filter(r => r.status === 'yes' || r.status === 'maybe').length;
   }
 
-  // Expected attendance: prefer manual override, fall back to attendance_listing length.
+  // Expected attendance: prefer manual override, fall back to attendance_listing length (excluding leader row).
   function expectedCount(entry) {
     if (!entry) return null;
     if (entry.expected_attendance != null) return entry.expected_attendance;
     const al = entry.attendance_listing;
-    if (Array.isArray(al) && al.length > 0) return al.length;
+    if (Array.isArray(al) && al.length > 0) return al.filter(r => r.youth_id !== '_leader').length;
     return null;
   }
 
