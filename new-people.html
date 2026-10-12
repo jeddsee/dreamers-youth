@@ -279,11 +279,17 @@
     <div class="sub-filter-group">
       <span class="sub-filter-label">Period</span>
       <select id="np-cal-year" class="filter-btn" style="height:32px;padding:0 var(--s-2);font-size:12px;font-weight:600;cursor:pointer"></select>
-      <button class="filter-btn active" data-term="all">All</button>
-      <button class="filter-btn" data-term="T1">T1</button>
-      <button class="filter-btn" data-term="T2">T2</button>
-      <button class="filter-btn" data-term="T3">T3</button>
-      <button class="filter-btn" data-term="T4">T4</button>
+      <button class="filter-btn active" id="np-period-all">All</button>
+      <select id="np-term-select" class="filter-btn" style="height:32px;padding:0 var(--s-2);font-size:12px;font-weight:600;cursor:pointer">
+        <option value="">Term</option>
+        <option value="T1">Term 1</option>
+        <option value="T2">Term 2</option>
+        <option value="T3">Term 3</option>
+        <option value="T4">Term 4</option>
+      </select>
+      <select id="np-week-select" class="filter-btn" style="height:32px;padding:0 var(--s-2);font-size:12px;font-weight:600;cursor:pointer">
+        <option value="">Week</option>
+      </select>
     </div>
     <div class="sub-filter-group">
       <span class="sub-filter-label">Year level</span>
@@ -302,6 +308,8 @@
     </div>
   </div>
 
+
+  <div id="np-week-summary" class="hidden" style="padding:var(--s-3) var(--s-5) 0;display:flex;gap:var(--s-5);font-size:13px"></div>
 
   <div style="padding:var(--s-4) var(--s-5) 0">
     <div id="error-banner" class="error-banner hidden"></div>
@@ -663,7 +671,8 @@
   let identity, allNP = [], leaders = [], currentNP = null, currentFilter = 'all',
       currentYearFilter = new Set(), currentGenderFilter = null,
       detailComments = [], myLeaderId = null, npCommentsMap = {},
-      npCalYear = new Date().getFullYear(), npTermFilter = 'all';
+      npCalYear = new Date().getFullYear(), npTermFilter = 'all',
+      npWeekFilter = null, termSettingsAll = [];
 
   async function init() {
     DY.initSidebar();
@@ -683,7 +692,7 @@
     }
     npCalYear = currYear;
 
-    await Promise.all([loadLeaders(), loadNP()]);
+    await Promise.all([loadLeaders(), loadNP(), loadTermSettings()]);
     setupFilters();
   }
 
@@ -696,6 +705,14 @@
     leaders = data ?? [];
 
     initLeaderSearch();
+  }
+
+  async function loadTermSettings() {
+    const { data } = await db.from('term_settings')
+      .select('first_date, num_weeks')
+      .or(`campus_id.eq.${identity.campus_id},campus_id.is.null`)
+      .order('first_date');
+    termSettingsAll = data ?? [];
   }
 
   async function loadNP() {
@@ -797,17 +814,84 @@
 
     document.getElementById('np-cal-year').addEventListener('change', e => {
       npCalYear = parseInt(e.target.value);
+      npWeekFilter = null;
+      const termSel = document.getElementById('np-term-select');
+      if (termSel.value) populateWeeks(termSel.value);
+      else document.getElementById('np-week-select').innerHTML = '<option value="">Week</option>';
       renderTable(currentFilter);
     });
 
-    document.querySelectorAll('.filter-btn[data-term]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.filter-btn[data-term]').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        npTermFilter = btn.dataset.term;
-        renderTable(currentFilter);
-      });
+    document.getElementById('np-period-all').addEventListener('click', () => {
+      document.getElementById('np-period-all').classList.add('active');
+      document.getElementById('np-term-select').value = '';
+      document.getElementById('np-week-select').innerHTML = '<option value="">Week</option>';
+      npTermFilter = 'all';
+      npWeekFilter = null;
+      renderTable(currentFilter);
     });
+
+    document.getElementById('np-term-select').addEventListener('change', e => {
+      const val = e.target.value;
+      document.getElementById('np-period-all').classList.remove('active');
+      npTermFilter = val || 'all';
+      npWeekFilter = null;
+      document.getElementById('np-week-select').value = '';
+      populateWeeks(val);
+      renderTable(currentFilter);
+    });
+
+    document.getElementById('np-week-select').addEventListener('change', e => {
+      npWeekFilter = e.target.value || null;
+      renderTable(currentFilter);
+    });
+  }
+
+  function populateWeeks(termCode) {
+    const weekSel = document.getElementById('np-week-select');
+    weekSel.innerHTML = '<option value="">All weeks</option>';
+    if (!termCode) return;
+    const label = `${termCode} ${npCalYear}`;
+    const ts = termSettingsAll.find(t => DY.termFromDate(t.first_date) === label);
+    if (!ts) return;
+    const dates = DY.termWeekDates(ts.first_date, ts.num_weeks ?? 10);
+    dates.forEach((date, i) => {
+      const opt = document.createElement('option');
+      opt.value = date;
+      opt.textContent = `Week ${i + 1} (${DY.formatDate(date)})`;
+      weekSel.appendChild(opt);
+    });
+  }
+
+  function yearOrder(np) {
+    const m = (np.year_level || '').match(/\d+/);
+    return m ? parseInt(m[0]) : 99;
+  }
+
+  function visitOrder(np) {
+    if (npWeekFilter) {
+      if (np.visit_1_date === npWeekFilter) return 1;
+      if (np.visit_2_date === npWeekFilter) return 2;
+      if (np.visit_3_date === npWeekFilter) return 3;
+      return 4;
+    }
+    if (np.status === 'visit_1') return 1;
+    if (np.status === 'visit_2') return 2;
+    if (np.status === 'visit_3') return 3;
+    return 4;
+  }
+
+  function updateWeekSummary(rows) {
+    const el = document.getElementById('np-week-summary');
+    if (!npWeekFilter) { el.classList.add('hidden'); return; }
+    const first  = rows.filter(np => np.visit_1_date === npWeekFilter).length;
+    const second = rows.filter(np => np.visit_2_date === npWeekFilter).length;
+    const third  = rows.filter(np => np.visit_3_date === npWeekFilter).length;
+    el.innerHTML = `
+      <span>First timers: <strong>${first}</strong></span>
+      <span>Second timers: <strong>${second}</strong></span>
+      <span>Third timers: <strong>${third}</strong></span>
+    `;
+    el.classList.remove('hidden');
   }
 
   function renderTable(filter) {
@@ -826,8 +910,14 @@
     // Ready: only show people needing a leader assigned
     if (filter === 'ready_to_activate') rows = rows.filter(np => !np.leader_id);
 
-    // Calendar year / term filter on visit_1_date
-    if (npTermFilter === 'all') {
+    // Calendar year / term / week filter
+    if (npWeekFilter) {
+      rows = rows.filter(np =>
+        np.visit_1_date === npWeekFilter ||
+        np.visit_2_date === npWeekFilter ||
+        np.visit_3_date === npWeekFilter
+      );
+    } else if (npTermFilter === 'all') {
       rows = rows.filter(np => {
         if (!np.visit_1_date) return true;
         return np.visit_1_date.startsWith(String(npCalYear));
@@ -842,6 +932,17 @@
 
     // Gender — exclusive toggle
     if (currentGenderFilter) rows = rows.filter(np => np.gender === currentGenderFilter);
+
+    // Sort: year asc, gender asc, visit order asc
+    rows.sort((a, b) => {
+      const yo = yearOrder(a) - yearOrder(b);
+      if (yo !== 0) return yo;
+      const go = (a.gender || '').localeCompare(b.gender || '');
+      if (go !== 0) return go;
+      return visitOrder(a) - visitOrder(b);
+    });
+
+    updateWeekSummary(rows);
 
     const empty = document.getElementById('empty-state');
     const wrap  = document.getElementById('table-wrap');
