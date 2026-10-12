@@ -913,16 +913,10 @@
     return [...new Set(allEntries.filter(e => e.term === termKey && e.entry_date).map(e => e.entry_date))].sort();
   }
 
-  // Youth count: prefer manual youth_attendance, fall back to yes-only count from attendance_listing.
-  // Returns null (not 0) when no status has been marked, so unsubmitted weeks show empty.
+  // Youth count: manual input only — returns null if not entered.
   function youthCount(entry) {
     if (!entry) return null;
-    if (entry.youth_attendance != null) return entry.youth_attendance;
-    const al = entry.attendance_listing;
-    if (!Array.isArray(al) || !al.length) return null;
-    const youthOnly = al.filter(r => r.youth_id !== '_leader');
-    if (!youthOnly.some(r => r.status === 'yes' || r.status === 'maybe' || r.status === 'no')) return null;
-    return youthOnly.filter(r => r.status === 'yes').length;
+    return entry.youth_attendance ?? null;
   }
 
   // Expected attendance: prefer manual override, fall back to attendance_listing length (excluding leader row).
