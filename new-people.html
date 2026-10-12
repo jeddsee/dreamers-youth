@@ -272,7 +272,10 @@
     <button class="filter-btn" data-status="archived">Archived</button>
     <button class="filter-btn" data-status="unassigned">Unassigned</button>
     <button class="filter-btn" data-status="overdue" style="color:#cc2a00;border-color:#fca5a5">Overdue</button>
-    <button class="btn btn--primary btn--sm" style="margin-left:auto;flex-shrink:0" onclick="openAddModal()">+ Add</button>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:var(--s-3);flex-shrink:0">
+      <input type="search" id="np-name-search" placeholder="Search name…" style="height:32px;padding:0 var(--s-3);border:1px solid var(--c-border);border-radius:var(--r);font-size:13px;width:160px;background:var(--c-bg);color:var(--c-text)" autocomplete="off">
+      <button class="btn btn--primary btn--sm" onclick="openAddModal()">+ Add</button>
+    </div>
   </div>
 
   <div class="sub-filter-bar">
@@ -672,7 +675,7 @@
       currentYearFilter = new Set(), currentGenderFilter = null,
       detailComments = [], myLeaderId = null, npCommentsMap = {},
       npCalYear = new Date().getFullYear(), npTermFilter = 'all',
-      npWeekFilter = null, termSettingsAll = [];
+      npWeekFilter = null, termSettingsAll = [], npNameFilter = '';
 
   async function init() {
     DY.initSidebar();
@@ -711,7 +714,7 @@
   async function loadTermSettings() {
     const { data } = await db.from('term_settings')
       .select('first_date, num_weeks, term_number, year')
-      .or(`campus_id.eq.${identity.campus_id},campus_id.is.null`)
+      .eq('campus_id', identity.campus_id)
       .order('first_date');
     termSettingsAll = data ?? [];
   }
@@ -845,6 +848,11 @@
       npWeekFilter = e.target.value || null;
       renderTable(currentFilter);
     });
+
+    document.getElementById('np-name-search').addEventListener('input', e => {
+      npNameFilter = e.target.value.trim().toLowerCase();
+      renderTable(currentFilter);
+    });
   }
 
   function populateWeeks(termCode) {
@@ -935,6 +943,9 @@
 
     // Gender — exclusive toggle
     if (currentGenderFilter) rows = rows.filter(np => np.gender === currentGenderFilter);
+
+    // Name search
+    if (npNameFilter) rows = rows.filter(np => (np.name || '').toLowerCase().includes(npNameFilter));
 
     // Sort: year asc, gender asc, visit order asc
     rows.sort((a, b) => {
