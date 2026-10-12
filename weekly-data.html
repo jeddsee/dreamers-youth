@@ -569,8 +569,24 @@
   // ─── Aggregate entries for a given term+week ───
   function getWeekAgg(statsArr, termNum, weekNum) {
     const termKey = 'T' + termNum;
-    const entries = statsArr.filter(e => e.term && e.term.startsWith(termKey) && e.week_number === weekNum);
+    let entries = statsArr.filter(e => e.term && e.term.startsWith(termKey) && e.week_number === weekNum);
     if (!entries.length) return null;
+    // Deduplicate per campus: if multiple rows for the same campus+week exist (e.g. old fallback rows
+    // plus newer term-settings rows), prefer the canonical entry_date, then the latest date.
+    const canonDate = getWeekDate(termNum, weekNum);
+    const byCampus = new Map();
+    for (const e of entries) {
+      if (!byCampus.has(e.campus_id)) {
+        byCampus.set(e.campus_id, e);
+      } else {
+        const prev = byCampus.get(e.campus_id);
+        const eCanon = canonDate && e.entry_date === canonDate;
+        const prevCanon = canonDate && prev.entry_date === canonDate;
+        if (eCanon && !prevCanon) byCampus.set(e.campus_id, e);
+        else if (!prevCanon && (e.entry_date ?? '') > (prev.entry_date ?? '')) byCampus.set(e.campus_id, e);
+      }
+    }
+    entries = [...byCampus.values()];
     const noNight = entries.every(e => e.no_youth_night);
     const agg = { no_youth_night: noNight };
     for (const field of NUMERIC_FIELDS) {
@@ -689,7 +705,14 @@
     const val     = rawVal === '' ? null : parseInt(rawVal, 10);
     if (rawVal !== '' && isNaN(val)) { input.style.outline = '2px solid #e53e3e'; return; }
 
-    const existing = wdStats.find(r => r.term === termKey && r.week_number === weekNum && r.campus_id === wdCampus);
+    const tNum = parseInt(termKey[1]);
+    const canonicalDate = getWeekDate(tNum, weekNum);
+    // Prefer the canonical-date row (matches what getWeekAgg displays and what dashboard expects).
+    // Fall back to any row for this week if no canonical-date row exists yet.
+    let existing = canonicalDate
+      ? wdStats.find(r => r.campus_id === wdCampus && r.entry_date === canonicalDate)
+      : null;
+    if (!existing) existing = wdStats.find(r => r.term === termKey && r.week_number === weekNum && r.campus_id === wdCampus);
 
     input.disabled = true;
     input.style.outline = '';
@@ -698,9 +721,7 @@
       ({ error } = await db.from('weekly_stats').update({ [field]: val }).eq('id', existing.id));
       if (!error) existing[field] = val;
     } else {
-      const tNum = parseInt(termKey[1]);
-      const entryDate = getWeekDate(tNum, weekNum);
-      const newRow = { term: termKey, week_number: weekNum, campus_id: wdCampus, entry_date: entryDate, [field]: val };
+      const newRow = { term: termKey, week_number: weekNum, campus_id: wdCampus, entry_date: canonicalDate, [field]: val };
       const { data: rows, error: err } = await db.from('weekly_stats')
         .upsert(newRow, { onConflict: 'campus_id,entry_date' }).select();
       error = err;

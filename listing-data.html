@@ -917,15 +917,19 @@
   // Youth count: manual input only — returns null if not entered.
   function youthCount(entry) {
     if (!entry) return null;
-    return entry.youth_attendance ?? null;
-  }
-
-  // Expected attendance: prefer manual override, fall back to attendance_listing length (excluding leader row).
-  function expectedCount(entry) {
-    if (!entry) return null;
+    if (entry.youth_attendance != null) return entry.youth_attendance;
     const al = entry.attendance_listing;
     if (!Array.isArray(al) || !al.length) return null;
     return al.filter(r => r.youth_id !== '_leader' && r.status === 'yes').length;
+  }
+
+  // Expected attendance: prefer manual override, fall back to attendance_listing (yes + maybe).
+  function expectedCount(entry) {
+    if (!entry) return null;
+    if (entry.expected_attendance != null) return entry.expected_attendance;
+    const al = entry.attendance_listing;
+    if (!Array.isArray(al) || !al.length) return null;
+    return al.filter(r => r.youth_id !== '_leader' && (r.status === 'yes' || r.status === 'maybe')).length;
   }
 
   // ─── Generic save for any leader_entries field ───
