@@ -793,31 +793,21 @@
 
     if (isAllCampus) {
       // All Campuses admin — no personal entry form
-    } else if (identity.is_admin) {
-      // Admin leader view
-      document.getElementById('pastor-entry-form').hidden = true;
-      document.getElementById('admin-entry-form').classList.remove('hidden');
-      document.getElementById('entry-nav-label').textContent = 'My attendance';
-      document.getElementById('my-listing-link').classList.remove('hidden');
-      const dow = identity.youth_night_dow ?? 5;
-      const adminDate = nextYouthNight(new Date(), dow);
-      document.getElementById('admin-entry-date').value = adminDate;
-      loadAdminRoster().then(() => loadAdminWeeklyEntry());
     } else {
+      // Pastor or admin leader — full pastoral experience
+      if (identity.is_admin) document.getElementById('my-listing-link').classList.remove('hidden');
       loadWeeklyEntry(initDate);
       generateQR();
       loadSetup();
       subscribeWeeklyStatsSync();
-      // Pastor with year level: also show attendance entry synced to weekly stats date
+      // Show personal attendance entry if they lead a group (year levels assigned)
       if ((identity.year_levels ?? []).length > 0) {
         const attForm = document.getElementById('admin-entry-form');
         attForm.classList.remove('hidden');
-        // Add a visual divider / heading so the two sections are distinct
         const divider = document.createElement('div');
         divider.className = 'entry-section';
         divider.innerHTML = '<div class="entry-section-label">My attendance</div><p style="font-size:var(--text-sm);color:var(--c-text-secondary);margin-top:var(--s-1)">Mark attendance for your group — this feeds into the listing data table.</p>';
         document.getElementById('pastor-entry-form').after(divider);
-        // Hide the separate date picker — date is driven by the weekly stats week selector above
         document.getElementById('admin-date-row').style.display = 'none';
         document.getElementById('admin-entry-header').style.display = 'none';
         document.getElementById('admin-entry-date').value = nextYouthNight(new Date(), identity.youth_night_dow ?? 5);

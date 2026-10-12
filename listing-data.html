@@ -509,6 +509,7 @@
   const { db } = DY;
   const identity = requireIdentity('pastor');
   if (!identity) throw new Error('not authenticated');
+  if (identity.campus_id === 'all') { window.location.href = 'dashboard.html'; throw new Error('all-campus'); }
 
   let ldCampus = identity.campus_id;
 

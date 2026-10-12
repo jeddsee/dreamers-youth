@@ -231,9 +231,9 @@ function initSidebar() {
   try {
     const id = JSON.parse(sessionStorage.getItem('dy_identity') || 'null');
     if (id?.campus_id === 'all') {
-      sidebar.querySelectorAll('a[href="new-people.html"], a[href="new-christians.html"]').forEach(el => {
-        el.style.display = 'none';
-      });
+      sidebar.querySelectorAll(
+        'a[href="new-people.html"], a[href="new-christians.html"], a[href="listing-data.html"], #my-listing-link'
+      ).forEach(el => { el.style.display = 'none'; });
     }
   } catch {}
 }
