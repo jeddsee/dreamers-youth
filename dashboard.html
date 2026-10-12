@@ -1648,20 +1648,22 @@
     return [...byDate.values()].sort((a, b) => a.entry_date.localeCompare(b.entry_date));
   }
 
-  function getFilteredStats() {
+  // Raw period-filtered stats (one row per campus per week — not aggregated)
+  function getRawFilteredStats() {
     const active = weeklyStats.filter(w => !w.no_youth_night);
-    let filtered;
-    if (snapPeriod === 'year') {
-      filtered = active;
-    } else if (['t1','t2','t3','t4'].includes(snapPeriod)) {
-      const label = `${snapPeriod.toUpperCase()} ${snapYear}`; // e.g. 'T1 2026'
-      filtered = active.filter(w => w.term === label);
-    } else {
-      filtered = active;
+    if (snapPeriod === 'year') return active;
+    if (['t1','t2','t3','t4'].includes(snapPeriod)) {
+      const label = `${snapPeriod.toUpperCase()} ${snapYear}`;
+      return active.filter(w => w.term === label);
     }
+    return active;
+  }
+
+  function getFilteredStats() {
+    const raw = getRawFilteredStats();
     // For all-campus view, aggregate per-campus rows into one row per date
-    if (snapCampusId === 'all') filtered = aggregateStatsByDate(filtered);
-    return filtered;
+    if (snapCampusId === 'all') return aggregateStatsByDate(raw);
+    return raw;
   }
 
   function getFilteredLeaderEntries() {
@@ -1746,9 +1748,23 @@
     const sum = arr => arr.reduce((a,b) => a+b, 0);
     const col = key => filteredStats.map(w => w[key] ?? 0);
 
-    // Attendance — average youth_attendance from weekly_stats (pastor's weekly entry)
-    const attVals    = filteredStats.map(w => w.youth_attendance).filter(v => v != null);
-    const avgAtt     = attVals.length ? Math.round(attVals.reduce((a,b) => a+b, 0) / attVals.length) : 0;
+    // Attendance — for all-campus: sum each campus's own average (= total church attendance per week)
+    //              for single campus: average of that campus's weekly values
+    let avgAtt;
+    if (isAll) {
+      const rawStats = getRawFilteredStats();
+      const byCampus = {};
+      for (const w of rawStats) {
+        if (w.youth_attendance == null) continue;
+        if (!byCampus[w.campus_id]) byCampus[w.campus_id] = [];
+        byCampus[w.campus_id].push(w.youth_attendance);
+      }
+      avgAtt = Math.round(Object.values(byCampus).reduce((total, vals) =>
+        total + (vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0), 0));
+    } else {
+      const attVals = filteredStats.map(w => w.youth_attendance).filter(v => v != null);
+      avgAtt = attVals.length ? Math.round(attVals.reduce((a, b) => a + b, 0) / attVals.length) : 0;
+    }
     let deptTotal;
     if (isAll) {
       // Sum the most-recent total_in_department per campus (weeklyStats ordered desc by date)
