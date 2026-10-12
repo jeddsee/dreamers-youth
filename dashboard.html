@@ -820,7 +820,7 @@
         // Hide the separate date picker — date is driven by the weekly stats week selector above
         document.getElementById('admin-date-row').style.display = 'none';
         document.getElementById('admin-entry-header').style.display = 'none';
-        document.getElementById('admin-entry-date').value = initDate;
+        document.getElementById('admin-entry-date').value = nextYouthNight(new Date(), identity.youth_night_dow ?? 5);
         loadAdminRoster().then(() => loadAdminWeeklyEntry());
       }
     }
@@ -1437,10 +1437,6 @@
     const date = termWeekToDate(term, week);
     document.getElementById('ws-date').value = date;
     loadWeeklyEntry(date);
-    if ((identity.year_levels ?? []).length > 0) {
-      document.getElementById('admin-entry-date').value = date;
-      loadAdminWeeklyEntry();
-    }
   }
 
   async function loadWeeklyEntry(date) {
