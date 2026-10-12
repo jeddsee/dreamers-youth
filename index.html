@@ -223,6 +223,7 @@
       const EXCLUDE_YL = new Set(['Volunteer', 'DST']);
       leaders = (data ?? []).filter(l => {
         if (l.role === 'pastor') return true;
+        if (l.is_admin) return true;
         const yls = l.year_levels?.length ? l.year_levels : (l.year_level ? [l.year_level] : []);
         return yls.some(yl => !EXCLUDE_YL.has(yl));
       }).sort((a, b) => a.name.localeCompare(b.name));

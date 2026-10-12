@@ -116,6 +116,8 @@
       padding-top: var(--s-2);
     }
     .entry-row__right { display: flex; flex-direction: column; gap: var(--s-2); align-items: flex-end; }
+    /* Equal-width Yes/Maybe/No buttons */
+    .entry-row .toggle-group button { min-width: 52px; text-align: center; }
     .reason-input {
       font-size: var(--text-sm);
       padding: var(--s-2) var(--s-3);
@@ -267,6 +269,16 @@
       align-items: center;
       gap: var(--s-3);
       z-index: 10;
+    }
+    /* Weekly entry footer: aligns with and completes the weekly-list card box */
+    #weekly-footer {
+      margin: 0 var(--s-5) var(--s-5);
+      padding: var(--s-4) var(--s-5);
+      border-left: 1px solid var(--c-border);
+      border-right: 1px solid var(--c-border);
+      border-bottom: 1px solid var(--c-border);
+      border-radius: 0 0 var(--r-lg) var(--r-lg);
+      box-shadow: var(--shadow-sm);
     }
     .nc-step {
       display: inline-block;
@@ -486,7 +498,7 @@
       <div id="weekly-empty" class="empty-state hidden">
         <p>No youth on your roster yet.</p>
       </div>
-      <div id="weekly-list" class="card card--flush hidden" style="margin: 0 var(--s-5) var(--s-5)"></div>
+      <div id="weekly-list" class="card card--flush hidden" style="margin: 0 var(--s-5) 0; border-radius: var(--r-lg) var(--r-lg) 0 0; border-bottom: none"></div>
       <div id="weekly-footer" class="sticky-footer hidden">
         <button id="weekly-reset" class="btn btn--ghost" onclick="resetWeeklyEntry()">Reset</button>
         <button id="weekly-submit" class="btn btn--primary" style="flex:1">Save attendance</button>
