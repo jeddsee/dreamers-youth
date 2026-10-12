@@ -739,6 +739,7 @@
   let archivedCount = 0, snapNP = [], snapLeaderEntries = [], snapNC = [];
 
   let allCampuses = [];
+  let isAllCampus = false;
   let snapCampusId = null;
   let snapPeriod   = 'year';
   let snapYear     = new Date().getFullYear();
@@ -751,36 +752,48 @@
     if (!identity) return;
     if (identity.role !== 'pastor' && !identity.is_admin) { window.location.href = '/'; return; }
     snapCampusId = identity.campus_id;
+    isAllCampus  = identity.campus_id === 'all';
     document.getElementById('sidebar-user').textContent = identity.leader_name;
 
     // Load term settings so entry_dates match canonical week dates
     const curYear = new Date().getFullYear();
-    const { data: tsRows } = await db.from('term_settings')
-      .select('term_number, first_date, campus_id')
-      .eq('year', curYear)
-      .or(`campus_id.eq.${identity.campus_id},campus_id.is.null`);
-    wsTermFirstDate = {};
-    for (const ts of (tsRows ?? [])) {
-      const t = ts.term_number;
-      if (!wsTermFirstDate[t] || wsTermFirstDate[t]._isFallback) {
-        wsTermFirstDate[t] = { first_date: ts.first_date, _isFallback: ts.campus_id === null };
+    if (!isAllCampus) {
+      const { data: tsRows } = await db.from('term_settings')
+        .select('term_number, first_date, campus_id')
+        .eq('year', curYear)
+        .or(`campus_id.eq.${identity.campus_id},campus_id.is.null`);
+      wsTermFirstDate = {};
+      for (const ts of (tsRows ?? [])) {
+        const t = ts.term_number;
+        if (!wsTermFirstDate[t] || wsTermFirstDate[t]._isFallback) {
+          wsTermFirstDate[t] = { first_date: ts.first_date, _isFallback: ts.campus_id === null };
+        }
       }
     }
 
     // Auto-detect current term/year and set week 1
     const termKey = currentTermKey();
-    const termSelect = document.getElementById('ws-term');
-    if (termSelect) termSelect.value = termKey;
-    const yearEl = document.getElementById('ws-year');
-    if (yearEl) yearEl.value = curYear;
-    const initDate = termWeekToDate(termKey, 1);
-    document.getElementById('ws-date').value = initDate;
+    let initDate = '';
+    if (!isAllCampus) {
+      const termSelect = document.getElementById('ws-term');
+      if (termSelect) termSelect.value = termKey;
+      const yearEl = document.getElementById('ws-year');
+      if (yearEl) yearEl.value = curYear;
+      initDate = termWeekToDate(termKey, 1);
+      document.getElementById('ws-date').value = initDate;
+    }
 
     setupSidebarNav();
+    if (isAllCampus) {
+      document.getElementById('sidebar-entry-section').style.display = 'none';
+      document.querySelectorAll('#sidebar-people-section a[href="new-people.html"], #sidebar-people-section a[href="new-christians.html"]').forEach(el => el.style.display = 'none');
+    }
     await populateCampusSwitcher();
     loadSnapshot();
 
-    if (identity.is_admin) {
+    if (isAllCampus) {
+      // All Campuses admin — no personal entry form
+    } else if (identity.is_admin) {
       // Admin leader view
       document.getElementById('pastor-entry-form').hidden = true;
       document.getElementById('admin-entry-form').classList.remove('hidden');
@@ -1027,13 +1040,14 @@
 
   function renderCampusSwitcher() {
     const el = document.getElementById('sidebar-campus-switcher');
-    const visible = identity.is_admin
+    const showAll = isAllCampus || (!identity.is_admin && allCampuses.length > 1);
+    const visible = (identity.is_admin && !isAllCampus)
       ? allCampuses.filter(c => c.id === identity.campus_id)
       : allCampuses;
     const btns = visible.map(c =>
       `<button class="campus-switcher-btn${snapCampusId === c.id ? ' active' : ''}" onclick="selectCampus('${c.id}')">${escHtml(c.name)}</button>`
     );
-    if (!identity.is_admin && allCampuses.length > 1) {
+    if (showAll) {
       btns.push(`<button class="campus-switcher-btn campus-switcher-btn--all${snapCampusId === 'all' ? ' active' : ''}" onclick="selectCampus('all')">All Campuses</button>`);
     }
     el.innerHTML = btns.join('');

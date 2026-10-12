@@ -243,7 +243,7 @@
       <div class="card card--flush leaders-table-wrap mb-6">
         <table class="leaders-table">
           <thead>
-            <tr>
+            <tr id="team-thead-row">
               <th>Leader</th>
               <th>Year Level</th>
               <th>Youth</th>
@@ -633,6 +633,7 @@
 const { db } = DY;
 
 let identity, allLeaders = [], allYouth = [];
+let isAllCampus = false;
 let genderFilter = 'all', yearFilter = new Set(), showInactiveLeaders = false;
 let rosterYearFilter = new Set(), rosterGenderFilter = 'all';
 let lastRosterData = [], lastRosterLeaderMap = {};
@@ -662,6 +663,7 @@ async function init() {
   DY.initSidebar();
   identity = requireIdentity('pastor');
   if (!identity) return;
+  isAllCampus = identity.campus_id === 'all';
   document.getElementById('sidebar-campus').textContent = identity.campus_name;
   document.getElementById('sidebar-user').textContent   = identity.leader_name;
   if (identity.is_admin) document.getElementById('my-listing-link').classList.remove('hidden');
@@ -670,32 +672,56 @@ async function init() {
 
   nextNightDate = nextYouthNight(new Date(), identity.youth_night_dow ?? 5);
 
-  const [leadersRes, youthRes, attRes] = await Promise.all([
-    db.from('leaders').select('id, name, role, year_level, year_levels, gender, joined_date, left_date, is_admin, policy_signed_at, policy_signed_name').eq('campus_id', identity.campus_id).eq('active', true).order('name'),
-    db.from('youth_roster').select('id, name, leader_id, year_level, gender, category, water_baptised, hs_baptised, serving, active, created_at').eq('campus_id', identity.campus_id),
-    db.from('leader_entries').select('leader_id, attendance_listing').eq('campus_id', identity.campus_id).eq('entry_date', nextNightDate),
-  ]);
-  allLeaders = leadersRes.data ?? [];
+  let leadersRes, youthRes, attRes, campusNamesMap = {};
+  if (isAllCampus) {
+    [leadersRes, youthRes] = await Promise.all([
+      db.from('leaders').select('id, name, role, year_level, year_levels, gender, joined_date, left_date, is_admin, policy_signed_at, policy_signed_name, campus_id').eq('active', true).order('name'),
+      db.from('youth_roster').select('id, name, leader_id, year_level, gender, category, water_baptised, hs_baptised, serving, active, created_at'),
+    ]);
+    const { data: campuses } = await db.from('campuses').select('id, name').eq('archived', false);
+    (campuses ?? []).forEach(c => { campusNamesMap[c.id] = c.name; });
+    attRes = { data: [] };
+  } else {
+    [leadersRes, youthRes, attRes] = await Promise.all([
+      db.from('leaders').select('id, name, role, year_level, year_levels, gender, joined_date, left_date, is_admin, policy_signed_at, policy_signed_name').eq('campus_id', identity.campus_id).eq('active', true).order('name'),
+      db.from('youth_roster').select('id, name, leader_id, year_level, gender, category, water_baptised, hs_baptised, serving, active, created_at').eq('campus_id', identity.campus_id),
+      db.from('leader_entries').select('leader_id, attendance_listing').eq('campus_id', identity.campus_id).eq('entry_date', nextNightDate),
+    ]);
+  }
+
+  allLeaders = (leadersRes.data ?? []).map(l => ({ ...l, _campusName: campusNamesMap[l.campus_id] ?? '—' }));
   allYouth   = youthRes.data ?? [];
   attendanceByLeader = {};
   (attRes.data ?? []).forEach(e => { attendanceByLeader[e.leader_id] = e.attendance_listing ?? []; });
 
-  // Live-update next-night column when any leader submits
-  try {
-    db.channel(`att-sync-${identity.campus_id}`)
-      .on('postgres_changes', {
-        event: '*', schema: 'public', table: 'leader_entries',
-        filter: `campus_id=eq.${identity.campus_id}`
-      }, payload => {
-        if (payload.new?.entry_date !== nextNightDate) return;
-        const lid = payload.new.leader_id;
-        if (lid) {
-          attendanceByLeader[lid] = payload.new.attendance_listing ?? [];
-          renderRoster();
-        }
-      })
-      .subscribe();
-  } catch (_) {}
+  // Live-update next-night column when any leader submits (skip for all-campus)
+  if (!isAllCampus) {
+    try {
+      db.channel(`att-sync-${identity.campus_id}`)
+        .on('postgres_changes', {
+          event: '*', schema: 'public', table: 'leader_entries',
+          filter: `campus_id=eq.${identity.campus_id}`
+        }, payload => {
+          if (payload.new?.entry_date !== nextNightDate) return;
+          const lid = payload.new.leader_id;
+          if (lid) {
+            attendanceByLeader[lid] = payload.new.attendance_listing ?? [];
+            renderRoster();
+          }
+        })
+        .subscribe();
+    } catch (_) {}
+  }
+
+  // Inject campus column header when in all-campus mode
+  if (isAllCampus) {
+    const theadRow = document.getElementById('team-thead-row');
+    if (theadRow) {
+      const th = document.createElement('th');
+      th.textContent = 'Campus';
+      theadRow.children[1].insertAdjacentElement('beforebegin', th);
+    }
+  }
 
   // Init searchable leader combobox for review (active leaders only, no left_date)
   initRvLeaderCombobox();
@@ -776,10 +802,11 @@ function renderTeamTable() {
   const tbody = document.getElementById('team-tbody');
   const leaders = allLeaders;
 
+  const colCount = isAllCampus ? 7 : 6;
   if (!leaders.length) {
     const countEl = document.getElementById('team-count');
     if (countEl) countEl.textContent = '0 leaders';
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--c-text-muted);padding:var(--s-6)">No leaders set up yet.</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="${colCount}" style="text-align:center;color:var(--c-text-muted);padding:var(--s-6)">No leaders set up yet.</td></tr>`;
     return;
   }
 
@@ -809,7 +836,7 @@ function renderTeamTable() {
   if (countEl) countEl.textContent = `${rows.length} leader${rows.length !== 1 ? 's' : ''}`;
 
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--c-text-muted);padding:var(--s-6)">No leaders match this filter.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${colCount}" style="text-align:center;color:var(--c-text-muted);padding:var(--s-6)">No leaders match this filter.</td></tr>`;
     return;
   }
 
@@ -830,8 +857,10 @@ function renderTeamTable() {
           ${new Date(l.policy_signed_at).toLocaleDateString('en-AU', {day:'numeric',month:'short',year:'numeric'})}
         </span>`
       : `<span style="font-size:var(--text-xs);color:var(--c-text-muted)">Not signed</span>`;
+    const campusTd = isAllCampus ? `<td style="color:var(--c-text-muted);font-size:var(--text-sm)">${escHtml(l._campusName || '—')}</td>` : '';
     return `<tr${rowStyle}>
       <td class="fw-semibold">${escHtml(l.name)}${rolePill}${inactivePill}</td>
+      ${campusTd}
       <td>${escHtml(getLeaderYearsLabel(l))}</td>
       <td class="fw-semibold">${inactive ? '—' : youth.length}</td>
       <td style="color:var(--c-text-muted);font-size:var(--text-sm)"${sinceStr}>${tenure}</td>
