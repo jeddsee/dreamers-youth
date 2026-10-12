@@ -402,6 +402,7 @@
     DY.initSidebar();
     identity = requireIdentity('pastor');
     if (!identity) return;
+    if (identity.campus_id === 'all') { window.location.href = 'dashboard.html'; return; }
     document.getElementById('sidebar-campus').textContent = identity.campus_name;
     document.getElementById('sidebar-user').textContent   = identity.leader_name;
     await Promise.all([loadLeaders(), loadRoster(), loadNC(), loadPipelineNPs()]);

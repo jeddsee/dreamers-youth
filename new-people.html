@@ -678,6 +678,7 @@
     DY.initSidebar();
     identity = requireIdentity('pastor');
     if (!identity) return;
+    if (identity.campus_id === 'all') { window.location.href = 'dashboard.html'; return; }
     document.getElementById('sidebar-campus').textContent = identity.campus_name;
     document.getElementById('sidebar-user').textContent   = identity.leader_name;
 
@@ -709,7 +710,7 @@
 
   async function loadTermSettings() {
     const { data } = await db.from('term_settings')
-      .select('first_date, num_weeks')
+      .select('first_date, num_weeks, term_number, year')
       .or(`campus_id.eq.${identity.campus_id},campus_id.is.null`)
       .order('first_date');
     termSettingsAll = data ?? [];
@@ -850,8 +851,8 @@
     const weekSel = document.getElementById('np-week-select');
     weekSel.innerHTML = '<option value="">All weeks</option>';
     if (!termCode) return;
-    const label = `${termCode} ${npCalYear}`;
-    const ts = termSettingsAll.find(t => DY.termFromDate(t.first_date) === label);
+    const termNum = parseInt(termCode.replace('T', ''), 10);
+    const ts = termSettingsAll.find(t => t.term_number === termNum && t.year === npCalYear);
     if (!ts) return;
     const dates = DY.termWeekDates(ts.first_date, ts.num_weeks ?? 10);
     dates.forEach((date, i) => {
@@ -903,6 +904,8 @@
       rows = allNP.filter(np => !excluded.has(np.status) && !np.leader_id);
     } else if (filter === 'overdue') {
       rows = allNP.filter(np => !excluded.has(np.status) && npDaysOverdue(np) != null);
+    } else if (filter === 'visit_3') {
+      rows = allNP.filter(np => np.visit_3_date);
     } else {
       rows = allNP.filter(np => np.status === filter);
     }

@@ -228,6 +228,14 @@ function initSidebar() {
   if (localStorage.getItem('dy_sidebar_collapsed') === '1') {
     sidebar.classList.add('sidebar--collapsed');
   }
+  try {
+    const id = JSON.parse(sessionStorage.getItem('dy_identity') || 'null');
+    if (id?.campus_id === 'all') {
+      sidebar.querySelectorAll('a[href="new-people.html"], a[href="new-christians.html"]').forEach(el => {
+        el.style.display = 'none';
+      });
+    }
+  } catch {}
 }
 
 function toggleSidebar() {

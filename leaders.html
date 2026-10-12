@@ -217,6 +217,10 @@
 
       <!-- Filters -->
       <div style="display:flex;flex-wrap:wrap;gap:var(--s-5);margin-bottom:var(--s-4)">
+        <div class="pill-row hidden" id="campus-pills">
+          <span class="pill-row-label">Campus</span>
+          <button class="pill active" data-campus="all" onclick="setFilter('campus','all',this)">All</button>
+        </div>
         <div class="pill-row" id="gender-pills">
           <span class="pill-row-label">Gender</span>
           <button class="pill active" onclick="setFilter('gender','all',this)">All</button>
@@ -634,7 +638,7 @@ const { db } = DY;
 
 let identity, allLeaders = [], allYouth = [];
 let isAllCampus = false;
-let genderFilter = 'all', yearFilter = new Set(), showInactiveLeaders = false;
+let genderFilter = 'all', yearFilter = new Set(), showInactiveLeaders = false, campusFilter = 'all';
 let rosterYearFilter = new Set(), rosterGenderFilter = 'all';
 let lastRosterData = [], lastRosterLeaderMap = {};
 let attendanceByLeader = {}, nextNightDate = '';
@@ -678,9 +682,20 @@ async function init() {
       db.from('leaders').select('id, name, role, year_level, year_levels, gender, joined_date, left_date, is_admin, policy_signed_at, policy_signed_name, campus_id').eq('active', true).order('name'),
       db.from('youth_roster').select('id, name, leader_id, year_level, gender, category, water_baptised, hs_baptised, serving, active, created_at'),
     ]);
-    const { data: campuses } = await db.from('campuses').select('id, name').eq('archived', false);
+    const { data: campuses } = await db.from('campuses').select('id, name').eq('archived', false).order('name');
     (campuses ?? []).forEach(c => { campusNamesMap[c.id] = c.name; });
     attRes = { data: [] };
+    // Populate campus toggle pills
+    const campusPills = document.getElementById('campus-pills');
+    campusPills.classList.remove('hidden');
+    (campuses ?? []).forEach(c => {
+      const btn = document.createElement('button');
+      btn.className = 'pill';
+      btn.dataset.campus = c.id;
+      btn.textContent = c.name;
+      btn.onclick = () => setFilter('campus', c.id, btn);
+      campusPills.appendChild(btn);
+    });
   } else {
     [leadersRes, youthRes, attRes] = await Promise.all([
       db.from('leaders').select('id, name, role, year_level, year_levels, gender, joined_date, left_date, is_admin, policy_signed_at, policy_signed_name').eq('campus_id', identity.campus_id).eq('active', true).order('name'),
@@ -734,7 +749,11 @@ async function init() {
 
 // ── Team table ─────────────────────────────────────────────────────────────────
 function setFilter(type, value, btn) {
-  if (type === 'gender') {
+  if (type === 'campus') {
+    campusFilter = value;
+    document.querySelectorAll('#campus-pills .pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  } else if (type === 'gender') {
     genderFilter = value;
     document.querySelectorAll('#gender-pills .pill').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
@@ -821,6 +840,7 @@ function renderTeamTable() {
     const isInactive = !!l.left_date;
     // Always filter by active/inactive state first
     if (showInactiveLeaders ? !isInactive : isInactive) return false;
+    if (campusFilter !== 'all' && l.campus_id !== campusFilter) return false;
     if (genderFilter !== 'all' && l.gender !== genderFilter) return false;
     if (yearFilter.size > 0 && !getLeaderYears(l).some(y => yearFilter.has(y))) return false;
     return true;
