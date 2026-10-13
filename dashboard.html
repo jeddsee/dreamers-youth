@@ -1403,7 +1403,7 @@
     if (configured?.first_date) {
       const d = new Date(configured.first_date + 'T00:00:00');
       d.setDate(d.getDate() + (weekNum - 1) * 7);
-      return d.toISOString().slice(0, 10);
+      return formatDateInput(d); // use local date to match term_settings first_date day-of-week
     }
     // Fallback: hardcoded starts + DOW adjustment (no term_settings configured)
     const starts = { T1: `${year}-02-03`, T2: `${year}-04-22`, T3: `${year}-07-14`, T4: `${year}-10-06` };

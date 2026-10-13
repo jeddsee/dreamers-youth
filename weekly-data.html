@@ -647,7 +647,7 @@
     if (!fd) return null;
     const d = new Date(fd + 'T00:00:00');
     d.setDate(d.getDate() + (weekNum - 1) * 7);
-    return d.toISOString().slice(0, 10);
+    return formatDateInput(d); // use local date so result matches DY.termWeekDates header dates
   }
 
   async function loadTermSettings() {
@@ -707,19 +707,33 @@
 
     const tNum = parseInt(termKey[1]);
     const canonicalDate = getWeekDate(tNum, weekNum);
-    // Prefer the canonical-date row (matches what getWeekAgg displays and what dashboard expects).
-    // Fall back to any row for this week if no canonical-date row exists yet.
+    // 1. Exact canonical match — right date and week_number already set.
     let existing = canonicalDate
-      ? wdStats.find(r => r.campus_id === wdCampus && r.entry_date === canonicalDate)
+      ? wdStats.find(r => r.campus_id === wdCampus && r.entry_date === canonicalDate && r.week_number === weekNum)
       : null;
-    if (!existing) existing = wdStats.find(r => r.term === termKey && r.week_number === weekNum && r.campus_id === wdCampus);
+    // 2. Canonical date exists but week_number is null — adopt this row and fix its week metadata.
+    if (!existing && canonicalDate) {
+      existing = wdStats.find(r => r.campus_id === wdCampus && r.entry_date === canonicalDate && r.week_number == null) ?? null;
+    }
+    // 3. No canonical row found — use the latest-dated row for this week so edits match getWeekAgg's display.
+    if (!existing) {
+      const candidates = wdStats.filter(r => r.term === termKey && r.week_number === weekNum && r.campus_id === wdCampus);
+      if (candidates.length > 0) {
+        existing = candidates.reduce((best, r) => (r.entry_date ?? '') > (best.entry_date ?? '') ? r : best);
+      }
+    }
 
     input.disabled = true;
     input.style.outline = '';
     let error;
     if (existing) {
-      ({ error } = await db.from('weekly_stats').update({ [field]: val }).eq('id', existing.id));
-      if (!error) existing[field] = val;
+      const needsMeta = existing.week_number == null || existing.term !== termKey;
+      const updatePayload = needsMeta ? { [field]: val, term: termKey, week_number: weekNum } : { [field]: val };
+      ({ error } = await db.from('weekly_stats').update(updatePayload).eq('id', existing.id));
+      if (!error) {
+        existing[field] = val;
+        if (needsMeta) { existing.term = termKey; existing.week_number = weekNum; }
+      }
     } else {
       const newRow = { term: termKey, week_number: weekNum, campus_id: wdCampus, entry_date: canonicalDate, [field]: val };
       const { data: rows, error: err } = await db.from('weekly_stats')
