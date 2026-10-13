@@ -1073,7 +1073,8 @@
       const yrs = getLeaderYears(l);
       if (l.role === 'pastor' && !yrs.length && !pastorIds.has(l.id)) return false;
       if (yrs.some(y => y === 'Volunteer' || y === 'DST')) return false;
-      if (yearLevelFilter.size > 0 && !yrs.some(y => yearLevelFilter.has(y))) return false;
+      const isPastorWithEntries = l.role === 'pastor' && pastorIds.has(l.id);
+      if (yearLevelFilter.size > 0 && !yrs.some(y => yearLevelFilter.has(y)) && !isPastorWithEntries) return false;
       if (genderFilter.size > 0 && !genderFilter.has(l.gender)) return false;
       return true;
     }));
@@ -1113,7 +1114,8 @@
       const yrs = getLeaderYears(l);
       if (l.role === 'pastor' && !yrs.length && !pastorIds.has(l.id)) return false;
       if (yrs.some(y => y === 'Volunteer' || y === 'DST')) return false;
-      if (yearLevelFilter.size > 0 && !yrs.some(y => yearLevelFilter.has(y))) return false;
+      const isPastorWithEntries = l.role === 'pastor' && pastorIds.has(l.id);
+      if (yearLevelFilter.size > 0 && !yrs.some(y => yearLevelFilter.has(y)) && !isPastorWithEntries) return false;
       if (genderFilter.size > 0 && !genderFilter.has(l.gender)) return false;
       return true;
     }));

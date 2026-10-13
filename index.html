@@ -323,7 +323,8 @@
         year_levels:  yls,
         youth_night_dow,
       });
-      const goDashboard = selectedLeader.role === 'pastor' || selectedLeader.is_admin;
+      const isDSTorVolunteer = yls.some(yl => yl === 'DST' || yl === 'Volunteer') && selectedLeader.role !== 'pastor';
+      const goDashboard = (selectedLeader.role === 'pastor' || selectedLeader.is_admin) && !isDSTorVolunteer;
       window.location.href = goDashboard ? 'dashboard.html' : 'leader.html';
     });
   </script>

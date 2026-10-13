@@ -281,16 +281,16 @@
   <div class="sub-filter-bar">
     <div class="sub-filter-group">
       <span class="sub-filter-label">Period</span>
-      <select id="np-cal-year" class="filter-btn" style="height:32px;padding:0 var(--s-2);font-size:12px;font-weight:600;cursor:pointer"></select>
+      <select id="np-cal-year" class="filter-btn" style="height:32px;padding:0 20px 0 var(--s-2);font-size:12px;font-weight:600;cursor:pointer"></select>
       <button class="filter-btn active" id="np-period-all">All</button>
-      <select id="np-term-select" class="filter-btn" style="height:32px;padding:0 var(--s-2);font-size:12px;font-weight:600;cursor:pointer">
+      <select id="np-term-select" class="filter-btn" style="height:32px;padding:0 20px 0 var(--s-2);font-size:12px;font-weight:600;cursor:pointer">
         <option value="">Term</option>
         <option value="T1">Term 1</option>
         <option value="T2">Term 2</option>
         <option value="T3">Term 3</option>
         <option value="T4">Term 4</option>
       </select>
-      <select id="np-week-select" class="filter-btn" style="height:32px;padding:0 var(--s-2);font-size:12px;font-weight:600;cursor:pointer">
+      <select id="np-week-select" class="filter-btn" style="height:32px;padding:0 20px 0 var(--s-2);font-size:12px;font-weight:600;cursor:pointer">
         <option value="">Week</option>
       </select>
     </div>
@@ -721,7 +721,7 @@
 
   async function loadTermSettings() {
     const { data } = await db.from('term_settings')
-      .select('first_date, num_weeks, term_number, year')
+      .select('first_date, num_weeks, term_number')
       .eq('campus_id', identity.campus_id)
       .order('first_date');
     termSettingsAll = data ?? [];
@@ -868,7 +868,7 @@
     weekSel.innerHTML = '<option value="">All weeks</option>';
     if (!termCode) return;
     const termNum = parseInt(termCode.replace('T', ''), 10);
-    const ts = termSettingsAll.find(t => t.term_number === termNum && t.year === npCalYear);
+    const ts = termSettingsAll.find(t => t.term_number === termNum && t.first_date && parseInt(t.first_date.slice(0, 4), 10) === npCalYear);
     if (!ts) return;
     const dates = DY.termWeekDates(ts.first_date, ts.num_weeks ?? 10);
     dates.forEach((date, i) => {
@@ -955,13 +955,12 @@
     // Name search
     if (npNameFilter) rows = rows.filter(np => (np.name || '').toLowerCase().includes(npNameFilter));
 
-    // Sort: year asc, gender asc, visit order asc
+    // Sort: most recent visit date first, then name
     rows.sort((a, b) => {
-      const yo = yearOrder(a) - yearOrder(b);
-      if (yo !== 0) return yo;
-      const go = (a.gender || '').localeCompare(b.gender || '');
-      if (go !== 0) return go;
-      return visitOrder(a) - visitOrder(b);
+      const aDate = [a.visit_3_date, a.visit_2_date, a.visit_1_date].find(Boolean) ?? '';
+      const bDate = [b.visit_3_date, b.visit_2_date, b.visit_1_date].find(Boolean) ?? '';
+      if (bDate !== aDate) return bDate.localeCompare(aDate);
+      return (a.name || '').localeCompare(b.name || '');
     });
 
     updateWeekSummary(rows);
