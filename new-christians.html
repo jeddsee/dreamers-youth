@@ -196,7 +196,10 @@
     <button class="filter-btn active" data-nc-assign="all">All</button>
     <button class="filter-btn" data-nc-assign="unassigned">Unassigned</button>
     <button class="filter-btn" data-nc-assign="overdue" style="color:#cc2a00;border-color:#fca5a5">Overdue</button>
-    <button class="btn btn--primary btn--sm" style="margin-left:auto;flex-shrink:0" onclick="openAddModal()">+ Add</button>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:var(--s-3);flex-shrink:0">
+      <input type="search" id="nc-name-search" placeholder="Search name…" style="height:32px;padding:0 var(--s-3);border:1px solid var(--c-border);border-radius:var(--r);font-size:13px;width:160px;background:var(--c-bg);color:var(--c-text)" autocomplete="off">
+      <button class="btn btn--primary btn--sm" onclick="openAddModal()">+ Add</button>
+    </div>
   </div>
 
   <!-- Year, Gender & Status sub-filters -->
@@ -396,7 +399,7 @@
   const { db } = DY;
 
   let identity, allNC = [], leaders = [], rosterYouth = [], currentNC = null, npNameSet = new Set(),
-      ncCommentsMap = {}, ncYearFilter = new Set(), ncGenderFilter = null, ncAssignFilter = 'all', ncStatusFilter = 'in_progress';
+      ncCommentsMap = {}, ncYearFilter = new Set(), ncGenderFilter = null, ncAssignFilter = 'all', ncStatusFilter = 'in_progress', ncNameFilter = '';
 
   async function init() {
     DY.initSidebar();
@@ -444,6 +447,10 @@
         }
         renderList();
       });
+    });
+    document.getElementById('nc-name-search').addEventListener('input', e => {
+      ncNameFilter = e.target.value.trim().toLowerCase();
+      renderList();
     });
   }
 
@@ -506,6 +513,7 @@
     if (ncAssignFilter === 'overdue') rows = rows.filter(nc => !(ncCommentsMap[nc.id]?.length));
     if (ncYearFilter.size > 0) rows = rows.filter(nc => ncYearFilter.has(nc.year_level));
     if (ncGenderFilter) rows = rows.filter(nc => nc.gender === ncGenderFilter);
+    if (ncNameFilter) rows = rows.filter(nc => (nc.name || '').toLowerCase().includes(ncNameFilter));
 
     const wrap  = document.getElementById('table-wrap');
     const tbody = document.getElementById('nc-tbody');
