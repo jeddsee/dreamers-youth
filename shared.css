@@ -815,7 +815,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 }
 .sidebar-logout {
   font-size: var(--text-xs);
-  color: rgba(255,255,255,0.35);
+  color: rgba(255,255,255,0.6);
   background: none;
   border: none;
   cursor: pointer;
@@ -823,24 +823,26 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   text-align: left;
   transition: color var(--transition);
 }
-.sidebar-logout:hover { color: rgba(255,255,255,0.7); }
+.sidebar-logout:hover { color: #fff; }
 
 .sidebar-logout-icon {
-  display: none;
+  display: flex;
   width: 36px; height: 36px;
-  margin: 0 auto var(--s-3);
+  margin: 0 auto var(--s-2);
   border-radius: var(--r-sm);
   border: none;
   background: transparent;
-  color: rgba(255,255,255,0.35);
+  color: rgba(255,255,255,0.6);
   cursor: pointer;
   align-items: center;
   justify-content: center;
   transition: background var(--transition), color var(--transition);
   flex-shrink: 0;
 }
-.sidebar-logout-icon:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7); }
+.sidebar-logout-icon:hover { background: rgba(255,255,255,0.12); color: #fff; }
 .sidebar--collapsed .sidebar-logout-icon { display: flex; }
+/* When expanded, hide the icon (text label is visible in sidebar-bottom) */
+.sidebar:not(.sidebar--collapsed) .sidebar-logout-icon { display: none; }
 
 .sidebar-campus-switcher {
   display: flex;

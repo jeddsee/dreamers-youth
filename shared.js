@@ -245,6 +245,11 @@ function toggleSidebar() {
   try { localStorage.setItem('dy_sidebar_collapsed', collapsed ? '1' : '0'); } catch {}
 }
 
+function logout() {
+  clearIdentity();
+  window.location.href = '/';
+}
+
 // ── Global export ─────────────────────────────────────────────────────────────
 window.DY = {
   db: supaDb,
@@ -255,5 +260,5 @@ window.DY = {
   computeAttendanceStats, hasAbsenceFlag,
   termWeekDates,
   planningCentre,
-  initSidebar, toggleSidebar,
+  initSidebar, toggleSidebar, logout,
 };
