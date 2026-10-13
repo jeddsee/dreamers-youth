@@ -351,11 +351,19 @@
       <div class="modal__body" id="detail-body">
         <div id="detail-error" class="error-banner hidden" style="margin-bottom:var(--s-4)"></div>
 
+        <!-- Ready to archive banner (set by leader) -->
+        <div id="archive-flag-banner" class="hidden" style="background:#FEF3C7;border:1px solid #FCD34D;border-radius:var(--r-lg);padding:var(--s-4);margin-bottom:var(--s-4);display:flex;align-items:center;justify-content:space-between;gap:var(--s-3)">
+          <div>
+            <div class="fw-semibold" style="color:#92400E">Leader flagged: ready to archive</div>
+            <div class="text-sm" style="color:#B45309">Their leader has marked this person as ready to be archived.</div>
+          </div>
+        </div>
+
         <!-- Activate banner -->
         <div id="activate-banner" class="hidden" style="background:var(--c-success-light);border:1px solid #A7F3D0;border-radius:var(--r-lg);padding:var(--s-4);margin-bottom:var(--s-4);display:flex;align-items:center;justify-content:space-between;gap:var(--s-3)">
           <div>
             <div class="fw-semibold" style="color:var(--c-success-text)">Ready to activate!</div>
-            <div class="text-sm" style="color:var(--c-success-text)">3 visits logged. Activate to add to roster.</div>
+            <div id="activate-banner-sub" class="text-sm" style="color:var(--c-success-text)">3 visits logged. Activate to add to roster.</div>
           </div>
           <button class="btn btn--primary btn--sm" id="activate-btn" onclick="activateCurrentNP()">Activate</button>
         </div>
@@ -988,8 +996,8 @@
       const overduePill = daysOD != null
         ? `<span class="np-overdue-pill">${daysOD}d overdue</span>`
         : '';
-      const comingPill = np.coming_week && np.coming_week >= todayStr
-        ? `<span class="np-coming-pill">Coming</span>`
+      const archivePill = np.ready_to_archive && np.status !== 'archived'
+        ? `<span style="display:inline-block;padding:1px 7px;border-radius:9999px;font-size:0.7rem;font-weight:600;background:#FEF3C7;color:#92400E;border:1px solid #FCD34D">Archive?</span>`
         : '';
       const tr = document.createElement('tr');
       if (daysOD != null) tr.classList.add('np-row--overdue');
@@ -997,7 +1005,7 @@
         <td>
           <div style="display:flex;align-items:center;gap:var(--s-2);flex-wrap:wrap">
             <strong>${escHtml(np.name)}</strong>
-            ${overduePill}
+            ${overduePill}${archivePill}
           </div>
           <span class="text-xs text-muted">${escHtml(np.school||'')} ${escHtml(np.year_level||'')}</span>
         </td>
@@ -1080,9 +1088,18 @@
     document.getElementById('detail-comment-input').value = '';
     loadDetailComments(np.id);
 
-    // Activate banner
-    const canActivate = np.visit_3_date && np.status !== 'activated' && np.status !== 'archived';
+    // Ready-to-archive flag (set by leader)
+    document.getElementById('archive-flag-banner').classList.toggle('hidden', !np.ready_to_archive || np.status === 'archived');
+
+    // Activate banner — allow after 2 or 3 visits
+    const visitCount = [np.visit_1_date, np.visit_2_date, np.visit_3_date].filter(Boolean).length;
+    const canActivate = visitCount >= 2 && np.status !== 'activated' && np.status !== 'archived';
     document.getElementById('activate-banner').classList.toggle('hidden', !canActivate);
+    if (canActivate) {
+      document.getElementById('activate-banner-sub').textContent =
+        np.visit_3_date ? '3 visits logged. Activate to add to roster.'
+                        : '2 visits logged. Activate to add to roster.';
+    }
 
     // Archive / Unarchive / Unactivate button
     const archiveBtn = document.getElementById('archive-btn');

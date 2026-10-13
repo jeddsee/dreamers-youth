@@ -1477,6 +1477,11 @@
               onchange="saveNP('${np.id}', 'catchup_done', this.checked)">
             Catch-up done
           </label>
+          <label class="np-check" style="color:${np.ready_to_archive ? '#b45309' : 'inherit'}">
+            <input type="checkbox" ${np.ready_to_archive ? 'checked' : ''}
+              onchange="saveNP('${np.id}', 'ready_to_archive', this.checked);this.closest('.np-check').style.color=this.checked?'#b45309':'inherit'">
+            Ready to archive
+          </label>
         </div>
         <div class="np-card__comments" id="npc-${np.id}">
           <div class="np-comment__latest hidden"></div>
