@@ -763,33 +763,24 @@
     return dates.length ? dates.sort().at(-1) : null;
   }
 
-  function tuesdayAfterFriday(fridayStr) {
-    const d = new Date(fridayStr + 'T00:00:00');
-    d.setDate(d.getDate() + 4);
-    return d;
+  function lastFriday() {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const daysSince = (today.getDay() - 5 + 7) % 7; // 0 on Friday
+    const d = new Date(today);
+    d.setDate(today.getDate() - daysSince);
+    return { date: d, daysSince };
   }
 
   function npDaysOverdue(np) {
     if (np.status === 'activated' || np.status === 'archived') return null;
     const visitStr = npLatestVisitDate(np);
     if (!visitStr) return null;
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const deadline = tuesdayAfterFriday(visitStr);
-    const visitMs = new Date(visitStr + 'T00:00:00').getTime();
+    const { date: friday, daysSince } = lastFriday();
+    if (daysSince === 0) return null; // grace period on Friday itself
     const comments = npCommentsMap[np.id] ?? [];
-    // Most recent comment timestamp on or after the latest visit date
-    const lastCommentMs = comments
-      .map(ts => new Date(ts).getTime())
-      .filter(t => t >= visitMs)
-      .reduce((max, t) => Math.max(max, t), 0);
-    // Overdue baseline = max(deadline, last comment date) so late comments push it forward
-    let baseline = deadline;
-    if (lastCommentMs > 0) {
-      const lcd = new Date(lastCommentMs); lcd.setHours(0, 0, 0, 0);
-      if (lcd.getTime() > deadline.getTime()) baseline = lcd;
-    }
-    if (today <= baseline) return null;
-    return Math.floor((today.getTime() - baseline.getTime()) / 86400000);
+    const hasCommentSinceFriday = comments.some(ts => new Date(ts).getTime() >= friday.getTime());
+    if (hasCommentSinceFriday) return null;
+    return daysSince;
   }
 
   function setupFilters() {

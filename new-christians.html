@@ -506,11 +506,27 @@
     renderList();
   }
 
+  function ncLastFriday() {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const daysSince = (today.getDay() - 5 + 7) % 7;
+    if (daysSince === 0) return null; // grace period on Friday itself
+    const d = new Date(today);
+    d.setDate(today.getDate() - daysSince);
+    return d;
+  }
+
+  function isNcOverdue(nc) {
+    const friday = ncLastFriday();
+    if (!friday) return false; // Friday — grace period
+    const comments = ncCommentsMap[nc.id] ?? [];
+    return !comments.some(ts => new Date(ts).getTime() >= friday.getTime());
+  }
+
   function renderList() {
     let rows = allNC;
     if (ncStatusFilter !== 'all') rows = rows.filter(nc => (nc.follow_up_status || 'in_progress') === ncStatusFilter);
     if (ncAssignFilter === 'unassigned') rows = rows.filter(nc => !nc.leader_id);
-    if (ncAssignFilter === 'overdue') rows = rows.filter(nc => !(ncCommentsMap[nc.id]?.length));
+    if (ncAssignFilter === 'overdue') rows = rows.filter(nc => isNcOverdue(nc));
     if (ncYearFilter.size > 0) rows = rows.filter(nc => ncYearFilter.has(nc.year_level));
     if (ncGenderFilter) rows = rows.filter(nc => nc.gender === ncGenderFilter);
     if (ncNameFilter) rows = rows.filter(nc => (nc.name || '').toLowerCase().includes(ncNameFilter));
@@ -539,7 +555,7 @@
                           : nc.decision_type === 'rededication' ? 'Rededication' : '—';
       const tr = document.createElement('tr');
       const isNP = npNameSet.has(nc.name.trim().toLowerCase());
-      const isOverdue = !(ncCommentsMap[nc.id]?.length);
+      const isOverdue = isNcOverdue(nc);
       if (isOverdue) tr.className = 'nc-row--overdue';
       tr.innerHTML = `
         <td>
