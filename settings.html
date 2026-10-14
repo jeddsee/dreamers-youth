@@ -528,7 +528,7 @@ async function init() {
   const isAllCampus = identity.campus_id === 'all';
   document.getElementById('sidebar-campus').textContent = identity.campus_name;
   document.getElementById('sidebar-user').textContent   = identity.leader_name;
-  if (identity.is_admin) document.getElementById('my-listing-link').classList.remove('hidden');
+  if (identity.is_admin || identity.role === 'staff') document.getElementById('my-listing-link').classList.remove('hidden');
 
   if (isAllCampus) {
     document.getElementById('campus-manager-section').hidden = false;

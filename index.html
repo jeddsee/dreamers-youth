@@ -236,7 +236,7 @@
 
       const EXCLUDE_YL = new Set(['Volunteer', 'DST']);
       leaders = (data ?? []).filter(l => {
-        if (l.role === 'pastor') return true;
+        if (l.role === 'pastor' || l.role === 'staff') return true;
         if (l.is_admin) return true;
         const yls = l.year_levels?.length ? l.year_levels : (l.year_level ? [l.year_level] : []);
         return yls.some(yl => !EXCLUDE_YL.has(yl));
@@ -323,8 +323,8 @@
         year_levels:  yls,
         youth_night_dow,
       });
-      const isDSTorVolunteer = yls.some(yl => yl === 'DST' || yl === 'Volunteer') && selectedLeader.role !== 'pastor';
-      const goDashboard = (selectedLeader.role === 'pastor' || selectedLeader.is_admin) && !isDSTorVolunteer;
+      const isDSTorVolunteer = yls.some(yl => yl === 'DST' || yl === 'Volunteer') && selectedLeader.role !== 'pastor' && selectedLeader.role !== 'staff';
+      const goDashboard = (selectedLeader.role === 'pastor' || selectedLeader.role === 'staff' || selectedLeader.is_admin) && !isDSTorVolunteer;
       window.location.href = goDashboard ? 'dashboard.html' : 'leader.html';
     });
   </script>

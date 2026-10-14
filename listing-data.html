@@ -543,7 +543,7 @@
   // ─── Init ───
   async function init() {
     document.getElementById('sidebar-user').textContent = identity.leader_name || '—';
-    if (identity.is_admin) document.getElementById('my-listing-link').classList.remove('hidden');
+    if (identity.is_admin || identity.role === 'staff') document.getElementById('my-listing-link').classList.remove('hidden');
 
     // Year selector
     const yearSel = document.getElementById('ld-year');
@@ -573,7 +573,7 @@
 
     // Load campuses and build sidebar switcher
     const { data: campusData } = await db.from('campuses').select('id, name').eq('archived', false).order('name');
-    const visibleCampuses = identity.is_admin
+    const visibleCampuses = (identity.is_admin || identity.role === 'staff')
       ? (campusData ?? []).filter(c => c.id === identity.campus_id)
       : (campusData ?? []);
     const switcher = document.getElementById('sidebar-campus-switcher');

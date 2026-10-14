@@ -736,7 +736,7 @@
   let subLeaders = [], subEntryMap = new Map(), subNoNightCampuses = new Set(), subIsAll = false;
   let subYearFilters = new Set(), subGenderFilter = '';
   const SUB_YL_EXCLUDE = new Set(['Volunteer', 'DST']);
-  let archivedCount = 0, snapNP = [], snapLeaderEntries = [], snapNC = [];
+  let archivedCount = 0, snapLeaderEntries = [], snapNC = [];
 
   let allCampuses = [];
   let isAllCampus = false;
@@ -750,7 +750,7 @@
     DY.initSidebar();
     identity = requireIdentity();
     if (!identity) return;
-    if (identity.role !== 'pastor' && !identity.is_admin) { window.location.href = '/'; return; }
+    if (identity.role !== 'pastor' && identity.role !== 'staff' && !identity.is_admin) { window.location.href = '/'; return; }
     snapCampusId = identity.campus_id;
     isAllCampus  = identity.campus_id === 'all';
     document.getElementById('sidebar-user').textContent = identity.leader_name;
@@ -795,7 +795,7 @@
       // All Campuses admin — no personal entry form
     } else {
       // Pastor or admin leader — full pastoral experience
-      if (identity.is_admin) document.getElementById('my-listing-link').classList.remove('hidden');
+      if (identity.is_admin || identity.role === 'staff') document.getElementById('my-listing-link').classList.remove('hidden');
       loadWeeklyEntry(initDate);
       generateQR();
       loadSetup();
@@ -1030,8 +1030,9 @@
 
   function renderCampusSwitcher() {
     const el = document.getElementById('sidebar-campus-switcher');
-    const showAll = isAllCampus || (!identity.is_admin && allCampuses.length > 1);
-    const visible = (identity.is_admin && !isAllCampus)
+    const isStaffOrAdmin = identity.role === 'staff' || identity.is_admin;
+    const showAll = isAllCampus || (!isStaffOrAdmin && allCampuses.length > 1);
+    const visible = (isStaffOrAdmin && !isAllCampus)
       ? allCampuses.filter(c => c.id === identity.campus_id)
       : allCampuses;
     const btns = visible.map(c =>
@@ -1534,7 +1535,6 @@
     const yearFrom = `${snapYear}-01-01`;
     const yearTo   = `${snapYear}-12-31`;
     let statsQ   = db.from('weekly_stats').select('*').gte('entry_date', yearFrom).lte('entry_date', yearTo).order('entry_date', { ascending: false });
-    let npQ      = db.from('new_people').select('status, campus_id, created_at, visit_1_date').not('status', 'in', '("archived")').gte('visit_1_date', yearFrom).lte('visit_1_date', yearTo);
     let ncQ      = db.from('new_christians').select('decision_date, decision_type, campus_id').gte('decision_date', yearFrom).lte('decision_date', yearTo);
     let leQ      = db.from('leader_entries').select('entry_date, term, campus_id, youth_attendance, connect_attendance, sunday_attendance').gte('entry_date', yearFrom).lte('entry_date', yearTo);
 
@@ -1547,7 +1547,6 @@
       rosterQ  = rosterQ.in('campus_id', ids);
       archQ    = archQ.in('campus_id', ids);
       statsQ   = statsQ.in('campus_id', ids);
-      npQ      = npQ.in('campus_id', ids);
       leQ      = leQ.in('campus_id', ids);
       ncQ      = ncQ.in('campus_id', ids);
     } else {
@@ -1555,17 +1554,15 @@
       rosterQ  = rosterQ.eq('campus_id', snapCampusId);
       archQ    = archQ.eq('campus_id', snapCampusId);
       statsQ   = statsQ.eq('campus_id', snapCampusId);
-      npQ      = npQ.eq('campus_id', snapCampusId);
       leQ      = leQ.eq('campus_id', snapCampusId);
       ncQ      = ncQ.eq('campus_id', snapCampusId);
     }
 
-    const [leadersRes, rosterRes, archRes, statsRes, npRes, leRes, ncRes] = await Promise.all([leadersQ, rosterQ, archQ, statsQ, npQ, leQ, ncQ]);
+    const [leadersRes, rosterRes, archRes, statsRes, leRes, ncRes] = await Promise.all([leadersQ, rosterQ, archQ, statsQ, leQ, ncQ]);
     leaders            = leadersRes.data ?? [];
     roster             = rosterRes.data ?? [];
     archivedCount      = archRes.count ?? 0;
     weeklyStats        = statsRes.data ?? [];
-    snapNP             = npRes.data ?? [];
     snapLeaderEntries  = leRes.data ?? [];
     snapNC             = ncRes.data ?? [];
 
@@ -1690,10 +1687,6 @@
       return arr.filter(n => { const d = dateFn(n); return d && d >= from && d <= to; });
     }
     return arr;
-  }
-
-  function getFilteredNP() {
-    return filterByPeriod(snapNP, n => n.visit_1_date || (n.created_at ? n.created_at.split('T')[0] : null));
   }
 
   function getFilteredNC() {
