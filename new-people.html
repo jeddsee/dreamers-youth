@@ -961,12 +961,17 @@
     // Name search
     if (npNameFilter) rows = rows.filter(np => (np.name || '').toLowerCase().includes(npNameFilter));
 
-    // Sort: most recent visit date first, then name
+    // Sort: year level asc → boys first → most recent date desc → visit number asc
+    const genderRank = g => g === 'Male' ? 0 : g === 'Female' ? 1 : 2;
     rows.sort((a, b) => {
+      const yo = yearOrder(a) - yearOrder(b);
+      if (yo !== 0) return yo;
+      const go = genderRank(a.gender) - genderRank(b.gender);
+      if (go !== 0) return go;
       const aDate = [a.visit_3_date, a.visit_2_date, a.visit_1_date].find(Boolean) ?? '';
       const bDate = [b.visit_3_date, b.visit_2_date, b.visit_1_date].find(Boolean) ?? '';
       if (bDate !== aDate) return bDate.localeCompare(aDate);
-      return (a.name || '').localeCompare(b.name || '');
+      return visitOrder(a) - visitOrder(b);
     });
 
     updateWeekSummary(rows);
