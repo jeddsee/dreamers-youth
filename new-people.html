@@ -721,10 +721,16 @@
 
   async function loadTermSettings() {
     const { data } = await db.from('term_settings')
-      .select('first_date, num_weeks, term_number')
-      .eq('campus_id', identity.campus_id)
+      .select('first_date, num_weeks, term_number, campus_id')
+      .or(`campus_id.eq.${identity.campus_id},campus_id.is.null`)
       .order('first_date');
-    termSettingsAll = data ?? [];
+    // Prefer campus-specific rows over global (null campus_id) for same term+year
+    const best = new Map();
+    (data ?? []).forEach(ts => {
+      const key = `${ts.term_number}_${(ts.first_date ?? '').slice(0, 4)}`;
+      if (!best.has(key) || best.get(key).campus_id === null) best.set(key, ts);
+    });
+    termSettingsAll = [...best.values()];
   }
 
   async function loadNP() {
