@@ -92,6 +92,17 @@
     .modal-backdrop { display: none; }
     .modal-backdrop.open { display: flex; }
 
+    /* ── Leader listing modal ── */
+    .llm-list { max-height: 340px; overflow-y: auto; }
+    .llm-row {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      padding: var(--s-3) 0; border-bottom: 1px solid var(--c-border); gap: var(--s-3);
+    }
+    .llm-row:last-child { border-bottom: none; }
+    .llm-row-info { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+    .llm-row-right { text-align: right; flex-shrink: 0; }
+    .llm-reason { font-size: var(--text-xs); color: var(--c-text-muted); margin-top: 2px; }
+
     /* ── Admin attendance form rows ── */
     .entry-row {
       display: flex; align-items: flex-start; gap: var(--s-3);
@@ -1363,9 +1374,12 @@
       const done = !inNoNight && (subEntryMap.get(l.id) ?? false);
       const chip = document.createElement('div');
       chip.className = 'snap-leader-chip';
+      chip.style.cursor = 'pointer';
+      chip.title = 'View listing';
       chip.innerHTML = inNoNight
         ? `<span class="fw-medium">${escHtml(l.name)}</span><span class="badge" style="background:var(--c-bg);color:var(--c-text-muted)">No night</span>`
         : `<span class="fw-medium">${escHtml(l.name)}</span><span class="badge badge--${done ? 'success' : 'danger'}">${done ? 'Submitted' : 'Missing'}</span>`;
+      chip.addEventListener('click', () => openLeaderListingModal(l.id));
       return chip;
     };
 
@@ -1392,6 +1406,96 @@
     } else {
       displayed.forEach(l => subBody.appendChild(makeChip(l)));
     }
+  }
+
+  // ── Leader listing modal ────────────────────────────────────────────────────
+
+  function closeLeaderListingModal() {
+    document.getElementById('leader-listing-modal').classList.remove('open');
+  }
+
+  async function openLeaderListingModal(leaderId) {
+    const leader = subLeaders.find(l => l.id === leaderId);
+    if (!leader) return;
+    document.getElementById('llm-leader-name').textContent = leader.name;
+    document.getElementById('llm-date-line').textContent = '';
+    document.getElementById('llm-body').innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:center;padding:var(--s-8)"><div class="spinner"></div></div>';
+    document.getElementById('leader-listing-modal').classList.add('open');
+
+    const [entryRes, rosterRes] = await Promise.all([
+      db.from('leader_entries')
+        .select('entry_date, attendance_listing, notes')
+        .eq('leader_id', leaderId)
+        .in('entry_date', subCheckDates)
+        .order('entry_date', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      db.from('youth_roster')
+        .select('id, name, year_level')
+        .eq('leader_id', leaderId)
+        .eq('active', true)
+        .order('name'),
+    ]);
+
+    const entry = entryRes.data;
+    const youth = rosterRes.data ?? [];
+    const body  = document.getElementById('llm-body');
+
+    if (!entry) {
+      body.innerHTML = `<p style="color:var(--c-text-muted);text-align:center;padding:var(--s-6)">Not submitted yet for this week.</p>`;
+      return;
+    }
+
+    document.getElementById('llm-date-line').textContent = 'Entry for ' + DY.formatDate(entry.entry_date);
+
+    const listing   = entry.attendance_listing ?? [];
+    const youthMap  = new Map(youth.map(y => [y.id, y]));
+    const leaderRow = listing.find(r => r.youth_id === '_leader');
+    const youthRows = listing.filter(r => r.youth_id !== '_leader');
+
+    const comingCount = youthRows.filter(r => r.status === 'yes').length;
+    const notCount    = youthRows.filter(r => r.status === 'no').length;
+    const maybeCount  = youthRows.filter(r => r.status === 'maybe').length;
+
+    const statusBadge = (status) =>
+      status === 'yes'   ? '<span class="badge badge--success">Coming</span>' :
+      status === 'no'    ? '<span class="badge badge--danger">Not coming</span>' :
+      status === 'maybe' ? '<span class="badge badge--warning">Maybe</span>' :
+                           `<span class="badge">${escHtml(status)}</span>`;
+
+    const rowsHtml = youthRows.map(r => {
+      const y    = youthMap.get(r.youth_id);
+      const name = y?.name ?? '(unknown)';
+      return `<div class="llm-row">
+        <div class="llm-row-info">
+          <span class="fw-medium">${escHtml(name)}</span>
+          ${y?.year_level ? `<span style="font-size:var(--text-xs);color:var(--c-text-muted)">${escHtml(y.year_level)}</span>` : ''}
+        </div>
+        <div class="llm-row-right">
+          ${statusBadge(r.status)}
+          ${r.reason ? `<div class="llm-reason">${escHtml(r.reason)}</div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+
+    body.innerHTML = `
+      <div style="display:flex;gap:var(--s-2);flex-wrap:wrap;margin-bottom:var(--s-4)">
+        <span class="badge badge--success">${comingCount} coming</span>
+        <span class="badge badge--danger">${notCount} not coming</span>
+        ${maybeCount ? `<span class="badge badge--warning">${maybeCount} maybe</span>` : ''}
+      </div>
+      ${leaderRow ? `<div style="padding:var(--s-3);background:var(--c-bg);border:1px solid var(--c-border);border-radius:var(--r-md);margin-bottom:var(--s-3);display:flex;align-items:center;gap:var(--s-3);flex-wrap:wrap">
+        <span class="fw-semibold" style="font-size:var(--text-sm)">Leader (self)</span>
+        ${statusBadge(leaderRow.status)}
+        ${leaderRow.reason ? `<span style="font-size:var(--text-xs);color:var(--c-text-muted)">${escHtml(leaderRow.reason)}</span>` : ''}
+      </div>` : ''}
+      <div class="llm-list">${rowsHtml || '<p style="color:var(--c-text-muted);padding:var(--s-4)">No youth in listing.</p>'}</div>
+      ${entry.notes ? `<div style="margin-top:var(--s-4);padding-top:var(--s-3);border-top:1px solid var(--c-border)">
+        <div class="fw-semibold" style="font-size:var(--text-sm);margin-bottom:var(--s-1)">Notes</div>
+        <div style="font-size:var(--text-sm);color:var(--c-text-secondary)">${escHtml(entry.notes)}</div>
+      </div>` : ''}
+    `;
   }
 
   // ── Weekly entry ────────────────────────────────────────────────────────────
@@ -2080,5 +2184,26 @@
 
   init();
   </script>
+
+  <!-- ── Leader Listing Modal ───────────────────────────────────────────── -->
+  <div class="modal-backdrop" id="leader-listing-modal" onclick="if(event.target===this)closeLeaderListingModal()">
+    <div class="modal" style="max-width:500px;width:95%">
+      <div class="modal__header">
+        <div>
+          <h3 id="llm-leader-name" style="margin:0"></h3>
+          <div id="llm-date-line" style="font-size:var(--text-xs);color:var(--c-text-muted);margin-top:2px"></div>
+        </div>
+        <button class="modal__close" onclick="closeLeaderListingModal()">✕</button>
+      </div>
+      <div class="modal__body" id="llm-body" style="padding-top:var(--s-3)">
+        <div style="display:flex;align-items:center;justify-content:center;padding:var(--s-8)">
+          <div class="spinner"></div>
+        </div>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost" onclick="closeLeaderListingModal()">Close</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
