@@ -657,7 +657,7 @@
     const sorted = sortLeaders(allLeaders.filter(l => {
       if (showInactive ? l.active === false : l.active !== false) return false;
       const yrs = getLeaderYears(l);
-      if (l.role === 'pastor' && !yrs.length) return false;
+      if ((l.role === 'pastor' || l.role === 'staff') && !yrs.length) return false;
       if (yrs.some(y => y === 'Volunteer' || y === 'DST')) return false;
       return true;
     }));
@@ -749,7 +749,7 @@
       db.from('leaders')
         .select('id, name, role, year_level, year_levels, gender, active, joined_date, left_date')
         .eq('campus_id', ldCampus)
-        .in('role', ['leader', 'pastor'])
+        .in('role', ['leader', 'pastor', 'staff'])
         .order('name'),
       db.from('youth_roster')
         .select('leader_id')
@@ -1071,10 +1071,10 @@
       if (showInactive ? l.active !== false : l.active === false) return false;
       if (leaderFilter && l.id !== leaderFilter) return false;
       const yrs = getLeaderYears(l);
-      if (l.role === 'pastor' && !yrs.length && !pastorIds.has(l.id)) return false;
+      if ((l.role === 'pastor' || l.role === 'staff') && !yrs.length && !pastorIds.has(l.id)) return false;
       if (yrs.some(y => y === 'Volunteer' || y === 'DST')) return false;
-      const isPastorWithEntries = l.role === 'pastor' && pastorIds.has(l.id);
-      if (yearLevelFilter.size > 0 && !yrs.some(y => yearLevelFilter.has(y)) && !isPastorWithEntries) return false;
+      const isPastorLike = (l.role === 'pastor' || l.role === 'staff') && pastorIds.has(l.id);
+      if (yearLevelFilter.size > 0 && !yrs.some(y => yearLevelFilter.has(y)) && !isPastorLike) return false;
       if (genderFilter.size > 0 && !genderFilter.has(l.gender)) return false;
       return true;
     }));
@@ -1112,10 +1112,10 @@
       if (showInactive ? l.active !== false : l.active === false) return false;
       if (leaderFilter && l.id !== leaderFilter) return false;
       const yrs = getLeaderYears(l);
-      if (l.role === 'pastor' && !yrs.length && !pastorIds.has(l.id)) return false;
+      if ((l.role === 'pastor' || l.role === 'staff') && !yrs.length && !pastorIds.has(l.id)) return false;
       if (yrs.some(y => y === 'Volunteer' || y === 'DST')) return false;
-      const isPastorWithEntries = l.role === 'pastor' && pastorIds.has(l.id);
-      if (yearLevelFilter.size > 0 && !yrs.some(y => yearLevelFilter.has(y)) && !isPastorWithEntries) return false;
+      const isPastorLike = (l.role === 'pastor' || l.role === 'staff') && pastorIds.has(l.id);
+      if (yearLevelFilter.size > 0 && !yrs.some(y => yearLevelFilter.has(y)) && !isPastorLike) return false;
       if (genderFilter.size > 0 && !genderFilter.has(l.gender)) return false;
       return true;
     }));

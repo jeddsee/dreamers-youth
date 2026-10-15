@@ -471,14 +471,16 @@
 
     const yearSel = document.getElementById('wd-year');
     const curr = new Date().getFullYear();
+    let savedYear = curr;
+    try { savedYear = parseInt(sessionStorage.getItem('dy_year')) || curr; } catch {}
     for (let y = curr + 1; y >= curr - 3; y--) {
       const opt = document.createElement('option');
       opt.value = y;
       opt.textContent = y;
-      if (y === curr) opt.selected = true;
+      if (y === savedYear) opt.selected = true;
       yearSel.appendChild(opt);
     }
-    wdYear = curr;
+    wdYear = savedYear;
 
     await loadWeeklyData();
   }
@@ -486,6 +488,7 @@
   function onFilterChange() {
     wdCampus = document.getElementById('wd-campus').value;
     wdYear   = parseInt(document.getElementById('wd-year').value);
+    try { sessionStorage.setItem('dy_year', wdYear); } catch {}
     wdTerm   = document.getElementById('wd-term').value;
     if (editMode) {
       editMode = false;

@@ -742,7 +742,7 @@
   let isAllCampus = false;
   let snapCampusId = null;
   let snapPeriod   = 'year';
-  let snapYear     = new Date().getFullYear();
+  let snapYear     = (() => { try { return parseInt(sessionStorage.getItem('dy_year')) || new Date().getFullYear(); } catch { return new Date().getFullYear(); } })();
   let wsTermFirstDate = {}; // termNum → first_date from term_settings
 
   // ── Init ───────────────────────────────────────────────────────────────────
@@ -1718,6 +1718,7 @@
 
   function changeSnapYear(delta) {
     snapYear += delta;
+    try { sessionStorage.setItem('dy_year', snapYear); } catch {}
     snapPeriod = 'year';
     document.querySelectorAll('.snap-period-pill').forEach(b => b.classList.remove('active'));
     document.querySelector('.snap-period-pill[data-period="year"]').classList.add('active');
