@@ -353,6 +353,25 @@
           </div>
         </div>
 
+        <!-- New People -->
+        <div class="entry-section ws-night-section">
+          <div class="entry-section-label">New people</div>
+          <div class="form-grid form-grid--3">
+            <div class="form-group">
+              <label class="entry-field-label">1st timers</label>
+              <input id="ws-first-timers" type="number" min="0" max="999" value="0" class="input" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label class="entry-field-label">2nd timers</label>
+              <input id="ws-second-timers" type="number" min="0" max="999" value="0" class="input" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label class="entry-field-label">3rd timers</label>
+              <input id="ws-third-timers" type="number" min="0" max="999" value="0" class="input" autocomplete="off">
+            </div>
+          </div>
+        </div>
+
         <!-- Discipleship Steps -->
         <div class="entry-section">
           <div class="entry-section-label">Discipleship steps</div>
@@ -752,7 +771,7 @@
   let allCampuses = [];
   let isAllCampus = false;
   let snapCampusId = null;
-  let snapPeriod   = 'year';
+  let snapPeriod   = (() => { try { const t = DY.termFromDate(); return t ? t.split(' ')[0].toLowerCase() : 'year'; } catch { return 'year'; } })();
   let snapYear     = (() => { try { return parseInt(sessionStorage.getItem('dy_year')) || new Date().getFullYear(); } catch { return new Date().getFullYear(); } })();
   let wsTermFirstDate = {}; // termNum → first_date from term_settings
 
@@ -1545,6 +1564,9 @@
     set('ws-total-dept',     d.total_in_department);
     set('ws-leaders-count',  d.leaders_count);
     set('ws-youth-att',      d.youth_attendance);
+    set('ws-first-timers',   d.first_timers);
+    set('ws-second-timers',  d.second_timers);
+    set('ws-third-timers',   d.third_timers);
     set('ws-first-time', d.salvations_first);
     set('ws-rededs',     d.salvations_rededs);
     set('ws-bibles',     d.bibles_given);
@@ -1560,7 +1582,9 @@
   }
 
   function clearWSForm() {
-    ['ws-total-dept','ws-leaders-count','ws-youth-att','ws-first-time','ws-rededs','ws-bibles',
+    ['ws-total-dept','ws-leaders-count','ws-youth-att',
+     'ws-first-timers','ws-second-timers','ws-third-timers',
+     'ws-first-time','ws-rededs','ws-bibles',
      'ws-fresh','ws-water-bap','ws-hs-bap','ws-saints','ws-schools'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = 0;
@@ -1576,6 +1600,10 @@
     document.querySelectorAll('.ws-night-field').forEach(group => {
       group.querySelectorAll('input').forEach(el => { el.disabled = disabled; });
       group.style.opacity = disabled ? '0.38' : '';
+    });
+    document.querySelectorAll('.ws-night-section').forEach(section => {
+      section.querySelectorAll('input').forEach(el => { el.disabled = disabled; });
+      section.style.opacity = disabled ? '0.38' : '';
     });
   }
 
@@ -1602,6 +1630,9 @@
       total_in_department:  int('ws-total-dept'),
       leaders_count:        int('ws-leaders-count'),
       youth_attendance:     int('ws-youth-att'),
+      first_timers:         int('ws-first-timers'),
+      second_timers:        int('ws-second-timers'),
+      third_timers:         int('ws-third-timers'),
       salvations_first:     int('ws-first-time'),
       salvations_rededs:    int('ws-rededs'),
       bibles_given:         int('ws-bibles'),
