@@ -1698,7 +1698,7 @@
     weeklyStats        = statsRes.data ?? [];
     snapLeaderEntries  = leRes.data ?? [];
 
-    // Dedup: keep one row per campus+date — stale duplicate rows would otherwise double-count all metrics
+    // Dedup pass 1: exact campus+date duplicates
     {
       const seen = new Set();
       weeklyStats = weeklyStats.filter(w => {
@@ -1706,6 +1706,25 @@
         if (seen.has(k)) return false;
         seen.add(k); return true;
       });
+    }
+
+    // Dedup pass 2: same campus + term-number (T3 regardless of year) + week_number.
+    // Two term schedules (e.g. "T3 2025" Thursday and "T3 2026" Friday) can produce two rows
+    // for the same logical week. Keep only the latest entry_date per group, mirroring
+    // weekly-data.html's getWeekAgg() dedup. Rows without week_number are kept as-is.
+    {
+      const weekMap = new Map();
+      const noWeekRows = [];
+      // weeklyStats is ordered entry_date desc; reverse so latest date wins the Map.set
+      for (const w of [...weeklyStats].reverse()) {
+        if (!w.week_number || !w.term) { noWeekRows.push(w); continue; }
+        const termLetter = w.term.substring(0, 2); // "T1" / "T2" / "T3" / "T4"
+        const key = `${w.campus_id}|${termLetter}|${w.week_number}`;
+        if (!weekMap.has(key) || (w.entry_date ?? '') > (weekMap.get(key).entry_date ?? '')) {
+          weekMap.set(key, w);
+        }
+      }
+      weeklyStats = [...weekMap.values(), ...noWeekRows];
     }
 
     // Header
