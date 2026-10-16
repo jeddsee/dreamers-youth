@@ -764,6 +764,7 @@
   let identity, leaders = [], roster = [], weeklyStats = [], termReview = null;
   let wsSyncSaving = false;
   let subLeaders = [], subEntryMap = new Map(), subNoNightCampuses = new Set(), subIsAll = false;
+  let subCheckDates = [];
   let subYearFilters = new Set(), subGenderFilter = '';
   const SUB_YL_EXCLUDE = new Set(['Volunteer', 'DST']);
   let archivedCount = 0, snapLeaderEntries = [], snapNC = [];
@@ -1661,7 +1662,7 @@
     const isAll = snapCampusId === 'all';
     const mostRecentDate = mostRecentYouthNight(new Date(), identity.youth_night_dow);
     const nextDate       = nextYouthNight(new Date(), identity.youth_night_dow);
-    const subCheckDates  = [...new Set([nextDate, mostRecentDate])];
+    subCheckDates = [...new Set([nextDate, mostRecentDate])];
 
     // Build queries — single campus or all campuses
     let leadersQ = db.from('leaders').select('id, name, role, campus_id, year_level, year_levels, gender, left_date').eq('active', true).order('name');

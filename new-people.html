@@ -742,6 +742,18 @@
     if (error) { showError('Could not load new people.'); return; }
     allNP = data ?? [];
 
+    // Clear stale coming_week fields once Friday has passed (Saturday+)
+    const { daysSince: dsAfterFriday } = lastFridayAndSaturday();
+    if (dsAfterFriday >= 1) {
+      const _d = new Date();
+      const todayLocal = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`;
+      const stale = allNP.filter(np => np.coming_week && np.coming_week < todayLocal);
+      if (stale.length) {
+        await db.from('new_people').update({ coming_week: null }).in('id', stale.map(n => n.id));
+        stale.forEach(np => { np.coming_week = null; });
+      }
+    }
+
     // Load comments for all NPs (overdue calc + latest contact date)
     const allIds = allNP.map(n => n.id);
     if (allIds.length) {
@@ -763,24 +775,32 @@
     return dates.length ? dates.sort().at(-1) : null;
   }
 
-  function lastFriday() {
+  function lastFridayAndSaturday() {
     const today = new Date(); today.setHours(0, 0, 0, 0);
-    const daysSince = (today.getDay() - 5 + 7) % 7; // 0 on Friday
-    const d = new Date(today);
-    d.setDate(today.getDate() - daysSince);
-    return { date: d, daysSince };
+    const daysSince = (today.getDay() - 5 + 7) % 7; // 0 on Friday, 1 on Saturday
+    const friday = new Date(today);
+    friday.setDate(today.getDate() - daysSince);
+    const saturday = new Date(friday);
+    saturday.setDate(friday.getDate() + 1);
+    return { friday, saturday, daysSince };
   }
 
   function npDaysOverdue(np) {
     if (np.status === 'activated' || np.status === 'archived') return null;
     const visitStr = npLatestVisitDate(np);
     if (!visitStr) return null;
-    const { date: friday, daysSince } = lastFriday();
-    if (daysSince === 0) return null; // grace period on Friday itself
+    const { friday, saturday, daysSince } = lastFridayAndSaturday();
+    if (daysSince === 0) return null; // Friday: grace period for all
     const comments = npCommentsMap[np.id] ?? [];
-    const hasCommentSinceFriday = comments.some(ts => new Date(ts).getTime() >= friday.getTime());
-    if (hasCommentSinceFriday) return null;
-    return daysSince;
+    if (np.is_new_christian) {
+      // NCs always need a comment since last Friday — no Saturday reset
+      const hasComment = comments.some(ts => new Date(ts).getTime() >= friday.getTime());
+      return hasComment ? null : daysSince;
+    }
+    // Regular: Saturday resets overdue; from Sunday onwards need comment since Saturday
+    if (daysSince === 1) return null; // Saturday: fresh start
+    const hasComment = comments.some(ts => new Date(ts).getTime() >= saturday.getTime());
+    return hasComment ? null : daysSince;
   }
 
   function setupFilters() {
