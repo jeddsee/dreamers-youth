@@ -544,7 +544,7 @@
   // ─── Init ───
   async function init() {
     document.getElementById('sidebar-user').textContent = identity.leader_name || '—';
-    if (identity.is_admin || identity.role === 'staff') document.getElementById('my-listing-link').classList.remove('hidden');
+    if (identity.is_admin || identity.role === 'staff' || identity.role === 'pastor') document.getElementById('my-listing-link').classList.remove('hidden');
 
     // Year selector
     const yearSel = document.getElementById('ld-year');

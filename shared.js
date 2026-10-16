@@ -45,10 +45,15 @@ function clearIdentity() {
 
 // Call at the top of every protected page.
 // role: 'leader' | 'pastor' | null (any role accepted)
+// 'staff' is treated as equivalent to 'pastor' for all access checks.
 function requireIdentity(role = null) {
   const identity = getIdentity();
   if (!identity) { window.location.href = '/'; return null; }
-  if (role && identity.role !== role && !identity.is_admin) { window.location.href = '/'; return null; }
+  if (role && !identity.is_admin) {
+    const isPastorLevel = identity.role === 'pastor' || identity.role === 'staff';
+    const ok = identity.role === role || (role === 'pastor' && isPastorLevel);
+    if (!ok) { window.location.href = '/'; return null; }
+  }
   return identity;
 }
 
