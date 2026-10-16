@@ -530,7 +530,8 @@
   }
 
   let allLeaders = [];
-  let rosterCount = {};   // leaderId → count of active youth
+  let rosterCount = {};      // leaderId → count of active youth
+  let yearLevelCount = {};   // yearLevel → count of active youth
   let allEntries  = [];   // leader_entries rows
   let termSettingsMap = {}; // termNum → term_settings row
   let npComingByDate = {};        // date → count of new people expected that week
@@ -752,7 +753,7 @@
         .in('role', ['leader', 'pastor', 'staff'])
         .order('name'),
       db.from('youth_roster')
-        .select('leader_id')
+        .select('leader_id, year_level')
         .eq('campus_id', ldCampus)
         .eq('active', true),
       db.from('leader_entries')
@@ -778,8 +779,10 @@
     updateExportBtn();
 
     rosterCount = {};
+    yearLevelCount = {};
     for (const row of (rosterRes.data ?? [])) {
       rosterCount[row.leader_id] = (rosterCount[row.leader_id] ?? 0) + 1;
+      if (row.year_level) yearLevelCount[row.year_level] = (yearLevelCount[row.year_level] ?? 0) + 1;
     }
 
     allEntries = entryRes.data ?? [];
@@ -1338,7 +1341,11 @@
 
     // ─ Per-leader sections ─
     termLeaders.forEach(leader => {
-      const exp   = rosterCount[leader.id] ?? 0;
+      const isPastorRole = leader.role === 'pastor' || leader.role === 'staff';
+      const leaderYrs = getLeaderYears(leader);
+      const exp = isPastorRole && leaderYrs.length && !rosterCount[leader.id]
+        ? leaderYrs.reduce((s, yr) => s + (yearLevelCount[yr] ?? 0), 0)
+        : (rosterCount[leader.id] ?? 0);
       const label = leaderLabel(leader);
       tbodyRows += `<tr class="leader-row"><td colspan="${colspan}">${label}</td></tr>`;
 
