@@ -1782,18 +1782,17 @@
   }
 
   // Raw period-filtered stats (one row per campus per week — not aggregated)
-  // Month ranges for each term (non-overlapping, used when term field is null)
+  // Month ranges for each term (non-overlapping). We always filter by entry_date rather than
+  // the term string because term values in the DB are inconsistently named (e.g. "T4 2025"
+  // for entries actually dated in 2026). weeklyStats is already scoped to snapYear at query time.
   const TERM_MONTH_RANGES = { T1: [2,4], T2: [5,7], T3: [8,9], T4: [10,12] };
 
   function getRawFilteredStats() {
     const active = weeklyStats.filter(w => !w.no_youth_night);
     if (snapPeriod === 'year') return active;
     if (['t1','t2','t3','t4'].includes(snapPeriod)) {
-      const label = `${snapPeriod.toUpperCase()} ${snapYear}`;
-      const [mStart, mEnd] = TERM_MONTH_RANGES[label.split(' ')[0]] ?? [1, 12];
+      const [mStart, mEnd] = TERM_MONTH_RANGES[snapPeriod.toUpperCase()] ?? [1, 12];
       return active.filter(w => {
-        if (w.term) return w.term === label;
-        // Fallback: match by entry_date month range when term field is missing
         if (!w.entry_date) return false;
         const [yr, mo] = w.entry_date.split('-');
         return yr === String(snapYear) && +mo >= mStart && +mo <= mEnd;
@@ -1814,10 +1813,8 @@
       return snapLeaderEntries; // already filtered to snapYear at query time
     }
     if (['t1','t2','t3','t4'].includes(snapPeriod)) {
-      const label = `${snapPeriod.toUpperCase()} ${snapYear}`;
-      const [mStart, mEnd] = TERM_MONTH_RANGES[label.split(' ')[0]] ?? [1, 12];
+      const [mStart, mEnd] = TERM_MONTH_RANGES[snapPeriod.toUpperCase()] ?? [1, 12];
       return snapLeaderEntries.filter(e => {
-        if (e.term) return e.term === label;
         if (!e.entry_date) return false;
         const [yr, mo] = e.entry_date.split('-');
         return yr === String(snapYear) && +mo >= mStart && +mo <= mEnd;
@@ -1832,11 +1829,8 @@
       return arr; // already filtered to snapYear at query time
     }
     if (['t1','t2','t3','t4'].includes(snapPeriod)) {
-      const label = `${snapPeriod.toUpperCase()} ${snapYear}`;
-      // Build date range from weekly_stats rows for this term (with fallback to month range)
-      const [mStart, mEnd] = TERM_MONTH_RANGES[label.split(' ')[0]] ?? [1, 12];
+      const [mStart, mEnd] = TERM_MONTH_RANGES[snapPeriod.toUpperCase()] ?? [1, 12];
       const termDates = weeklyStats.filter(w => {
-        if (w.term) return w.term === label;
         if (!w.entry_date) return false;
         const [yr, mo] = w.entry_date.split('-');
         return yr === String(snapYear) && +mo >= mStart && +mo <= mEnd;
