@@ -516,9 +516,10 @@
   }
 
   function isNcOverdue(nc) {
-    const friday = ncLastFriday();
-    if (!friday) return false; // Friday — grace period
     const comments = ncCommentsMap[nc.id] ?? [];
+    if (!comments.length) return true; // no comment ever = always overdue
+    const friday = ncLastFriday();
+    if (!friday) return false; // Friday grace only if some comment exists
     return !comments.some(ts => new Date(ts).getTime() >= friday.getTime());
   }
 

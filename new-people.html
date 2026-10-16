@@ -802,15 +802,18 @@
     const visitStr = npLatestVisitDate(np);
     if (!visitStr) return null;
     const { friday, saturday, daysSince } = lastFridayAndSaturday();
-    if (daysSince === 0) return null; // Friday: grace period for all
     const comments = npCommentsMap[np.id] ?? [];
     if (np.is_new_christian) {
-      // NCs always need a comment since last Friday — no Saturday reset
+      // NCs: no comment ever = always overdue (no Friday grace); otherwise overdue if no comment since last Friday
+      if (!comments.length) return daysSince || 1;
+      if (daysSince === 0) return null; // Friday grace only if some comment exists
       const hasComment = comments.some(ts => new Date(ts).getTime() >= friday.getTime());
       return hasComment ? null : daysSince;
     }
-    // Regular: Saturday resets overdue; from Sunday onwards need comment since Saturday
-    if (daysSince === 1) return null; // Saturday: fresh start
+    // Regular: Friday grace period
+    if (daysSince === 0) return null;
+    // Saturday resets overdue; from Sunday onwards need comment since Saturday
+    if (daysSince === 1) return null;
     const hasComment = comments.some(ts => new Date(ts).getTime() >= saturday.getTime());
     return hasComment ? null : daysSince;
   }
@@ -1146,6 +1149,23 @@
     document.getElementById('nc-fields').classList.toggle('hidden', !checked);
   }
 
+  // Sync a new person (who is an NC) into the new_christians table if not already there
+  async function syncNCRecord(np) {
+    const { data: existing } = await db.from('new_christians')
+      .select('id')
+      .eq('campus_id', np.campus_id)
+      .ilike('name', np.name.trim())
+      .maybeSingle();
+    if (existing) return;
+    await db.from('new_christians').insert({
+      campus_id:     np.campus_id,
+      name:          np.name,
+      leader_id:     np.nc_leader_id || np.leader_id || null,
+      decision_date: np.decision_date || null,
+      decision_type: np.decision_type || null,
+    });
+  }
+
   async function saveCurrentNP() {
     if (!currentNP) return;
     const btn = document.getElementById('save-btn');
@@ -1191,6 +1211,7 @@
       });
     }
 
+    const wasNC = currentNP.is_new_christian;
     const { error } = await db.from('new_people').update(updates).eq('id', currentNP.id);
     setLoading(btn, false);
     if (error) { showError('Save failed.', 'detail-error'); return; }
@@ -1198,6 +1219,10 @@
     Object.assign(currentNP, updates);
     const idx = allNP.findIndex(n => n.id === currentNP.id);
     if (idx !== -1) allNP[idx] = { ...currentNP };
+
+    // If NC was just toggled on, create the new_christians record
+    if (!wasNC && updates.is_new_christian) syncNCRecord(currentNP);
+
     renderTable(currentFilter);
     closeDetailModal();
   }
@@ -1467,6 +1492,7 @@
     allNP.unshift(data);
     renderTable(currentFilter);
     closeAddModal();
+    if (isNC) syncNCRecord(data);
   }
 
   // ── Comment history ─────────────────────────────────────────────────────────
