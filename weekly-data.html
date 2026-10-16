@@ -431,6 +431,32 @@
     'first_timers','second_timers','third_timers',
   ];
 
+  // ─── Year selector ───
+  async function populateYearSel() {
+    const curr = new Date().getFullYear();
+    let savedYear = curr;
+    try { savedYear = parseInt(sessionStorage.getItem('dy_year')) || curr; } catch {}
+
+    // Fetch all distinct configured years from term_settings
+    const { data } = await db.from('term_settings').select('year').not('year', 'is', null);
+    let years = [...new Set((data ?? []).map(r => r.year).filter(Boolean))].sort((a, b) => b - a);
+    if (!years.length) years = [curr]; // fallback if nothing configured yet
+
+    const yearSel = document.getElementById('wd-year');
+    yearSel.innerHTML = '';
+    years.forEach(y => {
+      const opt = document.createElement('option');
+      opt.value = y;
+      opt.textContent = y;
+      yearSel.appendChild(opt);
+    });
+
+    const target = years.includes(savedYear) ? savedYear : years[0];
+    yearSel.value = target;
+    wdYear = target;
+    try { sessionStorage.setItem('dy_year', wdYear); } catch {}
+  }
+
   // ─── Init ───
   async function init() {
     DY.initSidebar();
@@ -469,18 +495,7 @@
       });
     }
 
-    const yearSel = document.getElementById('wd-year');
-    const curr = new Date().getFullYear();
-    let savedYear = curr;
-    try { savedYear = parseInt(sessionStorage.getItem('dy_year')) || curr; } catch {}
-    for (let y = curr + 1; y >= curr - 3; y--) {
-      const opt = document.createElement('option');
-      opt.value = y;
-      opt.textContent = y;
-      if (y === savedYear) opt.selected = true;
-      yearSel.appendChild(opt);
-    }
-    wdYear = savedYear;
+    await populateYearSel();
 
     await loadWeeklyData();
   }
