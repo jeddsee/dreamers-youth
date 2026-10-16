@@ -181,12 +181,12 @@
 
     .leader-search { position: relative; }
     .leader-search__list {
-      position: absolute; top: calc(100% + 2px); left: 0; right: 0;
+      position: fixed;
       background: var(--c-surface);
       border: 1px solid var(--c-border-dark);
       border-radius: var(--r-sm);
       max-height: 180px; overflow-y: auto;
-      z-index: 300; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
     .leader-search__item {
       padding: 8px 12px; font-size: var(--text-sm); cursor: pointer;
@@ -453,7 +453,11 @@
           <div class="form-grid form-grid--2">
             <div class="form-group">
               <label>Assigned leader</label>
-              <select id="d-leader" class="select"></select>
+              <div class="leader-search" id="d-leader-wrap">
+                <input type="text" id="d-leader-input" class="input" placeholder="Search leader…" autocomplete="off">
+                <div class="leader-search__list hidden" id="d-leader-list"></div>
+                <input type="hidden" id="d-leader-hid" value="">
+              </div>
             </div>
           </div>
           <div class="form-group mt-2" id="archive-reason-group" style="display:none">
@@ -492,7 +496,11 @@
             </div>
             <div class="form-group">
               <label>NC leader</label>
-              <select id="d-nc-leader" class="select"></select>
+              <div class="leader-search" id="d-nc-leader-wrap">
+                <input type="text" id="d-nc-leader-input" class="input" placeholder="Search leader…" autocomplete="off">
+                <div class="leader-search__list hidden" id="d-nc-leader-list"></div>
+                <input type="hidden" id="d-nc-leader-hid" value="">
+              </div>
             </div>
           </div>
           <p class="form-hint" style="margin-top:var(--s-3)">Discipleship steps are tracked in the <a href="new-christians.html" style="color:var(--c-primary)">New Christians page</a>.</p>
@@ -662,7 +670,11 @@
             </div>
             <div class="form-group">
               <label>NC leader</label>
-              <select id="a-nc-leader" class="select"></select>
+              <div class="leader-search" id="a-nc-leader-wrap">
+                <input type="text" id="a-nc-leader-input" class="input" placeholder="Search leader…" autocomplete="off">
+                <div class="leader-search__list hidden" id="a-nc-leader-list"></div>
+                <input type="hidden" id="a-nc-leader-hid" value="">
+              </div>
             </div>
           </div>
         </div>
@@ -1056,25 +1068,9 @@
     currentNP = np;
     document.getElementById('detail-title').textContent = np.name;
 
-    // Populate leader dropdown
-    const sel = document.getElementById('d-leader');
-    sel.innerHTML = '<option value="">Unassigned</option>';
-    leaders.forEach(l => {
-      const o = document.createElement('option');
-      o.value = l.id; o.textContent = l.name;
-      if (l.id === np.leader_id) o.selected = true;
-      sel.appendChild(o);
-    });
-
-    // Populate NC leader dropdown
-    const ncSel = document.getElementById('d-nc-leader');
-    ncSel.innerHTML = '<option value="">Unassigned</option>';
-    leaders.forEach(l => {
-      const o = document.createElement('option');
-      o.value = l.id; o.textContent = l.name;
-      if (l.id === np.nc_leader_id) o.selected = true;
-      ncSel.appendChild(o);
-    });
+    // Populate leader search fields
+    leaderSearches.detLeader?.setValue(np.leader_id);
+    leaderSearches.detNcLeader?.setValue(np.nc_leader_id);
 
     // Fill fields
     document.getElementById('d-name').value         = np.name || '';
@@ -1180,7 +1176,7 @@
       visit_3_date:         v3,
       initial_contact_done: document.getElementById('d-contact').checked,
       catchup_done:         document.getElementById('d-catchup').checked,
-      leader_id:            document.getElementById('d-leader').value || null,
+      leader_id:            document.getElementById('d-leader-hid').value || null,
       status,
       archived_reason:      document.getElementById('d-archive-reason').value.trim() || null,
       notes:                document.getElementById('d-notes').value.trim() || null,
@@ -1191,7 +1187,7 @@
       Object.assign(updates, {
         decision_date: document.getElementById('d-nc-date').value || null,
         decision_type: document.getElementById('d-nc-type').value || null,
-        nc_leader_id:  document.getElementById('d-nc-leader').value || null,
+        nc_leader_id:  document.getElementById('d-nc-leader-hid').value || null,
       });
     }
 
@@ -1299,62 +1295,75 @@
   }
 
   // ── Add modal ────────────────────────────────────────────────────────────────
-  function initLeaderSearch() {
-    const inp  = document.getElementById('a-leader-input');
-    const list = document.getElementById('a-leader-list');
-    const hid  = document.getElementById('a-leader');
+  const leaderSearches = {};
+
+  function makeLeaderSearch(wrapperId, inputId, listId, hidId) {
+    const wrap = document.getElementById(wrapperId);
+    const inp  = document.getElementById(inputId);
+    const list = document.getElementById(listId);
+    const hid  = document.getElementById(hidId);
+
+    function positionList() {
+      const r = inp.getBoundingClientRect();
+      list.style.top   = (r.bottom + 2) + 'px';
+      list.style.left  = r.left + 'px';
+      list.style.width = r.width + 'px';
+    }
 
     function renderList(query) {
       const q = query.trim().toLowerCase();
-      const filtered = q
-        ? leaders.filter(l => l.name.toLowerCase().includes(q))
-        : leaders;
+      const filtered = q ? leaders.filter(l => l.name.toLowerCase().includes(q)) : leaders;
       list.innerHTML = '';
       if (!filtered.length) {
         list.innerHTML = '<div class="leader-search__item--empty">No leaders found</div>';
       } else {
-        const unassigned = document.createElement('div');
-        unassigned.className = 'leader-search__item';
-        unassigned.textContent = 'Unassigned';
-        unassigned.addEventListener('mousedown', e => { e.preventDefault(); selectLeader('', ''); });
-        if (!q) list.appendChild(unassigned);
+        if (!q) {
+          const u = document.createElement('div');
+          u.className = 'leader-search__item';
+          u.textContent = 'Unassigned';
+          u.addEventListener('mousedown', e => { e.preventDefault(); api.select('', ''); });
+          list.appendChild(u);
+        }
         filtered.forEach(l => {
           const item = document.createElement('div');
           item.className = 'leader-search__item';
           item.textContent = l.name;
-          item.addEventListener('mousedown', e => { e.preventDefault(); selectLeader(l.id, l.name); });
+          item.addEventListener('mousedown', e => { e.preventDefault(); api.select(l.id, l.name); });
           list.appendChild(item);
         });
       }
+      positionList();
       list.classList.remove('hidden');
     }
 
-    function selectLeader(id, name) {
-      hid.value = id;
-      inp.value = name;
-      list.classList.add('hidden');
-    }
+    const api = {
+      select(id, name) { hid.value = id; inp.value = name; list.classList.add('hidden'); },
+      setValue(id)     {
+        const l = leaders.find(x => x.id === id);
+        hid.value = id ?? '';
+        inp.value = l ? l.name : '';
+      },
+      reset()          { hid.value = ''; inp.value = ''; list.classList.add('hidden'); },
+    };
 
     inp.addEventListener('focus', () => renderList(inp.value));
-    inp.addEventListener('input', () => {
-      hid.value = '';
-      renderList(inp.value);
-    });
-    inp.addEventListener('blur', () => {
-      setTimeout(() => list.classList.add('hidden'), 150);
-    });
+    inp.addEventListener('input', () => { hid.value = ''; renderList(inp.value); });
+    inp.addEventListener('blur',  () => setTimeout(() => list.classList.add('hidden'), 150));
+    document.addEventListener('click', e => { if (!wrap.contains(e.target)) list.classList.add('hidden'); });
 
-    document.addEventListener('click', e => {
-      if (!document.getElementById('a-leader-wrap').contains(e.target)) {
-        list.classList.add('hidden');
-      }
-    });
+    return api;
+  }
+
+  function initLeaderSearch() {
+    leaderSearches.addLeader   = makeLeaderSearch('a-leader-wrap',    'a-leader-input',    'a-leader-list',    'a-leader');
+    leaderSearches.addNcLeader = makeLeaderSearch('a-nc-leader-wrap',  'a-nc-leader-input', 'a-nc-leader-list', 'a-nc-leader-hid');
+    leaderSearches.detLeader   = makeLeaderSearch('d-leader-wrap',     'd-leader-input',    'd-leader-list',    'd-leader-hid');
+    leaderSearches.detNcLeader = makeLeaderSearch('d-nc-leader-wrap',  'd-nc-leader-input', 'd-nc-leader-list', 'd-nc-leader-hid');
   }
 
   function resetLeaderSearch() {
-    document.getElementById('a-leader-input').value = '';
-    document.getElementById('a-leader').value = '';
-    document.getElementById('a-leader-list').classList.add('hidden');
+    leaderSearches.addLeader?.reset();
+    leaderSearches.addNcLeader?.reset();
   }
 
   function toggleAddNCFields() {
@@ -1381,13 +1390,6 @@
     document.getElementById('a-nc-fields').classList.add('hidden');
     document.getElementById('a-nc-date').value      = '';
     document.getElementById('a-nc-type').value      = '';
-    const ncSel = document.getElementById('a-nc-leader');
-    ncSel.innerHTML = '<option value="">Unassigned</option>';
-    leaders.forEach(l => {
-      const o = document.createElement('option');
-      o.value = l.id; o.textContent = l.name;
-      ncSel.appendChild(o);
-    });
     resetLeaderSearch();
     document.getElementById('add-dup-warning').innerHTML = '';
     document.getElementById('add-dup-warning').classList.add('hidden');
@@ -1457,7 +1459,7 @@
     if (isNC) {
       payload.decision_date = document.getElementById('a-nc-date').value || null;
       payload.decision_type = document.getElementById('a-nc-type').value || null;
-      payload.nc_leader_id  = document.getElementById('a-nc-leader').value || null;
+      payload.nc_leader_id  = document.getElementById('a-nc-leader-hid').value || null;
     }
     const { data, error } = await db.from('new_people').insert(payload).select().single();
     setLoading(btn, false);
