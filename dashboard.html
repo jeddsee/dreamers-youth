@@ -771,7 +771,7 @@
   let allCampuses = [];
   let isAllCampus = false;
   let snapCampusId = null;
-  let snapPeriod   = (() => { try { const t = DY.termFromDate(); return t ? t.split(' ')[0].toLowerCase() : 'year'; } catch { return 'year'; } })();
+  let snapPeriod   = 'year';
   let snapYear     = (() => { try { return parseInt(sessionStorage.getItem('dy_year')) || new Date().getFullYear(); } catch { return new Date().getFullYear(); } })();
   let wsTermFirstDate = {}; // termNum → first_date from term_settings
 
@@ -1781,12 +1781,22 @@
   }
 
   // Raw period-filtered stats (one row per campus per week — not aggregated)
+  // Month ranges for each term (non-overlapping, used when term field is null)
+  const TERM_MONTH_RANGES = { T1: [2,4], T2: [5,7], T3: [8,9], T4: [10,12] };
+
   function getRawFilteredStats() {
     const active = weeklyStats.filter(w => !w.no_youth_night);
     if (snapPeriod === 'year') return active;
     if (['t1','t2','t3','t4'].includes(snapPeriod)) {
       const label = `${snapPeriod.toUpperCase()} ${snapYear}`;
-      return active.filter(w => w.term === label);
+      const [mStart, mEnd] = TERM_MONTH_RANGES[label.split(' ')[0]] ?? [1, 12];
+      return active.filter(w => {
+        if (w.term) return w.term === label;
+        // Fallback: match by entry_date month range when term field is missing
+        if (!w.entry_date) return false;
+        const [yr, mo] = w.entry_date.split('-');
+        return yr === String(snapYear) && +mo >= mStart && +mo <= mEnd;
+      });
     }
     return active;
   }
@@ -1804,7 +1814,13 @@
     }
     if (['t1','t2','t3','t4'].includes(snapPeriod)) {
       const label = `${snapPeriod.toUpperCase()} ${snapYear}`;
-      return snapLeaderEntries.filter(e => e.term === label);
+      const [mStart, mEnd] = TERM_MONTH_RANGES[label.split(' ')[0]] ?? [1, 12];
+      return snapLeaderEntries.filter(e => {
+        if (e.term) return e.term === label;
+        if (!e.entry_date) return false;
+        const [yr, mo] = e.entry_date.split('-');
+        return yr === String(snapYear) && +mo >= mStart && +mo <= mEnd;
+      });
     }
     return snapLeaderEntries;
   }
@@ -1816,7 +1832,14 @@
     }
     if (['t1','t2','t3','t4'].includes(snapPeriod)) {
       const label = `${snapPeriod.toUpperCase()} ${snapYear}`;
-      const termDates = weeklyStats.filter(w => w.term === label).map(w => w.entry_date).sort();
+      // Build date range from weekly_stats rows for this term (with fallback to month range)
+      const [mStart, mEnd] = TERM_MONTH_RANGES[label.split(' ')[0]] ?? [1, 12];
+      const termDates = weeklyStats.filter(w => {
+        if (w.term) return w.term === label;
+        if (!w.entry_date) return false;
+        const [yr, mo] = w.entry_date.split('-');
+        return yr === String(snapYear) && +mo >= mStart && +mo <= mEnd;
+      }).map(w => w.entry_date).sort();
       if (!termDates.length) return arr;
       const from = termDates[0], to = termDates[termDates.length - 1];
       return arr.filter(n => { const d = dateFn(n); return d && d >= from && d <= to; });
