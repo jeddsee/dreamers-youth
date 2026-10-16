@@ -1816,12 +1816,11 @@
     const active = weeklyStats.filter(w => !w.no_youth_night);
     if (snapPeriod === 'year') return active;
     if (['t1','t2','t3','t4'].includes(snapPeriod)) {
-      const [mStart, mEnd] = TERM_MONTH_RANGES[snapPeriod.toUpperCase()] ?? [1, 12];
-      return active.filter(w => {
-        if (!w.entry_date) return false;
-        const [yr, mo] = w.entry_date.split('-');
-        return yr === String(snapYear) && +mo >= mStart && +mo <= mEnd;
-      });
+      // Match by term prefix ("T3" etc.) regardless of year in the term string.
+      // weeklyStats is already scoped to snapYear by entry_date, so this mirrors
+      // how weekly-data.html groups rows (term.startsWith("T3") per week_number).
+      const prefix = snapPeriod.toUpperCase();
+      return active.filter(w => w.term && w.term.startsWith(prefix));
     }
     return active;
   }
@@ -1838,28 +1837,23 @@
       return snapLeaderEntries; // already filtered to snapYear at query time
     }
     if (['t1','t2','t3','t4'].includes(snapPeriod)) {
-      const [mStart, mEnd] = TERM_MONTH_RANGES[snapPeriod.toUpperCase()] ?? [1, 12];
-      return snapLeaderEntries.filter(e => {
-        if (!e.entry_date) return false;
-        const [yr, mo] = e.entry_date.split('-');
-        return yr === String(snapYear) && +mo >= mStart && +mo <= mEnd;
-      });
+      const prefix = snapPeriod.toUpperCase();
+      return snapLeaderEntries.filter(e => e.term && e.term.startsWith(prefix));
     }
     return snapLeaderEntries;
   }
 
-  // Generic period filter for rows that have a date field (YYYY-MM-DD)
+  // Generic period filter for rows that have a date field (YYYY-MM-DD).
+  // Uses the actual entry_date range of matching weekly_stats rows for the term.
   function filterByPeriod(arr, dateFn) {
     if (snapPeriod === 'year') {
       return arr; // already filtered to snapYear at query time
     }
     if (['t1','t2','t3','t4'].includes(snapPeriod)) {
-      const [mStart, mEnd] = TERM_MONTH_RANGES[snapPeriod.toUpperCase()] ?? [1, 12];
-      const termDates = weeklyStats.filter(w => {
-        if (!w.entry_date) return false;
-        const [yr, mo] = w.entry_date.split('-');
-        return yr === String(snapYear) && +mo >= mStart && +mo <= mEnd;
-      }).map(w => w.entry_date).sort();
+      const prefix = snapPeriod.toUpperCase();
+      const termDates = weeklyStats
+        .filter(w => w.term && w.term.startsWith(prefix) && w.entry_date)
+        .map(w => w.entry_date).sort();
       if (!termDates.length) return arr;
       const from = termDates[0], to = termDates[termDates.length - 1];
       return arr.filter(n => { const d = dateFn(n); return d && d >= from && d <= to; });
