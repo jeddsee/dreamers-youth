@@ -1462,57 +1462,74 @@
     const youth = rosterRes.data ?? [];
     const body  = document.getElementById('llm-body');
 
+    const statusBadge = (status) =>
+      status === 'yes'   ? '<span class="badge badge--success">Coming</span>' :
+      status === 'no'    ? '<span class="badge badge--danger">Not coming</span>' :
+      status === 'maybe' ? '<span class="badge badge--warning">Maybe</span>' :
+                           `<span class="badge">${escHtml(status ?? '—')}</span>`;
+
     if (!entry) {
-      body.innerHTML = `<p style="color:var(--c-text-muted);text-align:center;padding:var(--s-6)">Not submitted yet for this week.</p>`;
+      // No submission — show all roster youth as "Not marked"
+      document.getElementById('llm-date-line').textContent = 'No entry submitted for this week';
+      const rowsHtml = youth.map(y => `
+        <div class="llm-row">
+          <div class="llm-row-info">
+            <span class="fw-medium">${escHtml(y.name)}</span>
+            ${y.year_level ? `<span style="font-size:var(--text-xs);color:var(--c-text-muted)">${escHtml(y.year_level)}</span>` : ''}
+          </div>
+          <div class="llm-row-right"><span style="font-size:var(--text-xs);color:var(--c-text-muted)">Not marked</span></div>
+        </div>`).join('');
+      body.innerHTML = rowsHtml || `<p style="color:var(--c-text-muted);text-align:center;padding:var(--s-6)">No youth on roster — not submitted.</p>`;
       return;
     }
 
     document.getElementById('llm-date-line').textContent = 'Entry for ' + DY.formatDate(entry.entry_date);
 
     const listing   = entry.attendance_listing ?? [];
-    const youthMap  = new Map(youth.map(y => [y.id, y]));
+    const listingMap = new Map(listing.filter(r => r.youth_id !== '_leader').map(r => [r.youth_id, r]));
     const leaderRow = listing.find(r => r.youth_id === '_leader');
-    const youthRows = listing.filter(r => r.youth_id !== '_leader');
 
-    const comingCount = youthRows.filter(r => r.status === 'yes').length;
-    const notCount    = youthRows.filter(r => r.status === 'no').length;
-    const maybeCount  = youthRows.filter(r => r.status === 'maybe').length;
+    // Merge: all roster youth (with status from listing, or "Not marked"), then orphaned listing entries
+    const rosterIds = new Set(youth.map(y => y.id));
+    const orphaned  = listing.filter(r => r.youth_id !== '_leader' && !rosterIds.has(r.youth_id));
 
-    const statusBadge = (status) =>
-      status === 'yes'   ? '<span class="badge badge--success">Coming</span>' :
-      status === 'no'    ? '<span class="badge badge--danger">Not coming</span>' :
-      status === 'maybe' ? '<span class="badge badge--warning">Maybe</span>' :
-                           `<span class="badge">${escHtml(status)}</span>`;
+    const comingCount = [...listingMap.values()].filter(r => r.status === 'yes').length;
+    const notCount    = [...listingMap.values()].filter(r => r.status === 'no').length;
+    const maybeCount  = [...listingMap.values()].filter(r => r.status === 'maybe').length;
+    const unmarkedCount = youth.length - listingMap.size;
 
-    const rowsHtml = youthRows.map(r => {
-      const y    = youthMap.get(r.youth_id);
-      const name = y?.name ?? '(unknown)';
-      return `<div class="llm-row">
+    const youthRowHtml = (name, yearLevel, listed) => `
+      <div class="llm-row">
         <div class="llm-row-info">
           <span class="fw-medium">${escHtml(name)}</span>
-          ${y?.year_level ? `<span style="font-size:var(--text-xs);color:var(--c-text-muted)">${escHtml(y.year_level)}</span>` : ''}
+          ${yearLevel ? `<span style="font-size:var(--text-xs);color:var(--c-text-muted)">${escHtml(yearLevel)}</span>` : ''}
         </div>
         <div class="llm-row-right">
-          ${statusBadge(r.status)}
-          ${r.reason ? `<div class="llm-reason">${escHtml(r.reason)}</div>` : ''}
+          ${listed ? statusBadge(listed.status) : '<span style="font-size:var(--text-xs);color:var(--c-text-muted)">Not marked</span>'}
+          ${listed?.reason ? `<div class="llm-reason">${escHtml(listed.reason)}</div>` : ''}
         </div>
       </div>`;
-    }).join('');
+
+    const rowsHtml = [
+      ...youth.map(y => youthRowHtml(y.name, y.year_level, listingMap.get(y.id))),
+      ...orphaned.map(r => youthRowHtml('(removed from roster)', '', r)),
+    ].join('');
 
     body.innerHTML = `
       <div style="display:flex;gap:var(--s-2);flex-wrap:wrap;margin-bottom:var(--s-4)">
         <span class="badge badge--success">${comingCount} coming</span>
         <span class="badge badge--danger">${notCount} not coming</span>
         ${maybeCount ? `<span class="badge badge--warning">${maybeCount} maybe</span>` : ''}
+        ${unmarkedCount > 0 ? `<span class="badge">${unmarkedCount} not marked</span>` : ''}
       </div>
       ${leaderRow ? `<div style="padding:var(--s-3);background:var(--c-bg);border:1px solid var(--c-border);border-radius:var(--r-md);margin-bottom:var(--s-3);display:flex;align-items:center;gap:var(--s-3);flex-wrap:wrap">
         <span class="fw-semibold" style="font-size:var(--text-sm)">Leader (self)</span>
         ${statusBadge(leaderRow.status)}
         ${leaderRow.reason ? `<span style="font-size:var(--text-xs);color:var(--c-text-muted)">${escHtml(leaderRow.reason)}</span>` : ''}
       </div>` : ''}
-      <div class="llm-list">${rowsHtml || '<p style="color:var(--c-text-muted);padding:var(--s-4)">No youth in listing.</p>'}</div>
+      <div class="llm-list">${rowsHtml || '<p style="color:var(--c-text-muted);padding:var(--s-4)">No youth on roster.</p>'}</div>
       ${entry.notes ? `<div style="margin-top:var(--s-4);padding-top:var(--s-3);border-top:1px solid var(--c-border)">
-        <div class="fw-semibold" style="font-size:var(--text-sm);margin-bottom:var(--s-1)">Notes</div>
+        <div class="fw-semibold" style="font-size:var(--text-sm);margin-bottom:var(--s-1)">Leader notes</div>
         <div style="font-size:var(--text-sm);color:var(--c-text-secondary)">${escHtml(entry.notes)}</div>
       </div>` : ''}
     `;
@@ -1668,10 +1685,9 @@
     let leadersQ = db.from('leaders').select('id, name, role, campus_id, year_level, year_levels, gender, left_date').eq('active', true).order('name');
     let rosterQ  = db.from('youth_roster').select('id, is_new_christian, water_baptised, category, campus_id').eq('active', true);
     let archQ    = db.from('youth_roster').select('id', { count: 'exact', head: true }).eq('category', 'archive');
-    const yearFrom = `${snapYear}-01-01`;
-    const yearTo   = `${snapYear}-12-31`;
-    let statsQ   = db.from('weekly_stats').select('*').gte('entry_date', yearFrom).lte('entry_date', yearTo).order('entry_date', { ascending: false });
-    let leQ      = db.from('leader_entries').select('entry_date, term, campus_id, youth_attendance, connect_attendance, sunday_attendance').gte('entry_date', yearFrom).lte('entry_date', yearTo);
+    // Filter by term field (same approach as weekly-data table) so dashboard and weekly-data always show the same rows
+    let statsQ   = db.from('weekly_stats').select('*').like('term', `%${snapYear}%`).order('entry_date', { ascending: false });
+    let leQ      = db.from('leader_entries').select('entry_date, term, campus_id, youth_attendance, connect_attendance, sunday_attendance').like('term', `%${snapYear}%`);
 
     // Update year display
     document.getElementById('snap-year-display').textContent = snapYear;
