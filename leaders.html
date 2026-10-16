@@ -1041,7 +1041,7 @@ function renderRoster() {
     return;
   }
 
-  const allRoleLeaders = allLeaders.filter(l => !l.left_date && (l.role === 'leader' || (l.role === 'pastor' && getLeaderYears(l).length > 0)));
+  const allRoleLeaders = allLeaders.filter(l => !l.left_date && (l.role === 'leader' || ((l.role === 'pastor' || l.role === 'staff') && getLeaderYears(l).length > 0)));
   const matchedLeaders = search
     ? allRoleLeaders.filter(l => l.name.toLowerCase().includes(search))
     : allRoleLeaders;
@@ -1137,7 +1137,7 @@ function initRvLeaderCombobox() {
   const inp  = document.getElementById('rv-leader-search');
   const list = document.getElementById('rv-leader-list');
   const hid  = document.getElementById('rv-leader');
-  const activeLeaders = allLeaders.filter(l => !l.left_date && (l.role === 'leader' || (l.role === 'pastor' && getLeaderYears(l).length > 0)));
+  const activeLeaders = allLeaders.filter(l => !l.left_date && (l.role === 'leader' || ((l.role === 'pastor' || l.role === 'staff') && getLeaderYears(l).length > 0)));
 
   function renderList(query) {
     const q = query.trim().toLowerCase();
@@ -1588,7 +1588,7 @@ function openEditYouthModal(youthId) {
   // Populate leader dropdown
   const leaderSel = document.getElementById('ey-leader');
   leaderSel.innerHTML = '<option value="">Unassigned</option>' +
-    allLeaders.filter(l => !l.left_date && (l.role === 'leader' || (l.role === 'pastor' && getLeaderYears(l).length > 0))).map(l =>
+    allLeaders.filter(l => !l.left_date && (l.role === 'leader' || ((l.role === 'pastor' || l.role === 'staff') && getLeaderYears(l).length > 0))).map(l =>
       `<option value="${escHtml(l.id)}"${l.id === y.leader_id ? ' selected' : ''}>${escHtml(l.name)}</option>`
     ).join('');
   hideError('ey-error');
