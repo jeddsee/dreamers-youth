@@ -1218,6 +1218,39 @@ async function generateReport() {
   const entries   = entriesRes.data ?? [];
   const youth     = youthRes.data ?? [];
   const newPeople = newPeopleRes.data ?? [];
+
+  // Fetch comments for the new people so we can calculate overdue status
+  let npCommentsMap = {};
+  const npIds = newPeople.map(p => p.id);
+  if (npIds.length) {
+    const { data: cmtData } = await db.from('np_comments')
+      .select('np_id, created_at')
+      .in('np_id', npIds);
+    (cmtData ?? []).forEach(c => {
+      if (!npCommentsMap[c.np_id]) npCommentsMap[c.np_id] = [];
+      npCommentsMap[c.np_id].push(c.created_at);
+    });
+  }
+
+  // Overdue: no comment since the previous youth night Friday.
+  // Resets on the Saturday after the NEXT upcoming Friday night.
+  const dow = identity.youth_night_dow ?? 5;
+  const _lastFriday = mostRecentYouthNight(new Date(), dow);  // "YYYY-MM-DD"
+  const _nextFriday = nextYouthNight(new Date(), dow);
+  const _resetDate  = (() => {
+    const d = new Date(_nextFriday + 'T00:00:00');
+    d.setDate(d.getDate() + 1);
+    return d;
+  })();
+  const _lastFridayTs = new Date(_lastFriday + 'T00:00:00').getTime();
+  const _todayMidnight = new Date(); _todayMidnight.setHours(0,0,0,0);
+
+  function isNpOverdue(p) {
+    if (p.status === 'activated' || p.status === 'archived') return false;
+    if (_todayMidnight >= _resetDate) return false; // Saturday after next Friday: reset
+    const comments = npCommentsMap[p.id] ?? [];
+    return !comments.some(ts => new Date(ts).getTime() >= _lastFridayTs);
+  }
   const active    = youth.filter(y => y.active);
 
   // Attendance stats
@@ -1283,12 +1316,14 @@ async function generateReport() {
   npEl.innerHTML = newPeople.length
     ? newPeople.map(p => {
         const statusCls = { '1st': 'badge--danger', '2nd': 'badge--warning', '3rd': 'badge--success', connected: 'badge--connected' };
+        const overdue = isNpOverdue(p);
         return `<div class="np-row">
           <div>
             <div class="fw-medium">${escHtml(p.name ?? '—')}</div>
             <div class="text-xs text-muted">${p.created_at ? formatDate(p.created_at.split('T')[0]) : ''}</div>
           </div>
           <div style="display:flex;gap:var(--s-2);flex-shrink:0">
+            ${overdue ? `<span class="badge badge--danger">Overdue</span>` : ''}
             ${p.status ? `<span class="badge ${statusCls[p.status] ?? 'badge--neutral'}">${escHtml(p.status)}</span>` : ''}
             ${p.connection_status ? `<span class="badge badge--neutral">${escHtml(p.connection_status)}</span>` : ''}
           </div>
