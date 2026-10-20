@@ -1232,34 +1232,19 @@ async function generateReport() {
     });
   }
 
-  // Overdue: no comment since the Saturday that started the current follow-up cycle.
-  // Each cycle runs Saturday → next Friday. Resets on the Saturday after next Friday.
+  // Overdue: no comment since the most recent youth night (Friday).
+  // Resets every Saturday (the day after Friday youth night) — fresh slate for the new week.
   const dow = identity.youth_night_dow ?? 5;
   const _todayMidnight = new Date(); _todayMidnight.setHours(0, 0, 0, 0);
-  const _daysSinceNight = (_todayMidnight.getDay() - dow + 7) % 7;
-
-  // Last youth night (Friday)
+  const _daysSinceNight = (_todayMidnight.getDay() - dow + 7) % 7; // 0=youth night, 1=Saturday, …
   const _lastNight = new Date(_todayMidnight);
   _lastNight.setDate(_todayMidnight.getDate() - _daysSinceNight);
 
-  // Cycle start = Saturday after last Friday.
-  // On the youth night itself (_daysSinceNight===0), tomorrow's Saturday hasn't happened yet,
-  // so fall back to the previous cycle's Saturday (6 days before today).
-  const _cycleStartSat = new Date(_lastNight);
-  _cycleStartSat.setDate(_lastNight.getDate() + (_daysSinceNight === 0 ? -6 : 1));
-
-  // Reset = Saturday after NEXT upcoming Friday
-  const _resetDate = (() => {
-    const d = new Date(nextYouthNight(new Date(), dow) + 'T00:00:00');
-    d.setDate(d.getDate() + 1);
-    return d;
-  })();
-
   function isNpOverdue(p) {
     if (p.status === 'activated' || p.status === 'archived') return false;
-    if (_todayMidnight >= _resetDate) return false; // Saturday after next Friday: reset
+    if (_daysSinceNight === 1) return false; // Saturday = reset, never overdue
     const comments = npCommentsMap[p.id] ?? [];
-    return !comments.some(ts => new Date(ts).getTime() >= _cycleStartSat.getTime());
+    return !comments.some(ts => new Date(ts).getTime() >= _lastNight.getTime());
   }
   const active    = youth.filter(y => y.active);
 
