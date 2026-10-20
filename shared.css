@@ -411,19 +411,6 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 .badge--success     { background: var(--c-success-light);     color: var(--c-success-text); }
 .badge--neutral     { background: var(--c-bg);                color: var(--c-text-secondary); border: 1px solid var(--c-border); }
 
-/* Absence flag */
-.absence-flag {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px var(--s-2);
-  border-radius: var(--r-full);
-  background: var(--c-danger-light);
-  color: var(--c-danger-text);
-  font-size: var(--text-xs);
-  font-weight: 700;
-}
-
 /* ── Tables ──────────────────────────────────────────────────────────────────*/
 .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .table {

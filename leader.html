@@ -974,7 +974,6 @@
     list.classList.remove('hidden');
 
     roster.forEach(youth => {
-      const absent = hasAbsenceFlag(youth.id, recentEntries);
       const row = document.createElement('div');
       row.className = 'youth-row';
       row.id = `row-${youth.id}`;
@@ -982,7 +981,6 @@
         <div class="youth-row__header" onclick="toggleYouth('${youth.id}')">
           <span class="youth-row__name">${escHtml(youth.name)}</span>
           <div class="youth-row__meta">
-            ${absent ? '<span class="absence-flag">⚠️ 3+ weeks absent</span>' : ''}
             <span class="badge badge--${youth.category}">${capitalize(youth.category)}</span>
           </div>
           <span class="youth-row__chevron">▾</span>

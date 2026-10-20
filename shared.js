@@ -194,18 +194,6 @@ function computeAttendanceStats(entries) {
   };
 }
 
-// Check if a youth has 3+ consecutive 'no' entries across the last N entries
-function hasAbsenceFlag(youthId, entries) {
-  const sorted = [...entries].sort((a, b) => b.entry_date.localeCompare(a.entry_date));
-  let streak = 0;
-  for (const entry of sorted) {
-    const row = (entry.attendance_listing ?? []).find(r => r.youth_id === youthId);
-    if (!row) break;
-    if (row.status === 'no') { streak++; if (streak >= 3) return true; }
-    else break;
-  }
-  return false;
-}
 
 // Returns array of YYYY-MM-DD strings for the given term_settings row
 function termWeekDates(firstDate, numWeeks) {
@@ -262,7 +250,7 @@ window.DY = {
   formatDate, formatDateInput, termFromDate, mostRecentYouthNight, nextYouthNight, getCampusDow,
   showError, hideError, setLoading,
   checkDuplicateNP, activateNewPerson,
-  computeAttendanceStats, hasAbsenceFlag,
+  computeAttendanceStats,
   termWeekDates,
   planningCentre,
   initSidebar, toggleSidebar, logout,
