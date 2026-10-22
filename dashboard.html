@@ -1682,6 +1682,7 @@
     // On Friday itself nextYouthNight returns today; on Saturday it advances to the
     // following Friday, which naturally resets the status for the new week.
     subCheckDates = [nextDate];
+    const subNightDate = nextDate; // used below for noNightCampuses
 
     // Build queries — single campus or all campuses
     let leadersQ = db.from('leaders').select('id, name, role, campus_id, year_level, year_levels, gender, left_date').eq('active', true).order('name');
@@ -1751,10 +1752,10 @@
       : (allCampuses.find(c => c.id === snapCampusId)?.name ?? identity.campus_name);
     document.getElementById('snap-campus-title').textContent = campusLabel;
 
-    // Campuses with no youth night for the most recent date
+    // Campuses with no youth night for the upcoming date
     const noNightCampuses = new Set(
       weeklyStats
-        .filter(w => w.entry_date === mostRecentDate && w.no_youth_night)
+        .filter(w => w.entry_date === subNightDate && w.no_youth_night)
         .map(w => w.campus_id)
     );
 
