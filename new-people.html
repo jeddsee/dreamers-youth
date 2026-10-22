@@ -754,18 +754,6 @@
     if (error) { showError('Could not load new people.'); return; }
     allNP = data ?? [];
 
-    // Clear stale coming_week fields once Friday has passed (Saturday+)
-    const { daysSince: dsAfterFriday } = lastFridayAndSaturday();
-    if (dsAfterFriday >= 1) {
-      const _d = new Date();
-      const todayLocal = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`;
-      const stale = allNP.filter(np => np.coming_week && np.coming_week < todayLocal);
-      if (stale.length) {
-        await db.from('new_people').update({ coming_week: null }).in('id', stale.map(n => n.id));
-        stale.forEach(np => { np.coming_week = null; });
-      }
-    }
-
     // Load comments for all NPs (overdue calc + latest contact date)
     const allIds = allNP.map(n => n.id);
     if (allIds.length) {
