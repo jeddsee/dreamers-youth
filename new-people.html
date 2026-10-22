@@ -403,6 +403,10 @@
               <label>Who brought them?</label>
               <input id="d-friend" type="text" class="input">
             </div>
+            <div class="form-group">
+              <label>Birthday</label>
+              <input id="d-birthday" type="date" class="input">
+            </div>
           </div>
         </div>
 
@@ -581,6 +585,10 @@
             <div class="form-group">
               <label>Who brought them?</label>
               <input id="a-friend" type="text" class="input">
+            </div>
+            <div class="form-group">
+              <label>Birthday</label>
+              <input id="a-birthday" type="date" class="input">
             </div>
           </div>
         </div>
@@ -1031,7 +1039,7 @@
             <strong>${escHtml(np.name)}</strong>
             ${overduePill}${archivePill}
           </div>
-          <span class="text-xs text-muted">${escHtml(np.school||'')} ${escHtml(np.year_level||'')}</span>
+          <span class="text-xs text-muted">${escHtml(np.school||'')} ${escHtml(np.year_level||'')}${np.birthday ? ' · ' + formatDate(np.birthday) : ''}</span>
         </td>
         <td><span class="badge badge--${statusBadge(np.status)}">${statusLabel(np.status)}</span></td>
         <td class="text-sm">${escHtml(leader?.name || '—')}</td>
@@ -1070,6 +1078,7 @@
     document.getElementById('d-year').value         = np.year_level || '';
     document.getElementById('d-gender').value       = np.gender || '';
     document.getElementById('d-friend').value       = np.friend || '';
+    document.getElementById('d-birthday').value     = np.birthday || '';
     document.getElementById('d-parent-name').value  = np.parent_name || '';
     document.getElementById('d-parent-phone').value = np.parent_phone || '';
     document.getElementById('d-v1').value           = np.visit_1_date || '';
@@ -1185,6 +1194,7 @@
       initial_contact_done: document.getElementById('d-contact').checked,
       catchup_done:         document.getElementById('d-catchup').checked,
       leader_id:            document.getElementById('d-leader-hid').value || null,
+      birthday:             document.getElementById('d-birthday').value || null,
       status,
       archived_reason:      document.getElementById('d-archive-reason').value.trim() || null,
       notes:                document.getElementById('d-notes').value.trim() || null,
@@ -1458,6 +1468,7 @@
       year_level:           document.getElementById('a-year').value || null,
       gender:               document.getElementById('a-gender').value || null,
       friend:               document.getElementById('a-friend').value.trim() || null,
+      birthday:             document.getElementById('a-birthday').value || null,
       parent_name:          document.getElementById('a-parent-name').value.trim() || null,
       parent_phone:         document.getElementById('a-parent-phone').value.trim() || null,
       visit_1_date:         document.getElementById('a-v1').value || null,
