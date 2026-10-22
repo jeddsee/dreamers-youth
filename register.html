@@ -129,6 +129,10 @@
             <label for="friend">Who brought you?</label>
             <input id="friend" type="text" class="input" placeholder="Friend's name">
           </div>
+          <div class="form-group">
+            <label for="birthday">Birthday</label>
+            <input id="birthday" type="date" class="input">
+          </div>
         </div>
 
         <p class="section-label" style="margin-top:var(--s-5)">Parent / guardian</p>
@@ -215,6 +219,7 @@
       const yearLevel  = document.getElementById('year-level').value;
       const gender     = document.getElementById('gender').value;
       const friend     = document.getElementById('friend').value.trim();
+      const birthday   = document.getElementById('birthday').value;
       const parentName = document.getElementById('parent-name').value.trim();
       const parentPhone= document.getElementById('parent-phone').value.trim();
 
@@ -234,6 +239,7 @@
         year_level:   yearLevel || null,
         gender:       gender   || null,
         friend:       friend   || null,
+        birthday:     birthday || null,
         parent_name:  parentName  || null,
         parent_phone: parentPhone || null,
         visit_1_date: formatDateInput(),
