@@ -790,19 +790,19 @@
     const curYear = new Date().getFullYear();
     if (!isAllCampus) {
       const { data: tsRows } = await db.from('term_settings')
-        .select('term_number, first_date, campus_id')
+        .select('term_number, first_date, num_weeks, campus_id')
         .eq('year', curYear)
         .or(`campus_id.eq.${identity.campus_id},campus_id.is.null`);
       wsTermFirstDate = {};
       for (const ts of (tsRows ?? [])) {
         const t = ts.term_number;
         if (!wsTermFirstDate[t] || wsTermFirstDate[t]._isFallback) {
-          wsTermFirstDate[t] = { first_date: ts.first_date, _isFallback: ts.campus_id === null };
+          wsTermFirstDate[t] = { first_date: ts.first_date, num_weeks: ts.num_weeks, _isFallback: ts.campus_id === null };
         }
       }
     }
 
-    // Auto-detect current term/year and set week 1
+    // Auto-detect current term/year and week number from term_settings
     const termKey = currentTermKey();
     let initDate = '';
     if (!isAllCampus) {
@@ -810,7 +810,9 @@
       if (termSelect) termSelect.value = termKey;
       const yearEl = document.getElementById('ws-year');
       if (yearEl) yearEl.value = curYear;
-      initDate = termWeekToDate(termKey, 1);
+      const initWeek = currentWeekNumber(termKey);
+      document.getElementById('ws-week').value = initWeek;
+      initDate = termWeekToDate(termKey, initWeek);
       document.getElementById('ws-date').value = initDate;
     }
 
@@ -1561,6 +1563,20 @@
   function currentTermKey() {
     const t = termFromDate(new Date()); // e.g. "T3 2026"
     return t ? t.split(' ')[0] : 'T4';
+  }
+
+  // Return the week number within termKey that today falls on, based on wsTermFirstDate.
+  // Clamps to [1, num_weeks] when term_settings is configured, or [1, 20] as a fallback.
+  function currentWeekNumber(termKey) {
+    const termNum = parseInt(termKey.replace('T', '')) || 1;
+    const configured = wsTermFirstDate[termNum];
+    if (!configured?.first_date) return 1;
+    const firstDate = new Date(configured.first_date + 'T00:00:00');
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const diffDays = Math.floor((today - firstDate) / 86400000);
+    const weekNum = Math.floor(diffDays / 7) + 1;
+    const maxWeek = configured.num_weeks ?? 20;
+    return Math.min(Math.max(weekNum, 1), maxWeek);
   }
 
   function onTermWeekChange() {
