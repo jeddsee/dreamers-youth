@@ -574,9 +574,9 @@
 
     // Load campuses and build sidebar switcher
     const { data: campusData } = await db.from('campuses').select('id, name').eq('archived', false).order('name');
-    const visibleCampuses = (identity.is_admin || identity.role === 'staff')
-      ? (campusData ?? []).filter(c => c.id === identity.campus_id)
-      : (campusData ?? []);
+    const visibleCampuses = identity.is_admin
+      ? (campusData ?? [])
+      : (campusData ?? []).filter(c => c.id === identity.campus_id);
     const switcher = document.getElementById('sidebar-campus-switcher');
     if (switcher) {
       visibleCampuses.forEach(c => {
@@ -659,7 +659,7 @@
       if (showInactive ? l.active === false : l.active !== false) return false;
       const yrs = getLeaderYears(l);
       if ((l.role === 'pastor' || l.role === 'staff') && !yrs.length) return false;
-      if (yrs.some(y => y === 'Volunteer' || y === 'DST')) return false;
+      if (yrs.length > 0 && yrs.every(y => y === 'Volunteer' || y === 'DST')) return false;
       return true;
     }));
     const matches = query
@@ -772,7 +772,9 @@
       db.from('new_people')
         .select('coming_week, leader_id')
         .eq('campus_id', ldCampus)
-        .not('coming_week', 'is', null),
+        .not('coming_week', 'is', null)
+        .gte('coming_week', `${ldYear}-01-01`)
+        .lte('coming_week', `${ldYear}-12-31`),
     ]);
 
     allLeaders = leaderRes.data ?? [];
@@ -1075,7 +1077,7 @@
       if (leaderFilter && l.id !== leaderFilter) return false;
       const yrs = getLeaderYears(l);
       if ((l.role === 'pastor' || l.role === 'staff') && !yrs.length && !pastorIds.has(l.id)) return false;
-      if (yrs.some(y => y === 'Volunteer' || y === 'DST')) return false;
+      if (yrs.length > 0 && yrs.every(y => y === 'Volunteer' || y === 'DST')) return false;
       const isPastorLike = (l.role === 'pastor' || l.role === 'staff') && pastorIds.has(l.id);
       if (yearLevelFilter.size > 0 && !yrs.some(y => yearLevelFilter.has(y)) && !isPastorLike) return false;
       if (genderFilter.size > 0 && !genderFilter.has(l.gender)) return false;
@@ -1116,7 +1118,7 @@
       if (leaderFilter && l.id !== leaderFilter) return false;
       const yrs = getLeaderYears(l);
       if ((l.role === 'pastor' || l.role === 'staff') && !yrs.length && !pastorIds.has(l.id)) return false;
-      if (yrs.some(y => y === 'Volunteer' || y === 'DST')) return false;
+      if (yrs.length > 0 && yrs.every(y => y === 'Volunteer' || y === 'DST')) return false;
       const isPastorLike = (l.role === 'pastor' || l.role === 'staff') && pastorIds.has(l.id);
       if (yearLevelFilter.size > 0 && !yrs.some(y => yearLevelFilter.has(y)) && !isPastorLike) return false;
       if (genderFilter.size > 0 && !genderFilter.has(l.gender)) return false;
