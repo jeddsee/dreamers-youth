@@ -1849,8 +1849,8 @@
   // for entries actually dated in 2026). weeklyStats is already scoped to snapYear at query time.
   const TERM_MONTH_RANGES = { T1: [2,4], T2: [5,7], T3: [8,9], T4: [10,12] };
 
-  function getRawFilteredStats() {
-    const active = weeklyStats.filter(w => !w.no_youth_night);
+  function getRawFilteredStats(includeNoNight = false) {
+    const active = includeNoNight ? weeklyStats : weeklyStats.filter(w => !w.no_youth_night);
     if (snapPeriod === 'year') return active;
     if (['t1','t2','t3','t4'].includes(snapPeriod)) {
       // Match by term prefix ("T3" etc.) regardless of year in the term string.
@@ -1860,6 +1860,18 @@
       return active.filter(w => w.term && w.term.startsWith(prefix));
     }
     return active;
+  }
+
+  // Saints average — mirrors weekly-data: sum campuses per date, then average the
+  // dates that have a value (no-youth-night weeks included, empty weeks skipped).
+  function avgSaintsAttendance() {
+    const byDate = {};
+    for (const w of getRawFilteredStats(true)) {
+      if (w.saints_attendance == null) continue;
+      byDate[w.entry_date] = (byDate[w.entry_date] ?? 0) + Number(w.saints_attendance);
+    }
+    const v = Object.values(byDate);
+    return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : 0;
   }
 
   function getFilteredStats() {
@@ -2053,7 +2065,7 @@
     document.getElementById('snap-connect-cards').innerHTML = [
       { label: 'Avg Connect Att.', value: avgLeaderField(filteredLE, 'connect_attendance') },
       { label: 'Avg Sunday Att.',  value: avgLeaderField(filteredLE, 'sunday_attendance') },
-      { label: 'Avg Saints Att.',  value: avg(col('saints_attendance')) },
+      { label: 'Avg Saints Att.',  value: avgSaintsAttendance() },
       { label: 'School Engagements',  value: sum(col('schools_visited')) },
     ].map(c => `<div class="stat-card"><div class="stat-card__label">${c.label}</div><div class="stat-card__value">${c.value}</div></div>`).join('');
 
