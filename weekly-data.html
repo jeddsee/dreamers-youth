@@ -234,8 +234,11 @@
       .wd-table tr.section-row { break-after: avoid; page-break-after: avoid; }
       .table-wrap { overflow: visible !important; }
       .wd-table { width: 100% !important; table-layout: fixed !important; }
-      .th-label, .td-label { display: none !important; }
-      .col-label { display: none !important; }
+      .th-label, .td-label { position: static !important; background: transparent !important; white-space: nowrap; }
+      .th-label { font-size: 9px !important; padding-left: 10px !important; background: #FFFFFF !important; }
+      .td-label { font-size: 9px !important; padding: 0 8px 0 10px !important; }
+      .td-label::after, .th-label::after { display: none !important; }
+      .col-label { width: 130px !important; }
       .col-week  { width: 50px !important; }
       .col-total { width: 60px !important; }
       .wd-table tr.data-row td { height: 24px !important; }
