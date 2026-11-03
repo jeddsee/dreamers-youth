@@ -1966,10 +1966,11 @@
     }
     let deptTotal;
     // For per-term view, scope dept lookup to entries within that term only.
-    // weeklyStats is sorted DESC by entry_date so the first match is always the latest.
-    const deptScope = (snapPeriod === 'year')
-      ? weeklyStats
-      : weeklyStats.filter(w => w.term && w.term.startsWith(snapPeriod.toUpperCase()));
+    // loadSnapshot's dedup rebuilds weeklyStats out of date order, so sort DESC here explicitly.
+    const deptScope = (snapPeriod === 'year'
+      ? [...weeklyStats]
+      : weeklyStats.filter(w => w.term && w.term.startsWith(snapPeriod.toUpperCase()))
+    ).sort((a, b) => (b.entry_date ?? '').localeCompare(a.entry_date ?? ''));
     if (isAll) {
       const perCampus = {};
       for (const w of deptScope) {
@@ -1983,7 +1984,9 @@
       deptTotal = latestDept ? latestDept.total_in_department : 0;
     }
     // Latest leaders_count from weekly_stats for the selected year (weeklyStats sorted desc, so first found is most recent)
-    const latestLeaderStat = weeklyStats.find(w => w.leaders_count != null && !w.no_youth_night);
+    const latestLeaderStat = [...weeklyStats]
+      .sort((a, b) => (b.entry_date ?? '').localeCompare(a.entry_date ?? ''))
+      .find(w => w.leaders_count != null && !w.no_youth_night);
     const leaderCount = latestLeaderStat != null
       ? latestLeaderStat.leaders_count
       : leaders.filter(l => l.role === 'leader').length;
