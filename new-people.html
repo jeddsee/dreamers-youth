@@ -776,6 +776,7 @@
     }
 
     renderTable(currentFilter);
+    backfillNCRecords();
   }
 
   function npLatestVisitDate(np) {
@@ -1146,21 +1147,41 @@
     document.getElementById('nc-fields').classList.toggle('hidden', !checked);
   }
 
-  // Sync a new person (who is an NC) into the new_christians table if not already there
-  async function syncNCRecord(np) {
-    const { data: existing } = await db.from('new_christians')
-      .select('id')
-      .eq('campus_id', np.campus_id)
-      .ilike('name', np.name.trim())
-      .maybeSingle();
-    if (existing) return;
-    await db.from('new_christians').insert({
+  // Create the new_christians record for an NP ticked as NC (no-op if one already exists).
+  async function syncNCRecord(np, existingKeys = null) {
+    const key = np.name.trim().toLowerCase();
+    if (existingKeys) {
+      if (existingKeys.has(key)) return;
+    } else {
+      const { data: existing } = await db.from('new_christians')
+        .select('id')
+        .eq('campus_id', np.campus_id)
+        .ilike('name', np.name.trim())
+        .limit(1);
+      if (existing?.length) return;
+    }
+    const { error } = await db.from('new_christians').insert({
       campus_id:     np.campus_id,
       name:          np.name,
       leader_id:     np.nc_leader_id || np.leader_id || null,
       decision_date: np.decision_date || null,
       decision_type: np.decision_type || null,
+      year_level:    np.year_level || null,
+      gender:        np.gender || null,
+      phone:         np.phone || null,
     });
+    if (error) console.error('NC sync failed for', np.name, error.message);
+    else existingKeys?.add(key);
+  }
+
+  // Backfill: any NP ticked as NC that has no matching NC record gets one.
+  async function backfillNCRecords() {
+    const ncNPs = allNP.filter(n => n.is_new_christian);
+    if (!ncNPs.length) return;
+    const { data: ncs } = await db.from('new_christians')
+      .select('name').eq('campus_id', identity.campus_id);
+    const keys = new Set((ncs ?? []).map(c => c.name.trim().toLowerCase()));
+    for (const np of ncNPs) await syncNCRecord(np, keys);
   }
 
   async function saveCurrentNP() {
