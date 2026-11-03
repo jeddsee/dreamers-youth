@@ -185,7 +185,9 @@
     /* Prevent cards and sections from splitting across pages */
     .stat-card, .ycomp-card, .stat-tile, .snap-submission-card,
     .stat-hero, .snap-leader-chip { break-inside: avoid; page-break-inside: avoid; }
-    .section-badge { break-after: avoid; page-break-after: avoid; }
+    /* Keep section title glued to its content — display:block needed on span for break-after to work */
+    .section-badge { display: block; break-after: avoid; page-break-after: avoid; }
+    .section-badge + div, .section-badge + .stat-hero { break-before: avoid; page-break-before: avoid; }
     .stat-card-grid, .ycomp-grid, .stat-hero { break-inside: avoid; page-break-inside: avoid; }
   }
   .snap-sub-filter-bar {
@@ -1963,17 +1965,21 @@
       avgAtt = attVals.length ? Math.round(attVals.reduce((a, b) => a + b, 0) / attVals.length) : 0;
     }
     let deptTotal;
+    // For per-term view, scope dept lookup to entries within that term only.
+    // weeklyStats is sorted DESC by entry_date so the first match is always the latest.
+    const deptScope = (snapPeriod === 'year')
+      ? weeklyStats
+      : weeklyStats.filter(w => w.term && w.term.startsWith(snapPeriod.toUpperCase()));
     if (isAll) {
-      // Sum the most-recent total_in_department per campus (weeklyStats ordered desc by date)
       const perCampus = {};
-      for (const w of weeklyStats) {
+      for (const w of deptScope) {
         if (w.total_in_department != null && !perCampus[w.campus_id]) {
           perCampus[w.campus_id] = w.total_in_department;
         }
       }
       deptTotal = Object.values(perCampus).reduce((s, v) => s + v, 0);
     } else {
-      const latestDept = weeklyStats.find(w => w.total_in_department != null);
+      const latestDept = deptScope.find(w => w.total_in_department != null);
       deptTotal = latestDept ? latestDept.total_in_department : 0;
     }
     // Latest leaders_count from weekly_stats for the selected year (weeklyStats sorted desc, so first found is most recent)
