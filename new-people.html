@@ -373,7 +373,7 @@
           <div class="form-grid form-grid--2">
             <div class="form-group" style="grid-column:1/-1">
               <label>Full name</label>
-              <input id="d-name" type="text" class="input">
+              <input id="d-name" type="text" class="input" autocapitalize="words" data-cap="words">
             </div>
             <div class="form-group">
               <label>Mobile</label>
@@ -381,7 +381,7 @@
             </div>
             <div class="form-group">
               <label>School</label>
-              <input id="d-school" type="text" class="input">
+              <input id="d-school" type="text" class="input" autocapitalize="words" data-cap="words">
             </div>
             <div class="form-group">
               <label>Year level</label>
@@ -401,7 +401,7 @@
             </div>
             <div class="form-group">
               <label>Who brought them?</label>
-              <input id="d-friend" type="text" class="input">
+              <input id="d-friend" type="text" class="input" autocapitalize="words" data-cap="words">
             </div>
             <div class="form-group">
               <label>Birthday</label>
@@ -415,7 +415,7 @@
           <div class="form-grid form-grid--2">
             <div class="form-group">
               <label>Parent name</label>
-              <input id="d-parent-name" type="text" class="input">
+              <input id="d-parent-name" type="text" class="input" autocapitalize="words" data-cap="words">
             </div>
             <div class="form-group">
               <label>Parent mobile</label>
@@ -556,7 +556,7 @@
           <div class="form-grid form-grid--2">
             <div class="form-group" style="grid-column:1/-1">
               <label>Full name <span class="required">*</span></label>
-              <input id="a-name" type="text" class="input">
+              <input id="a-name" type="text" class="input" autocapitalize="words" data-cap="words">
             </div>
             <div class="form-group">
               <label>Mobile</label>
@@ -564,7 +564,7 @@
             </div>
             <div class="form-group">
               <label>School</label>
-              <input id="a-school" type="text" class="input">
+              <input id="a-school" type="text" class="input" autocapitalize="words" data-cap="words">
             </div>
             <div class="form-group">
               <label>Year level</label>
@@ -584,7 +584,7 @@
             </div>
             <div class="form-group">
               <label>Who brought them?</label>
-              <input id="a-friend" type="text" class="input">
+              <input id="a-friend" type="text" class="input" autocapitalize="words" data-cap="words">
             </div>
             <div class="form-group">
               <label>Birthday</label>
@@ -598,7 +598,7 @@
           <div class="form-grid form-grid--2">
             <div class="form-group">
               <label>Parent name</label>
-              <input id="a-parent-name" type="text" class="input">
+              <input id="a-parent-name" type="text" class="input" autocapitalize="words" data-cap="words">
             </div>
             <div class="form-group">
               <label>Parent mobile</label>
@@ -1652,6 +1652,14 @@
   function logout() { DY.clearIdentity(); window.location.href = '/'; }
 
   init();
+
+  document.querySelectorAll('[data-cap="words"]').forEach(el => {
+    el.addEventListener('input', function() {
+      const pos = this.selectionStart;
+      const cap = this.value.replace(/(^|[\s\-'])\S/g, c => c.toUpperCase());
+      if (cap !== this.value) { this.value = cap; this.setSelectionRange(pos, pos); }
+    });
+  });
   </script>
   </div><!-- /main-content -->
 </div><!-- /app-layout -->
